@@ -1,0 +1,25 @@
+/* ============================================
+   Global Viewport Fix
+   ============================================ */
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  /* Fallback for older browsers, then modern dvh for mobile screens */
+  height: 100vh; 
+  height: 100dvh; 
+  overflow: hidden; /* Prevents the whole screen from scrolling on mobile/desktop */
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}

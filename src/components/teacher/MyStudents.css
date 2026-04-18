@@ -1,0 +1,1804 @@
+/* ==========================================================
+   MyStudents.css — Fully Responsive Student Management (Light)
+   ========================================================== */
+
+/* ─── Design Tokens ──────────────────────────────────────── */
+:root {
+  --ms-bg: #f3f4f8;
+  --ms-bg-raised: #ffffff;
+  --ms-bg-card: #ffffff;
+  --ms-bg-card-hover: #f9f9fb;
+  --ms-bg-input: #f5f6fa;
+  --ms-bg-overlay: rgba(30, 32, 48, 0.45);
+  --ms-fg: #1a1d2b;
+  --ms-fg-secondary: #5a6178;
+  --ms-fg-dim: #8d93a6;
+  --ms-accent: #0a9e6f;
+  --ms-accent-hover: #088a60;
+  --ms-accent-soft: rgba(10, 158, 111, 0.08);
+  --ms-accent-glow: rgba(10, 158, 111, 0.12);
+  --ms-amber: #d48a10;
+  --ms-amber-soft: rgba(212, 138, 16, 0.08);
+  --ms-red: #d93a4a;
+  --ms-red-soft: rgba(217, 58, 74, 0.07);
+  --ms-purple: #6c5ce7;
+  --ms-purple-soft: rgba(108, 92, 231, 0.07);
+  --ms-blue: #2d7dd2;
+  --ms-blue-soft: rgba(45, 125, 210, 0.07);
+  --ms-border: rgba(0, 0, 0, 0.07);
+  --ms-border-accent: rgba(10, 158, 111, 0.22);
+  --ms-border-input: rgba(0, 0, 0, 0.1);
+  --ms-radius-xs: 6px;
+  --ms-radius-sm: 8px;
+  --ms-radius-md: 12px;
+  --ms-radius-lg: 16px;
+  --ms-radius-xl: 20px;
+  --ms-radius-full: 9999px;
+  --ms-shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.06);
+  --ms-shadow-md: 0 2px 12px rgba(0, 0, 0, 0.08);
+  --ms-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --ms-font-display: 'Space Grotesk', sans-serif;
+  --ms-font-body: 'DM Sans', sans-serif;
+  --ms-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --ms-transition: 0.22s var(--ms-ease);
+}
+
+/* ─── Page Shell ─────────────────────────────────────────── */
+.ms-page {
+  font-family: var(--ms-font-body);
+  color: var(--ms-fg);
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 16px 64px;
+  line-height: 1.55;
+}
+
+/* ─── Header ─────────────────────────────────────────────── */
+.ms-header {
+  margin-bottom: 24px;
+}
+
+.ms-header h1 {
+  font-family: var(--ms-font-display);
+  font-size: clamp(1.6rem, 4.5vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  color: var(--ms-fg);
+  margin: 0 0 4px;
+}
+
+.ms-header p {
+  font-size: clamp(0.82rem, 2.2vw, 0.95rem);
+  color: var(--ms-fg-secondary);
+  margin: 0;
+}
+
+/* ─── Stats Bar ──────────────────────────────────────────── */
+.ms-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 24px;
+}
+
+.ms-stat {
+  background: var(--ms-bg-card);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius-md);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+  transition: var(--ms-transition);
+  box-shadow: var(--ms-shadow-sm);
+}
+
+.ms-stat::after {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  opacity: 0;
+  transition: var(--ms-transition);
+}
+
+.ms-stat:hover {
+  border-color: var(--ms-border-accent);
+  transform: translateY(-1px);
+  box-shadow: var(--ms-shadow-md);
+}
+
+.ms-stat:hover::after { opacity: 1; }
+
+.ms-stat:nth-child(1)::after { background: linear-gradient(90deg, var(--ms-accent), transparent); }
+.ms-stat:nth-child(2)::after { background: linear-gradient(90deg, var(--ms-blue), transparent); }
+.ms-stat:nth-child(2):hover { border-color: rgba(45, 125, 210, 0.22); }
+.ms-stat:nth-child(3)::after { background: linear-gradient(90deg, var(--ms-purple), transparent); }
+.ms-stat:nth-child(3):hover { border-color: rgba(108, 92, 231, 0.22); }
+.ms-stat:nth-child(4)::after { background: linear-gradient(90deg, var(--ms-amber), transparent); }
+.ms-stat:nth-child(4):hover { border-color: rgba(212, 138, 16, 0.22); }
+
+.ms-stat-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.ms-stat-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.ms-stat-num {
+  font-family: var(--ms-font-display);
+  font-size: clamp(1.2rem, 3vw, 1.55rem);
+  font-weight: 700;
+  color: var(--ms-fg);
+  line-height: 1.2;
+}
+
+.ms-stat-label {
+  font-size: 0.7rem;
+  color: var(--ms-fg-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+
+/* ─── Filter Bar ─────────────────────────────────────────── */
+.ms-filter-bar {
+  background: var(--ms-bg-card);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius-md);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  box-shadow: var(--ms-shadow-sm);
+}
+
+.ms-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ms-filter-label {
+  font-size: 0.78rem;
+  color: var(--ms-fg-dim);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.ms-filter-select {
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border-input);
+  border-radius: var(--ms-radius-sm);
+  color: var(--ms-fg);
+  font-family: var(--ms-font-body);
+  font-size: 0.82rem;
+  padding: 7px 28px 7px 10px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238d93a6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  cursor: pointer;
+  transition: var(--ms-transition);
+  max-width: 200px;
+}
+
+.ms-filter-select:focus {
+  outline: none;
+  border-color: var(--ms-accent);
+  box-shadow: 0 0 0 3px var(--ms-accent-soft);
+}
+
+.ms-filter-info {
+  font-size: 0.72rem;
+  color: var(--ms-fg-dim);
+  white-space: nowrap;
+}
+
+/* ─── Error Banners ──────────────────────────────────────── */
+.ms-error-banner {
+  background: var(--ms-red-soft);
+  border: 1px solid rgba(217, 58, 74, 0.18);
+  border-radius: var(--ms-radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 0.82rem;
+  color: #b82e3c;
+  flex-wrap: wrap;
+}
+
+.ms-warning-banner {
+  background: var(--ms-amber-soft);
+  border-color: rgba(212, 138, 16, 0.18);
+  color: #9a6800;
+}
+
+.ms-retry-btn {
+  background: var(--ms-red);
+  color: #fff;
+  border: none;
+  border-radius: var(--ms-radius-xs);
+  padding: 5px 14px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--ms-font-body);
+  transition: var(--ms-transition);
+  flex-shrink: 0;
+}
+
+.ms-retry-btn:hover { opacity: 0.85; }
+
+.ms-warning-banner .ms-retry-btn {
+  background: var(--ms-amber);
+  color: #1a1400;
+}
+
+/* ─── Empty State ────────────────────────────────────────── */
+.ms-empty {
+  text-align: center;
+  padding: 56px 20px;
+}
+
+.ms-empty-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 14px;
+  opacity: 0.7;
+}
+
+.ms-empty h3 {
+  font-family: var(--ms-font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--ms-fg);
+  margin: 0 0 6px;
+}
+
+.ms-empty p {
+  font-size: 0.88rem;
+  color: var(--ms-fg-secondary);
+  margin: 0;
+}
+
+/* ─── Error State ────────────────────────────────────────── */
+.ms-error {
+  text-align: center;
+  padding: 56px 20px;
+}
+
+.ms-error-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 14px;
+}
+
+.ms-error h3 {
+  font-family: var(--ms-font-display);
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+
+.ms-error p {
+  font-size: 0.88rem;
+  color: var(--ms-fg-secondary);
+  margin: 0;
+}
+
+/* ─── Class Cards (Accordion) ────────────────────────────── */
+.ms-classes {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ms-card {
+  background: var(--ms-bg-card);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius-lg);
+  overflow: hidden;
+  transition: var(--ms-transition);
+  box-shadow: var(--ms-shadow-sm);
+}
+
+.ms-card:hover {
+  border-color: rgba(0, 0, 0, 0.1);
+  box-shadow: var(--ms-shadow-md);
+}
+
+/* ─── Card Header ────────────────────────────────────────── */
+.ms-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: var(--ms-transition);
+  gap: 12px;
+}
+
+.ms-card-head:hover {
+  background: var(--ms-bg-card-hover);
+}
+
+.ms-card-head.open {
+  background: linear-gradient(135deg, rgba(10, 158, 111, 0.04) 0%, transparent 60%);
+  border-bottom: 1px solid var(--ms-border);
+}
+
+.ms-card-info {
+  min-width: 0;
+}
+
+.ms-card-info h2 {
+  font-family: var(--ms-font-display);
+  font-size: clamp(1rem, 3vw, 1.2rem);
+  font-weight: 700;
+  color: var(--ms-fg);
+  margin: 0;
+  line-height: 1.3;
+}
+
+.ms-section {
+  color: var(--ms-accent);
+  font-weight: 600;
+}
+
+.ms-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  color: var(--ms-fg-dim);
+  margin-top: 2px;
+}
+
+.ms-dot {
+  opacity: 0.4;
+}
+
+.ms-card-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ms-count-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--ms-radius-sm);
+  background: var(--ms-accent-soft);
+  border: 1px solid rgba(10, 158, 111, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ms-count-num {
+  font-family: var(--ms-font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ms-accent);
+}
+
+.ms-chevron {
+  color: var(--ms-fg-dim);
+  transition: transform 0.3s var(--ms-ease);
+  display: flex;
+}
+
+.ms-chevron.up {
+  transform: rotate(180deg);
+}
+
+/* ─── Students Panel ─────────────────────────────────────── */
+.ms-students-panel {
+  animation: msSlideDown 0.25s var(--ms-ease);
+}
+
+@keyframes msSlideDown {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.ms-no-data {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--ms-fg-dim);
+  font-size: 0.88rem;
+}
+
+/* ─── Desktop Table ──────────────────────────────────────── */
+.ms-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ms-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.ms-table thead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.ms-table th {
+  background: var(--ms-bg-raised);
+  color: var(--ms-fg-dim);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 10px 14px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--ms-border);
+}
+
+.ms-th-sub {
+  display: block;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 0.65rem;
+  opacity: 0.6;
+  margin-top: 1px;
+}
+
+.ms-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--ms-border);
+  vertical-align: middle;
+}
+
+.ms-table tbody tr {
+  transition: var(--ms-transition);
+}
+
+.ms-table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.015);
+}
+
+.ms-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.ms-sno {
+  font-family: var(--ms-font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ms-fg-dim);
+  background: rgba(0, 0, 0, 0.04);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--ms-radius-xs);
+}
+
+.ms-name-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 160px;
+}
+
+.ms-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ms-accent), #078a5e);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #fff;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
+.ms-name {
+  font-weight: 600;
+  color: var(--ms-fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ms-adm {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: var(--ms-fg-secondary);
+  background: rgba(0, 0, 0, 0.03);
+  padding: 2px 8px;
+  border-radius: var(--ms-radius-xs);
+}
+
+.ms-gender {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.ms-gender.male {
+  color: var(--ms-blue);
+}
+
+.ms-gender.female {
+  color: var(--ms-purple);
+}
+
+/* ─── Attendance Input ───────────────────────────────────── */
+.ms-attendance-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 110px;
+}
+
+.ms-attendance-input {
+  width: 72px;
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border-input);
+  border-radius: var(--ms-radius-xs);
+  color: var(--ms-fg);
+  font-family: var(--ms-font-display);
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 5px 8px;
+  text-align: center;
+  transition: var(--ms-transition);
+  -moz-appearance: textfield;
+}
+
+.ms-attendance-input::-webkit-inner-spin-button,
+.ms-attendance-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ms-attendance-input:focus {
+  outline: none;
+  border-color: var(--ms-accent);
+  box-shadow: 0 0 0 3px var(--ms-accent-soft);
+}
+
+.ms-attendance-input.saving {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.ms-attendance-input.good {
+  border-color: rgba(10, 158, 111, 0.25);
+  color: var(--ms-accent);
+}
+
+.ms-attendance-input.fair {
+  border-color: rgba(212, 138, 16, 0.25);
+  color: var(--ms-amber);
+}
+
+.ms-attendance-input.poor {
+  border-color: rgba(217, 58, 74, 0.25);
+  color: var(--ms-red);
+}
+
+.ms-saving-spinner {
+  font-size: 0.65rem;
+  color: var(--ms-amber);
+  animation: msPulse 1s ease-in-out infinite;
+}
+
+@keyframes msPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.ms-attendance-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ms-attendance-pct {
+  font-family: var(--ms-font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.ms-attendance-pct.good { color: var(--ms-accent); }
+.ms-attendance-pct.fair { color: var(--ms-amber); }
+.ms-attendance-pct.poor { color: var(--ms-red); }
+.ms-attendance-pct.neutral { color: var(--ms-fg-dim); }
+
+.ms-attendance-note {
+  font-size: 0.65rem;
+  color: var(--ms-fg-dim);
+}
+
+/* ─── Comment Preview ────────────────────────────────────── */
+.ms-comment-preview {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  max-width: 200px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ms-comment-preview.has-comment {
+  color: var(--ms-fg-secondary);
+}
+
+.ms-comment-preview.no-comment {
+  color: var(--ms-fg-dim);
+  font-style: italic;
+}
+
+/* ─── Comment Button ─────────────────────────────────────── */
+.ms-comment-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  border-radius: var(--ms-radius-xs);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--ms-font-body);
+  transition: var(--ms-transition);
+  white-space: nowrap;
+  border: none;
+}
+
+.ms-comment-btn.add {
+  background: var(--ms-accent-soft);
+  color: var(--ms-accent);
+  border: 1px solid rgba(10, 158, 111, 0.15);
+}
+
+.ms-comment-btn.add:hover {
+  background: rgba(10, 158, 111, 0.14);
+  border-color: rgba(10, 158, 111, 0.3);
+}
+
+.ms-comment-btn.edit {
+  background: var(--ms-purple-soft);
+  color: var(--ms-purple);
+  border: 1px solid rgba(108, 92, 231, 0.15);
+}
+
+.ms-comment-btn.edit:hover {
+  background: rgba(108, 92, 231, 0.14);
+  border-color: rgba(108, 92, 231, 0.3);
+}
+
+/* ─── Mobile Card List ───────────────────────────────────── */
+.ms-mobile-list {
+  display: none;
+}
+
+.ms-mobile-card {
+  background: var(--ms-bg-raised);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius-md);
+  padding: 14px 16px;
+  margin: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: var(--ms-transition);
+  box-shadow: var(--ms-shadow-sm);
+}
+
+.ms-mobile-card:hover {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.ms-mobile-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.ms-mobile-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 0.92rem;
+  color: var(--ms-fg);
+}
+
+.ms-mobile-adm {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.72rem;
+  color: var(--ms-fg-dim);
+  padding-left: 40px;
+}
+
+.ms-mobile-attendance {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.015);
+  border-radius: var(--ms-radius-sm);
+  border: 1px solid var(--ms-border);
+  flex-wrap: wrap;
+}
+
+.ms-mobile-attendance-label {
+  font-size: 0.8rem;
+  color: var(--ms-fg-secondary);
+  flex-shrink: 0;
+}
+
+.ms-mobile-attendance .ms-attendance-input {
+  width: 64px;
+}
+
+.ms-mobile-attendance-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding-left: 2px;
+}
+
+.ms-mobile-comment-preview {
+  font-size: 0.8rem;
+  color: var(--ms-fg-secondary);
+  line-height: 1.45;
+  padding: 8px 10px;
+  background: rgba(108, 92, 231, 0.04);
+  border-left: 2px solid var(--ms-purple);
+  border-radius: 0 var(--ms-radius-xs) var(--ms-radius-xs) 0;
+}
+
+.ms-mobile-comment-btn {
+  width: 100%;
+  justify-content: center;
+  padding: 10px;
+  border-radius: var(--ms-radius-sm);
+  font-size: 0.82rem;
+}
+
+/* ─── Modal Overlay ──────────────────────────────────────── */
+.ms-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: var(--ms-bg-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: msFadeIn 0.2s var(--ms-ease);
+  -webkit-tap-highlight-color: transparent;
+}
+
+@keyframes msFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Modal ──────────────────────────────────────────────── */
+.ms-modal {
+  background: var(--ms-bg-card);
+  border: 1px solid var(--ms-border);
+  border-radius: var(--ms-radius-xl);
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--ms-shadow-lg);
+  animation: msModalSlide 0.3s var(--ms-ease);
+  overflow: hidden;
+}
+
+@keyframes msModalSlide {
+  from { opacity: 0; transform: translateY(20px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ─── Modal Header ───────────────────────────────────────── */
+.ms-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--ms-border);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.ms-modal-header h3 {
+  font-family: var(--ms-font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ms-fg);
+  margin: 0 0 4px;
+}
+
+.ms-modal-student-name {
+  font-size: 0.82rem;
+  color: var(--ms-fg-secondary);
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ms-modal-adm {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.75rem;
+  color: var(--ms-fg-dim);
+}
+
+.ms-modal-attendance {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: var(--ms-radius-xs);
+  white-space: nowrap;
+}
+
+.ms-modal-attendance.good {
+  background: var(--ms-accent-soft);
+  color: var(--ms-accent);
+}
+
+.ms-modal-attendance.fair {
+  background: var(--ms-amber-soft);
+  color: var(--ms-amber);
+}
+
+.ms-modal-attendance.poor {
+  background: var(--ms-red-soft);
+  color: var(--ms-red);
+}
+
+.ms-modal-attendance.neutral {
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--ms-fg-dim);
+}
+
+.ms-modal-close {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--ms-radius-sm);
+  border: 1px solid var(--ms-border);
+  background: transparent;
+  color: var(--ms-fg-dim);
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: var(--ms-transition);
+}
+
+.ms-modal-close:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--ms-fg);
+}
+
+/* ─── Modal Body (scrollable) ────────────────────────────── */
+.ms-modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  flex: 1;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ─── Form Elements ──────────────────────────────────────── */
+.ms-form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.ms-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.ms-form-label {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--ms-fg-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ms-required {
+  color: var(--ms-red);
+}
+
+.ms-select {
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border-input);
+  border-radius: var(--ms-radius-sm);
+  color: var(--ms-fg);
+  font-family: var(--ms-font-body);
+  font-size: 0.85rem;
+  padding: 9px 32px 9px 12px;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238d93a6' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+  transition: var(--ms-transition);
+}
+
+.ms-select:focus {
+  outline: none;
+  border-color: var(--ms-accent);
+  box-shadow: 0 0 0 3px var(--ms-accent-soft);
+}
+
+.ms-textarea {
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border-input);
+  border-radius: var(--ms-radius-sm);
+  color: var(--ms-fg);
+  font-family: var(--ms-font-body);
+  font-size: 0.88rem;
+  padding: 12px 14px;
+  resize: vertical;
+  min-height: 100px;
+  line-height: 1.55;
+  transition: var(--ms-transition);
+}
+
+.ms-textarea:focus {
+  outline: none;
+  border-color: var(--ms-accent);
+  box-shadow: 0 0 0 3px var(--ms-accent-soft);
+}
+
+.ms-textarea::placeholder {
+  color: var(--ms-fg-dim);
+}
+
+.ms-char-count {
+  font-size: 0.7rem;
+  color: var(--ms-fg-dim);
+  text-align: right;
+  margin-top: 2px;
+}
+
+.ms-comment-meta {
+  font-size: 0.72rem;
+  color: var(--ms-fg-dim);
+}
+
+/* ─── Quick Comments Section ─────────────────────────────── */
+.ms-quick-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--ms-border);
+}
+
+.ms-template-count {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--ms-fg-dim);
+  font-size: 0.72rem;
+}
+
+.ms-template-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.ms-template-search-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 0.78rem;
+  pointer-events: none;
+  color: var(--ms-fg-dim);
+}
+
+.ms-template-search {
+  width: 100%;
+  background: var(--ms-bg-input);
+  border: 1px solid var(--ms-border-input);
+  border-radius: var(--ms-radius-sm);
+  color: var(--ms-fg);
+  font-family: var(--ms-font-body);
+  font-size: 0.84rem;
+  padding: 9px 32px 9px 32px;
+  transition: var(--ms-transition);
+}
+
+.ms-template-search:focus {
+  outline: none;
+  border-color: var(--ms-accent);
+  box-shadow: 0 0 0 3px var(--ms-accent-soft);
+}
+
+.ms-template-search::placeholder {
+  color: var(--ms-fg-dim);
+}
+
+.ms-template-search-clear {
+  position: absolute;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--ms-fg-dim);
+  font-size: 0.65rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: var(--ms-transition);
+}
+
+.ms-template-search-clear:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: var(--ms-fg);
+}
+
+/* ─── Category Tabs ──────────────────────────────────────── */
+.ms-template-categories {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+
+.ms-template-categories::-webkit-scrollbar {
+  display: none;
+}
+
+.ms-category-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: var(--ms-radius-full);
+  border: 1px solid var(--ms-border);
+  background: transparent;
+  color: var(--ms-fg-secondary);
+  font-size: 0.7rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  font-family: var(--ms-font-body);
+  transition: var(--ms-transition);
+}
+
+.ms-category-tab:hover {
+  background: rgba(0, 0, 0, 0.03);
+  border-color: rgba(0, 0, 0, 0.12);
+}
+
+.ms-category-tab.active {
+  background: var(--ms-accent-soft);
+  border-color: var(--ms-border-accent);
+  color: var(--ms-accent);
+}
+
+.ms-cat-icon {
+  font-size: 0.72rem;
+  line-height: 1;
+}
+
+.ms-cat-label {
+  font-size: 0.68rem;
+}
+
+/* ─── Quick Comment Buttons ──────────────────────────────── */
+.ms-quick-btns-scroll {
+  max-height: 220px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.12) transparent;
+}
+
+.ms-quick-btns-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ms-quick-btns-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.ms-quick-btns-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+}
+
+.ms-no-templates {
+  padding: 20px;
+  text-align: center;
+  color: var(--ms-fg-dim);
+  font-size: 0.82rem;
+}
+
+.ms-quick-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.ms-quick-btn {
+  padding: 6px 11px;
+  border-radius: var(--ms-radius-xs);
+  border: 1px solid var(--ms-border);
+  background: var(--ms-bg-raised);
+  color: var(--ms-fg-secondary);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: var(--ms-font-body);
+  transition: var(--ms-transition);
+  white-space: nowrap;
+}
+
+.ms-quick-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.14);
+  color: var(--ms-fg);
+}
+
+/* Category color coding for quick buttons */
+.ms-quick-btn-cat-academic-positive {
+  border-color: rgba(10, 158, 111, 0.15);
+}
+.ms-quick-btn-cat-academic-positive:hover {
+  background: var(--ms-accent-soft);
+  color: var(--ms-accent);
+  border-color: rgba(10, 158, 111, 0.3);
+}
+
+.ms-quick-btn-cat-academic-needs-work {
+  border-color: rgba(212, 138, 16, 0.12);
+}
+.ms-quick-btn-cat-academic-needs-work:hover {
+  background: var(--ms-amber-soft);
+  color: var(--ms-amber);
+  border-color: rgba(212, 138, 16, 0.25);
+}
+
+.ms-quick-btn-cat-behavior-positive {
+  border-color: rgba(45, 125, 210, 0.12);
+}
+.ms-quick-btn-cat-behavior-positive:hover {
+  background: var(--ms-blue-soft);
+  color: var(--ms-blue);
+  border-color: rgba(45, 125, 210, 0.25);
+}
+
+.ms-quick-btn-cat-behavior-needs-work {
+  border-color: rgba(217, 58, 74, 0.12);
+}
+.ms-quick-btn-cat-behavior-needs-work:hover {
+  background: var(--ms-red-soft);
+  color: var(--ms-red);
+  border-color: rgba(217, 58, 74, 0.25);
+}
+
+.ms-quick-btn-cat-attitude-positive,
+.ms-quick-btn-cat-participation-positive,
+.ms-quick-btn-cat-social-positive {
+  border-color: rgba(10, 158, 111, 0.12);
+}
+.ms-quick-btn-cat-attitude-positive:hover,
+.ms-quick-btn-cat-participation-positive:hover,
+.ms-quick-btn-cat-social-positive:hover {
+  background: var(--ms-accent-soft);
+  color: var(--ms-accent);
+  border-color: rgba(10, 158, 111, 0.25);
+}
+
+.ms-quick-btn-cat-attitude-needs-work,
+.ms-quick-btn-cat-participation-needs-work,
+.ms-quick-btn-cat-social-needs-work {
+  border-color: rgba(212, 138, 16, 0.12);
+}
+.ms-quick-btn-cat-attitude-needs-work:hover,
+.ms-quick-btn-cat-participation-needs-work:hover,
+.ms-quick-btn-cat-social-needs-work:hover {
+  background: var(--ms-amber-soft);
+  color: var(--ms-amber);
+  border-color: rgba(212, 138, 16, 0.25);
+}
+
+.ms-quick-btn-cat-special-attributes {
+  border-color: rgba(108, 92, 231, 0.15);
+}
+.ms-quick-btn-cat-special-attributes:hover {
+  background: var(--ms-purple-soft);
+  color: var(--ms-purple);
+  border-color: rgba(108, 92, 231, 0.3);
+}
+
+.ms-quick-btn-cat-mixed-constructive {
+  border-color: rgba(0, 0, 0, 0.06);
+}
+.ms-quick-btn-cat-mixed-constructive:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--ms-fg);
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+/* ─── Modal Footer ───────────────────────────────────────── */
+.ms-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-top: 1px solid var(--ms-border);
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.ms-modal-footer-left,
+.ms-modal-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ms-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 9px 20px;
+  border-radius: var(--ms-radius-sm);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--ms-font-body);
+  transition: var(--ms-transition);
+  white-space: nowrap;
+  border: none;
+}
+
+.ms-btn:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.ms-btn-primary {
+  background: var(--ms-accent);
+  color: #fff;
+}
+
+.ms-btn-primary:hover:not(:disabled) {
+  background: var(--ms-accent-hover);
+  box-shadow: 0 2px 12px var(--ms-accent-glow);
+}
+
+.ms-btn-secondary {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--ms-fg-secondary);
+  border: 1px solid var(--ms-border);
+}
+
+.ms-btn-secondary:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.07);
+  color: var(--ms-fg);
+}
+
+.ms-btn-danger {
+  background: var(--ms-red-soft);
+  color: var(--ms-red);
+  border: 1px solid rgba(217, 58, 74, 0.15);
+}
+
+.ms-btn-danger:hover:not(:disabled) {
+  background: rgba(217, 58, 74, 0.14);
+  border-color: rgba(217, 58, 74, 0.3);
+}
+
+.ms-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: msSpin 0.6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes msSpin {
+  to { transform: rotate(360deg); }
+}
+
+
+/* ==========================================================
+   RESPONSIVE BREAKPOINTS
+   ========================================================== */
+
+/* --- Ultra-small phones (≤ 360px) --- */
+@media (max-width: 360px) {
+  .ms-page {
+    padding: 14px 8px 40px;
+  }
+
+  .ms-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .ms-stat {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .ms-stat-icon {
+    font-size: 1.1rem;
+  }
+
+  .ms-filter-bar {
+    padding: 10px 12px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ms-filter-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ms-filter-select {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .ms-filter-info {
+    text-align: center;
+  }
+
+  .ms-card-head {
+    padding: 12px 14px;
+  }
+
+  .ms-count-badge {
+    width: 32px;
+    height: 32px;
+  }
+
+  .ms-mobile-card {
+    margin: 6px 8px;
+    padding: 12px 14px;
+  }
+
+  .ms-mobile-attendance {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .ms-mobile-attendance .ms-attendance-input {
+    width: 100%;
+  }
+
+  .ms-modal-overlay {
+    padding: 0;
+  }
+
+  .ms-modal {
+    border-radius: 0;
+    max-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  .ms-modal-header {
+    padding: 14px 16px 12px;
+  }
+
+  .ms-modal-body {
+    padding: 14px 16px;
+  }
+
+  .ms-modal-footer {
+    padding: 12px 16px;
+    flex-wrap: wrap;
+  }
+
+  .ms-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ms-btn {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+    flex: 1;
+  }
+
+  .ms-modal-footer-left {
+    width: 100%;
+  }
+
+  .ms-modal-footer-left .ms-btn-danger {
+    width: 100%;
+  }
+
+  .ms-modal-footer-right {
+    width: 100%;
+  }
+
+  .ms-modal-footer-right .ms-btn {
+    flex: 1;
+  }
+
+  .ms-cat-label {
+    display: none;
+  }
+
+  .ms-category-tab {
+    padding: 7px 8px;
+  }
+
+  .ms-quick-btn {
+    font-size: 0.68rem;
+    padding: 5px 9px;
+  }
+}
+
+/* --- Small phones (361px - 480px) --- */
+@media (min-width: 361px) and (max-width: 480px) {
+  .ms-page {
+    padding: 16px 12px 48px;
+  }
+
+  .ms-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .ms-stat {
+    padding: 12px 14px;
+  }
+
+  .ms-filter-bar {
+    padding: 12px 14px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ms-filter-group {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ms-filter-select {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .ms-filter-info {
+    text-align: center;
+  }
+
+  .ms-card-head {
+    padding: 14px 16px;
+  }
+
+  .ms-mobile-card {
+    margin: 6px 10px;
+    padding: 12px 14px;
+  }
+
+  .ms-mobile-attendance {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .ms-mobile-attendance .ms-attendance-input {
+    width: 100%;
+  }
+
+  .ms-modal-overlay {
+    padding: 8px;
+  }
+
+  .ms-modal {
+    border-radius: var(--ms-radius-lg);
+    max-height: 94vh;
+  }
+
+  .ms-form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .ms-btn {
+    padding: 10px 16px;
+    flex: 1;
+  }
+
+  .ms-modal-footer-left {
+    width: 100%;
+  }
+
+  .ms-modal-footer-left .ms-btn-danger {
+    width: 100%;
+  }
+
+  .ms-modal-footer-right {
+    width: 100%;
+  }
+
+  .ms-cat-label {
+    display: none;
+  }
+
+  .ms-category-tab {
+    padding: 7px 9px;
+  }
+}
+
+/* --- Phones landscape / small tablets (481px - 640px) --- */
+@media (min-width: 481px) and (max-width: 640px) {
+  .ms-stats {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+
+  .ms-stat {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+
+  .ms-stat-icon {
+    font-size: 1.1rem;
+  }
+
+  .ms-filter-bar {
+    padding: 12px 14px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ms-filter-group {
+    flex-wrap: wrap;
+  }
+
+  .ms-filter-select {
+    flex: 1;
+    min-width: 120px;
+    max-width: none;
+  }
+
+  .ms-mobile-attendance {
+    flex-wrap: wrap;
+  }
+
+  .ms-modal {
+    max-height: 92vh;
+  }
+
+  .ms-form-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* --- Tablets portrait (641px - 768px) --- */
+@media (min-width: 641px) and (max-width: 768px) {
+  .ms-stats {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+  }
+
+  .ms-stat {
+    padding: 12px 14px;
+  }
+
+  .ms-filter-bar {
+    flex-wrap: wrap;
+  }
+
+  .ms-filter-select {
+    max-width: 180px;
+  }
+
+  .ms-modal {
+    max-width: 600px;
+  }
+}
+
+/* ─── SWITCH: Desktop Table ↔ Mobile Cards ──────────────── */
+@media (min-width: 769px) {
+  .ms-table-wrap {
+    display: block;
+  }
+
+  .ms-mobile-list {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .ms-table-wrap {
+    display: none;
+  }
+
+  .ms-mobile-list {
+    display: block;
+  }
+}
+
+/* --- Tablets landscape / small laptops (769px - 1024px) --- */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .ms-page {
+    padding: 24px 20px 56px;
+  }
+
+  .ms-table {
+    font-size: 0.82rem;
+  }
+
+  .ms-table th,
+  .ms-table td {
+    padding: 8px 10px;
+  }
+
+  .ms-attendance-cell {
+    min-width: 100px;
+  }
+
+  .ms-comment-preview {
+    max-width: 160px;
+  }
+}
+
+/* --- Large laptops (1025px+) --- */
+@media (min-width: 1025px) {
+  .ms-page {
+    padding: 28px 32px 72px;
+  }
+}
+
+/* --- Ultra-wide (1440px+) --- */
+@media (min-width: 1440px) {
+  .ms-page {
+    padding: 32px 40px 80px;
+  }
+}
+
+/* --- Short landscape phones --- */
+@media (max-height: 520px) and (orientation: landscape) {
+  .ms-page {
+    padding: 10px 12px 20px;
+  }
+
+  .ms-header {
+    margin-bottom: 10px;
+  }
+
+  .ms-stats {
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+
+  .ms-stat {
+    padding: 8px 10px;
+    gap: 6px;
+  }
+
+  .ms-stat-icon {
+    font-size: 1rem;
+  }
+
+  .ms-filter-bar {
+    padding: 8px 12px;
+    margin-bottom: 8px;
+  }
+
+  .ms-modal-overlay {
+    padding: 8px;
+  }
+
+  .ms-modal {
+    max-height: 96vh;
+  }
+
+  .ms-modal-header {
+    padding: 10px 16px 8px;
+  }
+
+  .ms-modal-body {
+    padding: 10px 16px;
+    gap: 10px;
+  }
+
+  .ms-modal-footer {
+    padding: 8px 16px;
+  }
+
+  .ms-quick-btns-scroll {
+    max-height: 120px;
+  }
+}
+
+/* --- Short portrait phones (e.g. iPhone SE 2nd gen) --- */
+@media (max-height: 620px) and (max-width: 400px) and (orientation: portrait) {
+  .ms-modal {
+    max-height: 96vh;
+  }
+
+  .ms-quick-btns-scroll {
+    max-height: 140px;
+  }
+
+  .ms-textarea {
+    min-height: 70px;
+  }
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .ms-students-panel,
+  .ms-modal,
+  .ms-modal-overlay {
+    animation: none;
+  }
+
+  .ms-stat,
+  .ms-card,
+  .ms-comment-btn,
+  .ms-attendance-input,
+  .ms-category-tab,
+  .ms-quick-btn,
+  .ms-btn,
+  .ms-filter-select,
+  .ms-select,
+  .ms-textarea {
+    transition: none;
+  }
+
+  .ms-saving-spinner {
+    animation: none;
+  }
+}

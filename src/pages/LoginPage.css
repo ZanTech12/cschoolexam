@@ -1,0 +1,581 @@
+/* Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+
+* {
+  box-sizing: border-box;
+  font-family: 'Poppins', sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+/* ==================== BACKGROUND SLIDESHOW ==================== */
+.login-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  position: relative;
+  overflow: hidden;
+  background: #0a0a1a;
+}
+
+.bg-slides {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.bg-slide {
+  position: absolute;
+  inset: 0;
+  background-size: 140%; /* Zoomed out */
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  transform: scale(1.08);
+  transition: opacity 1.8s cubic-bezier(0.4, 0, 0.2, 1), transform 6s linear;
+}
+
+.bg-slide.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+/* Multi-layer overlay for readability */
+.bg-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background:
+    linear-gradient(180deg, rgba(10, 10, 30, 0.55) 0%, rgba(15, 15, 40, 0.75) 50%, rgba(10, 10, 30, 0.9) 100%),
+    radial-gradient(ellipse at center, transparent 30%, rgba(10, 10, 30, 0.6) 100%);
+}
+
+.bg-overlay::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, transparent 50%, rgba(124, 58, 237, 0.06) 100%);
+}
+
+/* Subtle animated noise texture */
+.bg-noise {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 128px 128px;
+  pointer-events: none;
+}
+
+/* ==================== MARQUEE BAR ==================== */
+.marquee-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 100;
+  background: linear-gradient(90deg, rgba(30, 27, 75, 0.92), rgba(55, 48, 163, 0.92), rgba(30, 27, 75, 0.92));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 9px 0;
+}
+
+.marquee-track {
+  display: inline-flex;
+  animation: marqueeScroll 22s linear infinite;
+}
+
+.marquee-track span {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #c7d2fe;
+  letter-spacing: 3.5px;
+  text-transform: uppercase;
+  padding: 0 60px;
+}
+
+.marquee-track .dot {
+  color: #818cf8;
+  padding: 0 8px;
+  font-size: 0.45rem;
+  vertical-align: middle;
+}
+
+/* ==================== BOTTOM BAR ==================== */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed, #6366f1, #818cf8, #4f46e5);
+  background-size: 300% 100%;
+  animation: gradientShift 5s linear infinite;
+  z-index: 100;
+}
+
+/* ==================== SLIDE INDICATORS ==================== */
+.slide-indicators {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.slide-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  transition: all 0.5s ease;
+  cursor: pointer;
+}
+
+.slide-dot.active {
+  background: #818cf8;
+  border-color: #818cf8;
+  box-shadow: 0 0 8px rgba(129, 140, 248, 0.5);
+  width: 24px;
+  border-radius: 10px;
+}
+
+/* ==================== GLASS CARD ==================== */
+.login-card {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 340px; /* Smaller container */
+  border-radius: 20px; /* Smaller radius */
+  background: rgba(15, 15, 35, 0.55);
+  backdrop-filter: blur(30px) saturate(1.2);
+  -webkit-backdrop-filter: blur(30px) saturate(1.2);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  animation: cardEntry 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  margin-top: 36px;
+}
+
+/* Card top accent line */
+.login-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #6366f1, #a78bfa, #6366f1, transparent);
+  opacity: 0.7;
+}
+
+/* ==================== SCHOOL BADGE ==================== */
+.school-badge {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.school-crest {
+  width: 52px; /* Smaller badge */
+  height: 52px; /* Smaller badge */
+  border-radius: 50%;
+  background: linear-gradient(145deg, #4f46e5, #7c3aed, #6366f1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem; /* Smaller icon */
+  box-shadow:
+    0 0 0 3px rgba(129, 140, 248, 0.2),
+    0 8px 30px rgba(99, 102, 241, 0.35);
+  animation: crestFloat 4s ease-in-out infinite;
+}
+
+/* ==================== HEADER ==================== */
+.login-header {
+  text-align: center;
+  padding: 20px 18px 6px; /* Tighter padding */
+  color: #fff;
+}
+
+.login-header h1 {
+  font-size: 1.15rem; /* Smaller title */
+  font-weight: 700;
+  margin-bottom: 2px;
+  letter-spacing: 0.5px;
+  background: linear-gradient(135deg, #ffffff 20%, #e0e7ff 60%, #a5b4fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.login-header .school-name {
+  font-size: 0.62rem;
+  font-weight: 600;
+  color: #a5b4fc;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.login-header p {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ==================== STUDENT TAG ==================== */
+.student-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(99, 102, 241, 0.15);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: #c7d2fe;
+  font-size: 0.62rem;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 50px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+
+.student-tag .pulse-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px rgba(52, 211, 153, 0.5);
+  animation: pulseDot 1.5s ease-in-out infinite;
+}
+
+/* ==================== BODY ==================== */
+.login-body {
+  padding: 10px 20px 20px; /* Tighter padding */
+}
+
+/* ==================== ROLE SELECTOR ==================== */
+.login-role-selector {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.login-role-btn {
+  flex: 1;
+  padding: 8px 4px; /* Tighter padding */
+  border-radius: 12px;
+  text-align: center;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.04);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.login-role-btn:hover {
+  transform: translateY(-2px);
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.login-role-btn.active {
+  color: #fff;
+  background: linear-gradient(145deg, rgba(79, 70, 229, 0.5), rgba(99, 102, 241, 0.35));
+  border-color: rgba(129, 140, 248, 0.4);
+  box-shadow: 0 4px 20px rgba(99, 102, 241, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.login-role-btn .icon {
+  font-size: 1.15rem; /* Smaller icon */
+  margin-bottom: 2px;
+}
+
+.login-role-btn .label {
+  font-size: 0.62rem; /* Smaller font */
+  font-weight: 500;
+}
+
+/* ==================== FORM ==================== */
+.form-group {
+  margin-bottom: 12px;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  margin-bottom: 5px;
+  color: rgba(203, 213, 225, 0.85);
+}
+
+.form-label .label-icon {
+  font-size: 0.78rem;
+}
+
+/* Inputs */
+.form-control {
+  width: 100%;
+  padding: 9px 12px; /* Tighter padding */
+  border-radius: 10px; /* Smaller radius */
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  outline: none;
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 0.8rem; /* Smaller font */
+  transition: all 0.3s ease;
+}
+
+.form-control::placeholder {
+  color: rgba(203, 213, 225, 0.3);
+  font-size: 0.78rem;
+}
+
+.form-control:focus {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1), 0 4px 16px rgba(99, 102, 241, 0.12);
+}
+
+/* ==================== PASSWORD TOGGLE ==================== */
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-input {
+  padding-right: 42px !important;
+}
+
+.toggle-password {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: rgba(203, 213, 225, 0.4);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 6px;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.toggle-password:hover {
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.toggle-password svg {
+  display: block;
+}
+
+/* Divider */
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 12px;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.08), transparent);
+}
+
+.login-divider span {
+  font-size: 0.58rem;
+  color: rgba(100, 116, 139, 0.7);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+}
+
+/* ==================== BUTTON ==================== */
+.btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  border-radius: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary {
+  background: linear-gradient(145deg, #6366f1, #4f46e5);
+  color: #fff;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.3);
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  transition: 0.6s ease;
+}
+
+.btn-primary:hover::before {
+  left: 100%;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(79, 70, 229, 0.45), 0 0 0 1px rgba(129, 140, 248, 0.2);
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+}
+
+.btn-block {
+  width: 100%;
+}
+
+.btn-lg {
+  padding: 10px; /* Tighter padding */
+  font-size: 0.82rem; /* Smaller font */
+}
+
+/* Spinner */
+.spinner {
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-top: 2px solid #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+/* ==================== ALERT ==================== */
+.alert {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  padding: 9px 13px;
+  border-radius: 12px;
+  margin-bottom: 14px;
+  font-size: 0.74rem;
+}
+
+.alert-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+/* ==================== FOOTER ==================== */
+.login-footer {
+  text-align: center;
+  padding: 10px 16px; /* Tighter padding */
+  font-size: 0.55rem; /* Smaller font */
+  color: rgba(100, 116, 139, 0.6);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  line-height: 1.6;
+}
+
+.login-footer .powered {
+  color: #818cf8;
+  font-weight: 600;
+}
+
+/* ==================== ANIMATIONS ==================== */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cardEntry {
+  from {
+    opacity: 0;
+    transform: translateY(35px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes marqueeScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+@keyframes crestFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.6); }
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 300% 0%; }
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 480px) {
+  .login-card {
+    border-radius: 20px;
+    margin-top: 30px;
+  }
+
+  .login-body {
+    padding: 10px 16px 18px;
+  }
+
+  .login-header {
+    padding: 18px 16px 6px;
+  }
+
+  .login-header h1 {
+    font-size: 1.05rem;
+  }
+
+  .school-crest {
+    width: 48px;
+    height: 48px;
+    font-size: 1.4rem;
+  }
+
+  .login-role-selector {
+    gap: 6px;
+  }
+
+  .login-role-btn {
+    padding: 8px 4px;
+    border-radius: 10px;
+  }
+
+  .slide-indicators {
+    bottom: 16px;
+  }
+}

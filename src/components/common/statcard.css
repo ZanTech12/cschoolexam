@@ -1,0 +1,131 @@
+/* =========================================
+   STAT CARD COMPONENT
+========================================= */
+
+/* --- Base Card --- */
+.stat-card {
+  background: var(--bg-card);
+  backdrop-filter: blur(14px);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-soft);
+  padding: 1.25rem 1.5rem;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-glow);
+}
+
+/* --- Color Variants (Left Accent Border) --- */
+.stat-card.primary { border-left: 4px solid var(--primary); }
+.stat-card.success { border-left: 4px solid var(--success); }
+.stat-card.warning { border-left: 4px solid var(--warning); }
+.stat-card.info    { border-left: 4px solid var(--info); }
+
+/* --- Header Layout --- */
+.stat-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* --- Text Elements --- */
+.stat-card-value {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-main);
+  line-height: 1.2;
+  display: flex;
+  align-items: center;
+}
+
+.stat-card-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* --- Icon Container --- */
+.stat-card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  flex-shrink: 0;
+  transition: transform 0.3s ease;
+}
+
+.stat-card:hover .stat-card-icon {
+  transform: scale(1.1);
+}
+
+/* --- Icon Color Variants --- */
+.stat-card-icon.primary {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary);
+}
+
+.stat-card-icon.success {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+}
+
+.stat-card-icon.warning {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning);
+}
+
+.stat-card-icon.info {
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--info);
+}
+
+/* =========================================
+   LOADING SPINNER
+========================================= */
+.spinner {
+  display: inline-block;
+  border-radius: 50%;
+  border-style: solid;
+  /* Base color for the non-spinning part of the border */
+  border-color: rgba(15, 23, 42, 0.1); 
+  border-top-color: var(--primary); /* Default spinning color */
+  animation: spin 0.8s linear infinite;
+}
+
+/* Dynamic spinner colors based on parent card class */
+.stat-card.success .spinner { border-top-color: var(--success); }
+.stat-card.warning .spinner { border-top-color: var(--warning); }
+.stat-card.info .spinner    { border-top-color: var(--info); }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* =========================================
+   RESPONSIVE ADJUSTMENTS
+========================================= */
+@media (max-width: 640px) {
+  .stat-card {
+    padding: 1rem 1.25rem;
+  }
+  
+  .stat-card-value {
+    font-size: 1.3rem;
+  }
+  
+  .stat-card-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 1.25rem;
+  }
+}

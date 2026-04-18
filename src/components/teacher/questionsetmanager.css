@@ -1,0 +1,363 @@
+/* =========================================
+   PAGE HEADER WITH ACTIONS
+========================================= */
+.page-header-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 640px) {
+  .page-header-actions {
+    flex-direction: column;
+    gap: 1rem;
+  }
+}
+
+/* =========================================
+   TABLE STYLES
+========================================= */
+.table-container {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th, .table td {
+  padding: 0.85rem 1.25rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(0,0,0,0.01);
+}
+
+.table tbody tr:hover {
+  background: rgba(99, 102, 241, 0.04);
+}
+
+.table-empty-state {
+  text-align: center !important;
+  padding: 2.5rem 1rem !important;
+  color: var(--text-muted);
+  font-size: 0.95rem;
+}
+
+/* =========================================
+   BUTTONS & BADGES
+========================================= */
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.btn-danger:hover {
+  box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+}
+
+.btn-sm {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.8rem;
+}
+
+.badge-primary {
+  background: rgba(99, 102, 241, 0.15);
+  color: var(--primary);
+  padding: 0.25rem 0.65rem;
+  border-radius: 50px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.alert-xs {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+}
+
+/* =========================================
+   MODAL SYSTEM (VIEWPORT LOCKED)
+========================================= */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100dvh;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  padding: 0;
+  overflow: hidden; 
+}
+
+.modal {
+  background: #ffffff;
+  border-radius: var(--radius-lg);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  flex-direction: column;
+  animation: modalFadeIn 0.3s ease;
+  overflow: hidden;
+}
+
+/* Forces exact screen fit without scrolling */
+.modal-viewport-fit {
+  height: 100dvh;
+  max-height: 100dvh;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.85rem 1.5rem;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  flex-shrink: 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0 0.25rem;
+  line-height: 1;
+}
+
+.modal-close:hover { color: var(--text-main); }
+
+.modal-body {
+  padding: 1rem 1.5rem;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Forces the form to stretch to the very edges */
+.modal-inner-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 0.85rem 1.5rem;
+  border-top: 1px solid rgba(0,0,0,0.05);
+  background: #f8fafc;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+  flex-shrink: 0;
+}
+
+/* =========================================
+   INPUT METHOD TOGGLE SWITCHER
+========================================= */
+.input-method-toggle {
+  display: flex;
+  align-items: center;
+  background: #f1f5f9;
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.toggle-btn {
+  flex: 1;
+  padding: 0.45rem 0.75rem;
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn.active {
+  background: #ffffff;
+  color: var(--primary);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.toggle-btn:hover:not(.active) { color: var(--text-main); }
+
+.toggle-indicator {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: #ffffff;
+  padding: 0.2rem 0.6rem;
+  border-radius: 50px;
+  margin-left: auto;
+  border: 1px solid #e2e8f0;
+}
+
+/* =========================================
+   WIDE 3-COLUMN FORM GRID
+========================================= */
+.form-row-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr; /* Forces exact 33% width spread */
+  gap: 12px;
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.form-row-3 .form-group {
+  margin-bottom: 0; 
+}
+
+.form-row-3 .form-control {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* =========================================
+   QUESTION CARD (VERTICAL STRETCH)
+========================================= */
+.question-card {
+  flex: 1; /* Pushes the Nav bar to the absolute bottom of the screen */
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  border: 1px solid #e2e8f0;
+  box-shadow: none;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.question-card:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.question-card .card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.85rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.question-card .card-body {
+  padding: 0.75rem 0.85rem;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start; /* Stretches content upwards */
+  overflow: hidden;
+}
+
+/* Push explanation input to the very bottom of the card body */
+.form-group-bottom {
+  margin-top: auto; 
+}
+
+/* =========================================
+   QUESTION NAVIGATION
+========================================= */
+.question-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e2e8f0;
+  flex-shrink: 0;
+}
+
+.question-nav .btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.question-nav-counter {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: #f1f5f9;
+  padding: 0.2rem 0.75rem;
+  border-radius: 50px;
+}
+
+/* =========================================
+   UPLOAD ZONE
+========================================= */
+.upload-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 2rem;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.upload-zone:hover {
+  border-color: var(--primary);
+  background: rgba(99, 102, 241, 0.03);
+}
+
+.upload-icon {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.upload-main-text {
+  margin: 0.5rem 0 0.25rem 0;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.upload-sub-text {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}

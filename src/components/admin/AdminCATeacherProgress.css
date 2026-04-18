@@ -1,0 +1,778 @@
+/* ============================================
+   ADMIN CA TEACHER PROGRESS PAGE STYLES
+   ============================================ */
+
+.acp-wrapper {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 24px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ── Header ── */
+.acp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 24px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.acp-header-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1a2e;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.acp-header-title svg {
+  color: #6366f1;
+}
+
+.acp-header-subtitle {
+  font-size: 14px;
+  color: #64748b;
+  margin: 6px 0 0 0;
+}
+
+.acp-refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #475569;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.acp-refresh-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+/* ── Filters ── */
+.acp-filters {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.acp-filters-row {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.acp-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+}
+
+.acp-filter-group--search {
+  flex: 1;
+  min-width: 220px;
+}
+
+.acp-filter-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.acp-filter-select {
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e293b;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.acp-filter-select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.acp-search-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.acp-search-wrapper svg {
+  position: absolute;
+  left: 12px;
+  color: #94a3b8;
+}
+
+.acp-search-input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #1e293b;
+  transition: border-color 0.2s;
+}
+
+.acp-search-input:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.acp-context-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.acp-context-badge {
+  display: inline-flex;
+  padding: 4px 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+}
+
+.acp-context-separator {
+  color: #cbd5e1;
+}
+
+/* ── Summary Cards ── */
+.acp-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.acp-summary-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.acp-summary-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.acp-summary-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.acp-summary-card--primary .acp-summary-card__icon {
+  background: #ede9fe;
+  color: #7c3aed;
+}
+
+.acp-summary-card--success .acp-summary-card__icon {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.acp-summary-card--danger .acp-summary-card__icon {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.acp-summary-card--info .acp-summary-card__icon {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.acp-summary-card--warning .acp-summary-card__icon {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.acp-summary-card__value {
+  font-size: 26px;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 1;
+}
+
+.acp-summary-card__value-sub {
+  font-size: 16px;
+  font-weight: 500;
+  color: #94a3b8;
+}
+
+.acp-summary-card__label {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 4px;
+}
+
+/* ── Progress Bar ── */
+.acp-progress-section {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.acp-progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.acp-progress-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.acp-progress-value {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.acp-progress-bar {
+  height: 10px;
+  background: #f1f5f9;
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.acp-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1, #818cf8);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.acp-progress-fill--complete {
+  background: linear-gradient(90deg, #16a34a, #4ade80);
+}
+
+/* ── Controls ── */
+.acp-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+  margin-bottom: 12px;
+}
+
+.acp-controls-info {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.acp-controls-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.acp-control-btn {
+  padding: 6px 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.acp-control-btn:hover {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+/* ── Teachers List ── */
+.acp-teachers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.acp-empty {
+  text-align: center;
+  padding: 48px 20px;
+  background: #fff;
+  border: 2px dashed #e2e8f0;
+  border-radius: 12px;
+}
+
+.acp-empty__icon {
+  color: #cbd5e1;
+  margin-bottom: 12px;
+}
+
+.acp-empty__text {
+  font-size: 14px;
+  color: #64748b;
+}
+
+/* ── Teacher Card ── */
+.acp-teacher-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  transition: box-shadow 0.2s;
+}
+
+.acp-teacher-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.acp-teacher-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  cursor: pointer;
+  gap: 16px;
+  transition: background 0.15s;
+}
+
+.acp-teacher-header:hover {
+  background: #f8fafc;
+}
+
+.acp-teacher-header__left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: 1;
+  min-width: 0;
+}
+
+.acp-teacher-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6366f1, #818cf8);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+  text-transform: uppercase;
+}
+
+.acp-teacher-info {
+  min-width: 0;
+}
+
+.acp-teacher-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1a1a2e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.acp-teacher-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.acp-teacher-meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.acp-teacher-meta-item svg {
+  flex-shrink: 0;
+  color: #cbd5e1;
+}
+
+.acp-teacher-header__right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-shrink: 0;
+}
+
+.acp-teacher-stats {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.acp-teacher-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.acp-teacher-stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+  line-height: 1;
+}
+
+.acp-teacher-stat-label {
+  font-size: 10px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.acp-teacher-stat-divider {
+  font-size: 14px;
+  color: #e2e8f0;
+  margin: 0 2px;
+  padding-bottom: 12px;
+}
+
+/* Status Badges */
+.acp-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.acp-status--complete {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.acp-status--in-progress {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.acp-status--not-started {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Mini Progress */
+.acp-mini-progress {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 80px;
+}
+
+.acp-mini-progress-track {
+  width: 60px;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.acp-mini-progress-fill {
+  height: 100%;
+  background: #6366f1;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.acp-mini-progress-fill--complete {
+  background: #16a34a;
+}
+
+.acp-mini-progress-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  min-width: 32px;
+}
+
+/* Chevron */
+.acp-chevron {
+  display: flex;
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+
+.acp-chevron--expanded {
+  transform: rotate(180deg);
+}
+
+/* ── Subject Details (Expanded) ── */
+.acp-teacher-subjects {
+  border-top: 1px solid #f1f5f9;
+  animation: acp-slideDown 0.2s ease;
+}
+
+@keyframes acp-slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.acp-subjects-header {
+  display: grid;
+  grid-template-columns: 1.2fr 1.5fr 0.8fr 1fr 1fr;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.acp-subject-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1.5fr 0.8fr 1fr 1fr;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 1px solid #f1f5f9;
+  transition: background 0.15s;
+}
+
+.acp-subject-row:hover {
+  background: #fafbfd;
+}
+
+.acp-subject-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #334155;
+}
+
+.acp-subject-cell-icon {
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.acp-subject-code {
+  display: inline-block;
+  padding: 1px 6px;
+  background: #f1f5f9;
+  border-radius: 4px;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-left: 6px;
+}
+
+.acp-subject-cell--students {
+  font-weight: 500;
+  color: #475569;
+}
+
+/* Subject Status */
+.acp-subject-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.acp-subject--complete {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.acp-subject--partial {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.acp-subject--pending {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Subject Progress */
+.acp-subject-progress-track {
+  width: 80px;
+  height: 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.acp-subject-progress-fill {
+  height: 100%;
+  background: #6366f1;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.acp-subject-progress-fill--complete {
+  background: #16a34a;
+}
+
+.acp-subject-progress-fill--partial {
+  background: #f59e0b;
+}
+
+.acp-subject-progress-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #475569;
+  min-width: 32px;
+}
+
+/* ── Legend ── */
+.acp-legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 14px 20px;
+  background: #f8fafc;
+  border-radius: 10px;
+  flex-wrap: wrap;
+}
+
+.acp-legend-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.acp-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #475569;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .acp-wrapper {
+    padding: 16px;
+  }
+
+  .acp-header {
+    flex-direction: column;
+  }
+
+  .acp-filters-row {
+    flex-direction: column;
+  }
+
+  .acp-filter-group {
+    min-width: 100%;
+  }
+
+  .acp-summary-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .acp-teacher-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .acp-teacher-header__right {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .acp-mini-progress {
+    flex: 1;
+    min-width: 100px;
+  }
+
+  .acp-mini-progress-track {
+    flex: 1;
+  }
+
+  .acp-subjects-header,
+  .acp-subject-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .acp-subject-cell--progress {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 600px) {
+  .acp-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .acp-subjects-header,
+  .acp-subject-row {
+    grid-template-columns: 1fr;
+  }
+
+  .acp-subject-cell--progress {
+    grid-column: span 1;
+  }
+
+  .acp-legend {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}

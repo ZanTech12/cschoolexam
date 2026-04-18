@@ -1,0 +1,246 @@
+/* Publish Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content.publish-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.publish-modal .modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.publish-modal .modal-header h3 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.publish-modal .modal-body {
+  padding: 24px;
+}
+
+.publish-modal .modal-body p {
+  margin: 0;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+.publish-modal .modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Publish Status Badges */
+.publish-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.publish-status-badge .publish-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.publish-status-badge.published {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.publish-status-badge.published .publish-dot {
+  background: #16a34a;
+}
+
+.publish-status-badge.unpublished {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.publish-status-badge.unpublished .publish-dot {
+  background: #d97706;
+}
+
+/* Publish Buttons */
+.publish-btn {
+  font-size: 0.75rem !important;
+  padding: 4px 10px !important;
+  white-space: nowrap;
+}
+
+.btn-outline-success.publish-btn {
+  border-color: #16a34a;
+  color: #16a34a;
+}
+
+.btn-outline-success.publish-btn:hover {
+  background: #16a34a;
+  color: white;
+}
+
+.btn-outline-danger.publish-btn {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.btn-outline-danger.publish-btn:hover {
+  background: #dc2626;
+  color: white;
+}
+
+/* Publish Summary Card */
+.publish-summary-card {
+  margin-bottom: 20px;
+  border: 2px solid #e5e7eb;
+}
+
+.publish-tests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 12px;
+}
+
+.publish-test-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.publish-test-item.published {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+}
+
+.publish-test-item.unpublished {
+  background: #fffbeb;
+  border-color: #fde68a;
+}
+
+.publish-test-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.publish-test-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.publish-test-action {
+  flex-shrink: 0;
+}
+
+/* Grouped View Test Status */
+.grouped-test-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  margin-bottom: 0;
+}
+
+.grouped-test-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  background: white;
+  border: 1px solid #e5e7eb;
+}
+
+.grouped-test-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Table Publish Column */
+.publish-action-cell {
+  width: 120px;
+  text-align: center;
+}
+
+.center-header {
+  text-align: center;
+  width: 120px;
+}
+
+.test-title-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.test-title-publish-status {
+  display: flex;
+}
+
+/* Spinner */
+.spinner-sm {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: white;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+  margin-right: 6px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Publish All Button */
+.btn-warning {
+  background: #f59e0b;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-warning:hover {
+  background: #d97706;
+}
+
+.btn-warning:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}

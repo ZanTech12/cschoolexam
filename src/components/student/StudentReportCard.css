@@ -1,0 +1,148 @@
+/* StudentReportCard.css */
+.student-report-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.sr-header {
+    text-align: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.sr-header h2 {
+    font-size: 1.75rem;
+    color: #1a202c;
+    margin: 0 0 8px 0;
+}
+
+.sr-header p {
+    color: #718096;
+    font-size: 1rem;
+    margin: 0;
+}
+
+.sr-info-box {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 16px;
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.sr-info-box p {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.sr-info-box strong {
+    font-weight: 600;
+}
+
+.sr-table-container {
+    overflow-x: auto;
+    border-radius: 12px;
+    box-shadow: 0 2px 15px rgba(0, 0, 0, 0.08);
+    margin-bottom: 24px;
+}
+
+.sr-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+.sr-table thead {
+    background: #2d3748;
+}
+
+.sr-table thead th {
+    padding: 14px 16px;
+    text-align: left;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.sr-table tbody tr {
+    border-bottom: 1px solid #edf2f7;
+    transition: background-color 0.2s;
+}
+
+.sr-table tbody tr:hover {
+    background-color: #f7fafc;
+}
+
+.sr-table tbody tr:last-child {
+    border-bottom: none;
+}
+
+.sr-table tbody td {
+    padding: 12px 16px;
+    color: #4a5568;
+    font-size: 0.9rem;
+}
+
+.sr-comment {
+    background: #fffff0;
+    border: 1px solid #fefcbf;
+    border-left: 4px solid #ecc94b;
+    border-radius: 8px;
+    padding: 16px 20px;
+}
+
+.sr-comment h4 {
+    margin: 0 0 8px 0;
+    color: #975a16;
+    font-size: 0.95rem;
+}
+
+.sr-comment p {
+    margin: 0;
+    color: #744210;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    font-style: italic;
+}
+
+.loading,
+.no-data {
+    text-align: center;
+    padding: 60px 20px;
+    color: #718096;
+    font-size: 1.1rem;
+}
+
+/* Grade color indicators */
+.grade-a { color: #38a169; }
+.grade-b { color: #3182ce; }
+.grade-c { color: #d69e2e; }
+.grade-d { color: #dd6b20; }
+.grade-f { color: #e53e3e; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .student-report-page {
+        padding: 16px;
+    }
+    
+    .sr-info-box {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .sr-table thead th,
+    .sr-table tbody td {
+        padding: 10px 12px;
+        font-size: 0.8rem;
+    }
+}
