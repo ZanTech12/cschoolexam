@@ -79,6 +79,9 @@ const getLatestSubjectTime = (subjects) => {
   return latest;
 };
 
+/* ── Clamp percentage to max 100 ── */
+const clampPercent = (val) => Math.min(Math.max(val || 0, 0), 100);
+
 /* ── Inline SVG Icon Components ── */
 const Icons = {
   users: (
@@ -282,15 +285,15 @@ const AdminCATeacherProgress = () => {
 
   // Get subject status info
   const getSubjectStatusInfo = (subject) => {
-    if (subject.hasCA && subject.caPercentage === 100) {
+    if (subject.hasCA && subject.caPercentage >= 100) {
       return { label: 'Complete', className: 'acp-subject--complete', icon: Icons.checkCircle };
     } else if (subject.hasCA) {
       return { label: 'Partial', className: 'acp-subject--partial', icon: Icons.alertCircle };
     } else {
-      return { label: 'Pending', className: 'acp-subject--pending', icon: Icons.xCircle };
+      return { label: 'Pending', className: 'acp-subject--pending', icon: Icons.xpCircle };
     }
   };
-
+  
   if (isLoading) return <Loading message="Loading CA progress..." />;
 
   return (
@@ -423,14 +426,14 @@ const AdminCATeacherProgress = () => {
           </div>
         </div>
 
-        <div className={`acp-summary-card ${summary.completionPercentage === 100 ? 'acp-summary-card--success' : 'acp-summary-card--warning'}`}>
+        <div className={`acp-summary-card ${clampPercent(summary.completionPercentage) === 100 ? 'acp-summary-card--success' : 'acp-summary-card--warning'}`}>
           <div className="acp-summary-card__icon">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
             </svg>
           </div>
           <div className="acp-summary-card__content">
-            <div className="acp-summary-card__value">{summary.completionPercentage || 0}%</div>
+            <div className="acp-summary-card__value">{clampPercent(summary.completionPercentage)}%</div>
             <div className="acp-summary-card__label">Overall Completion</div>
           </div>
         </div>
@@ -445,8 +448,8 @@ const AdminCATeacherProgress = () => {
           </div>
           <div className="acp-progress-bar">
             <div
-              className={`acp-progress-fill ${summary.completionPercentage === 100 ? 'acp-progress-fill--complete' : ''}`}
-              style={{ width: `${summary.completionPercentage || 0}%` }}
+              className={`acp-progress-fill ${clampPercent(summary.completionPercentage) === 100 ? 'acp-progress-fill--complete' : ''}`}
+              style={{ width: `${clampPercent(summary.completionPercentage)}%` }}
             />
           </div>
         </div>
@@ -537,11 +540,11 @@ const AdminCATeacherProgress = () => {
                     <div className="acp-mini-progress">
                       <div className="acp-mini-progress-track">
                         <div
-                          className={`acp-mini-progress-fill ${teacher.completionPercentage === 100 ? 'acp-mini-progress-fill--complete' : ''}`}
-                          style={{ width: `${teacher.completionPercentage}%` }}
+                          className={`acp-mini-progress-fill ${clampPercent(teacher.completionPercentage) === 100 ? 'acp-mini-progress-fill--complete' : ''}`}
+                          style={{ width: `${clampPercent(teacher.completionPercentage)}%` }}
                         />
                       </div>
-                      <span className="acp-mini-progress-label">{teacher.completionPercentage}%</span>
+                      <span className="acp-mini-progress-label">{clampPercent(teacher.completionPercentage)}%</span>
                     </div>
 
                     <div className={`acp-chevron ${isExpanded ? 'acp-chevron--expanded' : ''}`}>
@@ -594,11 +597,11 @@ const AdminCATeacherProgress = () => {
                           <div className="acp-subject-cell acp-subject-cell--progress">
                             <div className="acp-subject-progress-track">
                               <div
-                                className={`acp-subject-progress-fill ${subject.caPercentage === 100 ? 'acp-subject-progress-fill--complete' : subject.caPercentage > 0 ? 'acp-subject-progress-fill--partial' : ''}`}
-                                style={{ width: `${subject.caPercentage}%` }}
+                                className={`acp-subject-progress-fill ${clampPercent(subject.caPercentage) === 100 ? 'acp-subject-progress-fill--complete' : clampPercent(subject.caPercentage) > 0 ? 'acp-subject-progress-fill--partial' : ''}`}
+                                style={{ width: `${clampPercent(subject.caPercentage)}%` }}
                               />
                             </div>
-                            <span className="acp-subject-progress-label">{subject.caPercentage}%</span>
+                            <span className="acp-subject-progress-label">{clampPercent(subject.caPercentage)}%</span>
                           </div>
                           <div className="acp-subject-cell acp-subject-cell--time acp-time-cell" onClick={(e) => toggleTooltip(e, tooltipKey)}>
                             {timeAgo ? (
@@ -615,7 +618,7 @@ const AdminCATeacherProgress = () => {
                                     <div className="acp-time-tooltip-arrow"></div>
                                     <div className="acp-time-tooltip-content">
                                       <div className="acp-time-tooltip-label">
-                                        {subject.lastCAEntryAt ? 'Last CA Entry' : subject.updatedAt ? 'Last Updated' : 'Created'}
+                                        {subject.lastLoadedAt ? 'Last Loaded' : subject.lastCAEntryAt ? 'Last CA Entry' : subject.updatedAt ? 'Last Updated' : 'Created'}
                                       </div>
                                       <div className="acp-time-tooltip-value">{fullTime}</div>
                                     </div>
