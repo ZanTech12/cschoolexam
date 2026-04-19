@@ -4,6 +4,81 @@ import { adminCAProgressAPI, termsAPI, sessionsAPI } from '../../api';
 import Loading from '../common/Loading';
 import './AdminCATeacherProgress.css';
 
+/* ── Time Formatting Helpers ── */
+const formatTimeAgo = (date) => {
+  if (!date) return null;
+  
+  const now = new Date();
+  const past = new Date(date);
+  const diffMs = now - past;
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  
+  if (diffSecs < 60) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  
+  return past.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: past.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+  });
+};
+
+const formatFullDateTime = (date) => {
+  if (!date) return '—';
+  return new Date(date).toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+};
+
+const getTimeColor = (date) => {
+  if (!date) return '#94a3b8';
+  const now = new Date();
+  const past = new Date(date);
+  const diffHours = (now - past) / (1000 * 60 * 60);
+  
+  if (diffHours < 1) return '#059669';
+  if (diffHours < 4) return '#0891b2';
+  if (diffHours < 24) return '#d97706';
+  if (diffHours < 72) return '#ea580c';
+  return '#64748b';
+};
+
+const getTimeBg = (date) => {
+  if (!date) return '#f8fafc';
+  const now = new Date();
+  const past = new Date(date);
+  const diffHours = (now - past) / (1000 * 60 * 60);
+  
+  if (diffHours < 1) return '#ecfdf5';
+  if (diffHours < 4) return '#ecfeff';
+  if (diffHours < 24) return '#fffbeb';
+  if (diffHours < 72) return '#fff7ed';
+  return '#f8fafc';
+};
+
+const getLatestSubjectTime = (subjects) => {
+  if (!subjects || subjects.length === 0) return null;
+  
+  let latest = null;
+  for (const subject of subjects) {
+    const time = subject.lastLoadedAt || subject.lastCAEntryAt || subject.updatedAt || subject.createdAt;
+    if (time && (!latest || new Date(time) > new Date(latest))) {
+      latest = time;
+    }
+  }
+  return latest;
+};
+
 /* ── Inline SVG Icon Components ── */
 const Icons = {
   users: (
@@ -68,14 +143,20 @@ const Icons = {
       <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
     </svg>
   ),
+  clock: (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+    </svg>
+  ),
 };
 
 const AdminCATeacherProgress = () => {
   const [expandedTeachers, setExpandedTeachers] = useState(new Set());
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'complete', 'incomplete', 'not-started'
+  const [filterStatus, setFilterStatus] = useState('all');
   const [selectedTermId, setSelectedTermId] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState('');
+  const [tooltipId, setTooltipId] = useState(null);
 
   // Fetch terms and sessions for filters
   const { data: termsData } = useQuery({
@@ -106,6 +187,18 @@ const AdminCATeacherProgress = () => {
   const sessionInfo = progressData?.data?.sessionInfo;
   const teachers = progressData?.data?.teachers || [];
 
+  // Close tooltip on outside click
+  React.useEffect(() => {
+    if (!tooltipId) return;
+    const handleClick = (e) => {
+      if (!e.target.closest('.acp-time-cell')) {
+        setTooltipId(null);
+      }
+    };
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [tooltipId]);
+
   // Auto-select active term/session if available
   React.useEffect(() => {
     if (terms.length > 0 && !selectedTermId) {
@@ -116,7 +209,6 @@ const AdminCATeacherProgress = () => {
 
   React.useEffect(() => {
     if (sessions.length > 0 && !selectedSessionId && termInfo) {
-      // Try to match session to term
       const matchedSession = sessions.find(s => s._id === termInfo.id || s.name === termInfo.name);
       if (matchedSession) setSelectedSessionId(matchedSession._id);
     }
@@ -135,13 +227,18 @@ const AdminCATeacherProgress = () => {
     });
   };
 
-  // Expand all / collapse all
   const expandAll = () => {
     setExpandedTeachers(new Set(filteredTeachers.map(t => t.teacherId)));
   };
 
   const collapseAll = () => {
     setExpandedTeachers(new Set());
+  };
+
+  // Toggle time tooltip
+  const toggleTooltip = (e, id) => {
+    e.stopPropagation();
+    setTooltipId(prev => prev === id ? null : id);
   };
 
   // Filter teachers based on search and status
@@ -220,7 +317,6 @@ const AdminCATeacherProgress = () => {
       {/* ── Filters Bar ── */}
       <div className="acp-filters">
         <div className="acp-filters-row">
-          {/* Term Selector */}
           <div className="acp-filter-group">
             <label className="acp-filter-label">Term</label>
             <select
@@ -237,7 +333,6 @@ const AdminCATeacherProgress = () => {
             </select>
           </div>
 
-          {/* Session Selector */}
           <div className="acp-filter-group">
             <label className="acp-filter-label">Session</label>
             <select
@@ -254,7 +349,6 @@ const AdminCATeacherProgress = () => {
             </select>
           </div>
 
-          {/* Status Filter */}
           <div className="acp-filter-group">
             <label className="acp-filter-label">Status</label>
             <select
@@ -269,7 +363,6 @@ const AdminCATeacherProgress = () => {
             </select>
           </div>
 
-          {/* Search */}
           <div className="acp-filter-group acp-filter-group--search">
             <label className="acp-filter-label">Search</label>
             <div className="acp-search-wrapper">
@@ -285,16 +378,11 @@ const AdminCATeacherProgress = () => {
           </div>
         </div>
 
-        {/* Active Term/Session Info */}
         {(termInfo || sessionInfo) && (
           <div className="acp-context-info">
-            <span className="acp-context-badge">
-              {termInfo?.name || 'N/A'}
-            </span>
+            <span className="acp-context-badge">{termInfo?.name || 'N/A'}</span>
             <span className="acp-context-separator">•</span>
-            <span className="acp-context-badge">
-              {sessionInfo?.name || 'N/A'}
-            </span>
+            <span className="acp-context-badge">{sessionInfo?.name || 'N/A'}</span>
           </div>
         )}
       </div>
@@ -370,12 +458,8 @@ const AdminCATeacherProgress = () => {
           Showing {filteredTeachers.length} of {teachers.length} teachers
         </span>
         <div className="acp-controls-actions">
-          <button className="acp-control-btn" onClick={expandAll}>
-            Expand All
-          </button>
-          <button className="acp-control-btn" onClick={collapseAll}>
-            Collapse All
-          </button>
+          <button className="acp-control-btn" onClick={expandAll}>Expand All</button>
+          <button className="acp-control-btn" onClick={collapseAll}>Collapse All</button>
         </div>
       </div>
 
@@ -395,6 +479,9 @@ const AdminCATeacherProgress = () => {
           filteredTeachers.map((teacher) => {
             const isExpanded = expandedTeachers.has(teacher.teacherId);
             const statusInfo = getStatusInfo(teacher);
+            const latestTime = getLatestSubjectTime(teacher.subjects);
+            const latestTimeAgo = formatTimeAgo(latestTime);
+            const latestTimeColor = getTimeColor(latestTime);
 
             return (
               <div key={teacher.teacherId} className="acp-teacher-card">
@@ -420,6 +507,11 @@ const AdminCATeacherProgress = () => {
                             @{teacher.username}
                           </span>
                         )}
+                        {latestTimeAgo && (
+                          <span className="acp-teacher-meta-item acp-teacher-meta-item--time" style={{ color: latestTimeColor }}>
+                            {Icons.clock} Last: {latestTimeAgo}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -442,7 +534,6 @@ const AdminCATeacherProgress = () => {
                       {statusInfo.label}
                     </div>
 
-                    {/* Mini progress */}
                     <div className="acp-mini-progress">
                       <div className="acp-mini-progress-track">
                         <div
@@ -468,9 +559,18 @@ const AdminCATeacherProgress = () => {
                       <span>Students</span>
                       <span>Status</span>
                       <span>Progress</span>
+                      <span className="acp-subjects-header-time">Time Loaded</span>
                     </div>
                     {teacher.subjects.map((subject) => {
                       const subjectStatus = getSubjectStatusInfo(subject);
+                      const subjectTime = subject.lastLoadedAt || subject.lastCAEntryAt || subject.updatedAt || subject.createdAt;
+                      const timeAgo = formatTimeAgo(subjectTime);
+                      const timeColor = getTimeColor(subjectTime);
+                      const timeBg = getTimeBg(subjectTime);
+                      const fullTime = formatFullDateTime(subjectTime);
+                      const tooltipKey = subject.assignmentId;
+                      const isTooltipOpen = tooltipId === tooltipKey;
+
                       return (
                         <div key={subject.assignmentId} className="acp-subject-row">
                           <div className="acp-subject-cell acp-subject-cell--class">
@@ -499,6 +599,32 @@ const AdminCATeacherProgress = () => {
                               />
                             </div>
                             <span className="acp-subject-progress-label">{subject.caPercentage}%</span>
+                          </div>
+                          <div className="acp-subject-cell acp-subject-cell--time acp-time-cell" onClick={(e) => toggleTooltip(e, tooltipKey)}>
+                            {timeAgo ? (
+                              <>
+                                <span
+                                  className="acp-time-badge"
+                                  style={{ color: timeColor, backgroundColor: timeBg }}
+                                >
+                                  {Icons.clock}
+                                  {timeAgo}
+                                </span>
+                                {isTooltipOpen && (
+                                  <div className="acp-time-tooltip">
+                                    <div className="acp-time-tooltip-arrow"></div>
+                                    <div className="acp-time-tooltip-content">
+                                      <div className="acp-time-tooltip-label">
+                                        {subject.lastCAEntryAt ? 'Last CA Entry' : subject.updatedAt ? 'Last Updated' : 'Created'}
+                                      </div>
+                                      <div className="acp-time-tooltip-value">{fullTime}</div>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span className="acp-time-badge acp-time-badge--empty">—</span>
+                            )}
                           </div>
                         </div>
                       );

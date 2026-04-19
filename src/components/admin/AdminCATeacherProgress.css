@@ -776,3 +776,207 @@
     gap: 8px;
   }
 }
+/* ========================================== */
+/* Time Loaded — Teacher Header Meta          */
+/* ========================================== */
+
+.acp-teacher-meta-item--time {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  opacity: 0.85;
+  transition: opacity 0.15s ease;
+}
+
+.acp-teacher-meta-item--time:hover {
+  opacity: 1;
+}
+
+.acp-teacher-meta-item--time svg {
+  flex-shrink: 0;
+}
+
+/* ========================================== */
+/* Time Loaded — Subject Header Column        */
+/* ========================================== */
+
+.acp-subjects-header-time {
+  min-width: 120px;
+  text-align: left;
+}
+
+/* ========================================== */
+/* Time Loaded — Subject Row Cell             */
+/* ========================================== */
+
+.acp-subject-cell--time {
+  min-width: 120px;
+  padding-right: 8px;
+}
+
+.acp-time-cell {
+  position: relative;
+  cursor: default;
+}
+
+.acp-time-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  line-height: 1.4;
+}
+
+.acp-time-badge svg {
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+.acp-time-cell:hover .acp-time-badge:not(.acp-time-badge--empty) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.acp-time-badge--empty {
+  color: #cbd5e1 !important;
+  background-color: #f8fafc !important;
+  font-weight: 400;
+  cursor: default;
+}
+
+/* ========================================== */
+/* Time Tooltip                               */
+/* ========================================== */
+
+.acp-time-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  pointer-events: none;
+  animation: acp-tooltip-in 0.15s ease-out;
+}
+
+@keyframes acp-tooltip-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.acp-time-tooltip-arrow {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%) rotate(45deg);
+  width: 10px;
+  height: 10px;
+  background: #1e293b;
+  border-radius: 2px;
+}
+
+.acp-time-tooltip-content {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-shadow: 
+    0 10px 25px -5px rgba(0, 0, 0, 0.25),
+    0 8px 10px -6px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+  white-space: nowrap;
+}
+
+.acp-time-tooltip-label {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+
+.acp-time-tooltip-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+/* ========================================== */
+/* Responsive — Subject Row Time Column       */
+/* ========================================== */
+
+@media (max-width: 1100px) {
+  .acp-subjects-header-time {
+    min-width: 100px;
+  }
+
+  .acp-subject-cell--time {
+    min-width: 100px;
+  }
+
+  .acp-time-badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+  }
+}
+
+@media (max-width: 900px) {
+  .acp-subjects-header {
+    display: none;
+  }
+
+  .acp-subject-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+
+  .acp-subject-cell--time {
+    width: 100%;
+    min-width: unset;
+    padding: 6px 0 0 0;
+    border-top: 1px solid #f1f5f9;
+    margin-top: 4px;
+  }
+
+  .acp-time-tooltip {
+    bottom: auto;
+    top: calc(100% + 10px);
+    left: 16px;
+    transform: none;
+  }
+
+  .acp-time-tooltip-arrow {
+    bottom: auto;
+    top: -5px;
+  }
+
+  @keyframes acp-tooltip-in {
+    from {
+      opacity: 0;
+      transform: translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
+
+@media (max-width: 600px) {
+  .acp-teacher-meta-item--time {
+    display: none;
+  }
+}
