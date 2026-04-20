@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { reportCardsAPI, classTeacherCommentsAPI, attendanceAPI } from '../../api';
 import schoolLogo from '../../pages/logo.png';
+import principalSignature from './principal_signature.png';
 import './StudentReportCard.css';
 
 const StudentReportCard = () => {
@@ -11,21 +12,26 @@ const StudentReportCard = () => {
   const studentId = window.location.pathname.split('/').pop();
   const termId = searchParams.get('termId');
   
-  // Default psychomotor skills when API doesn't return them
   const defaultPsychomotor = useMemo(() => [
-    { skill: 'Handwriting', rating: '' },
-    { skill: 'Sports', rating: '' },
-    { skill: 'Drawing & Painting', rating: '' },
-    { skill: 'Music & Drama', rating: '' },
-    { skill: 'Crafts', rating: '' },
-    { skill: 'Cleanliness', rating: '' },
-    { skill: 'Punctuality', rating: '' },
-    { skill: 'Politeness', rating: '' },
+    { skill: 'Handwriting', rating: 'A' },
+    { skill: 'Sports', rating: 'B' },
+    { skill: 'Drawing & Painting', rating: 'A' },
+    { skill: 'Music & Drama', rating: 'B' },
+    { skill: 'Crafts', rating: 'C' },
+    { skill: 'Cleanliness', rating: 'A' },
+    { skill: 'Punctuality', rating: 'B' },
+    { skill: 'Politeness', rating: 'A' },
   ], []);
 
-  // ============================================
-  // QUERY 1: Main Student Report
-  // ============================================
+  const normalizePsychomotorRating = (rating) => {
+    if (!rating) return '';
+    const upperRating = rating.toString().toUpperCase().trim();
+    if (['A', 'B', 'C'].includes(upperRating)) {
+      return upperRating;
+    }
+    return 'C';
+  };
+
   const { data: reportResponse, isLoading: isReportLoading, isError: isReportError } = useQuery({
     queryKey: ['student-report', studentId, termId],
     queryFn: () => reportCardsAPI.getStudentReport(studentId, { termId }),
@@ -35,14 +41,10 @@ const StudentReportCard = () => {
 
   const report = reportResponse?.data || null;
 
-  // Extract dependent variables for the other queries
   const classId = report?.student?.class?._id || report?.student?.class?.id || null;
   const termName = report?.term?.name || null;
   const sessionName = report?.session?.name || null;
 
-  // ============================================
-  // QUERY 2: Class Teacher Comment (Depends on Query 1)
-  // ============================================
   const { data: classTeacherComment } = useQuery({
     queryKey: ['class-teacher-comment', classId, termName, sessionName, studentId],
     queryFn: async () => {
@@ -60,13 +62,10 @@ const StudentReportCard = () => {
 
       return studentComment?.comment || '';
     },
-    enabled: !!classId && !!termName && !!sessionName && !!studentId, // Only runs if report data is loaded
+    enabled: !!classId && !!termName && !!sessionName && !!studentId,
     staleTime: 60000,
   });
 
-  // ============================================
-  // QUERY 3: Attendance Data (Depends on Query 1)
-  // ============================================
   const { data: attendanceResponse } = useQuery({
     queryKey: ['student-attendance', classId, termName, sessionName, studentId],
     queryFn: async () => {
@@ -94,17 +93,20 @@ const StudentReportCard = () => {
         
       return { timesPresent, timesSchoolOpen, timesAbsent };
     },
-    enabled: !!classId && !!termName && !!sessionName && !!studentId, // Only runs if report data is loaded
+    enabled: !!classId && !!termName && !!sessionName && !!studentId,
     staleTime: 60000,
   });
 
-  // ============================================
-  // DERIVED STATE & HELPERS
-  // ============================================
   const isLoading = isReportLoading;
   const error = isReportError ? 'Failed to load report data.' : null;
 
-  const psychomotorSkills = report?.psychomotor?.length ? report.psychomotor : defaultPsychomotor;
+  const psychomotorSkills = useMemo(() => {
+    const skills = report?.psychomotor?.length ? report.psychomotor : defaultPsychomotor;
+    return skills.map(skill => ({
+      ...skill,
+      rating: normalizePsychomotorRating(skill.rating)
+    }));
+  }, [report?.psychomotor, defaultPsychomotor]);
 
   const timesPresent = attendanceResponse?.timesPresent || report?.attendance?.timesPresent || report?.timesPresent || '';
   const timesSchoolOpen = attendanceResponse?.timesSchoolOpen || report?.attendance?.timesSchoolOpen || report?.timesSchoolOpen || '';
@@ -119,9 +121,6 @@ const StudentReportCard = () => {
     ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) 
     : 'N/A';
 
-  // ============================================
-  // UI RENDERING
-  // ============================================
   if (isLoading) {
     return (
       <div className="print-loading">
@@ -152,40 +151,28 @@ const StudentReportCard = () => {
 
   return (
     <div className="report-sheet-wrapper">
-      {/* Screen Only Controls */}
       <div className="screen-controls">
         <button onClick={() => navigate(-1)} className="ctrl-btn back">&larr; Back</button>
         <button onClick={() => window.print()} className="ctrl-btn print">Print Report Sheet</button>
       </div>
 
-      {/* The A4 Document */}
       <div className="a4-document">
         
-        {/* --- HEADER --- */}
         <header className="school-header-elegant">
           <div className="header-ornament top"></div>
-
           <div className="header-logo-wrap">
-            <img
-              src={schoolLogo}
-              alt="DATFORTE International School Logo"
-              className="header-logo"
-            />
+            <img src={schoolLogo} alt="DATFORTE International School Logo" className="header-logo" />
           </div>
-
           <h1 className="school-name">DATFORTE INTERNATIONAL SCHOOLS LIMITED</h1>
           <h2 className="doc-title">STUDENT ACADEMIC REPORT CARD</h2>
-          
           <div className="header-meta-box">
             <span className="meta-text">Term <strong>{report.term.name}</strong></span>
             <span className="meta-divider"></span>
             <span className="meta-text">Session <strong>{report.session.name}</strong></span>
           </div>
-
           <div className="header-ornament bottom"></div>
         </header>
 
-        {/* STUDENT BIO-DATA */}
         <div className="bio-data-section">
           <div className="bio-grid">
             <div className="bio-item">
@@ -211,7 +198,6 @@ const StudentReportCard = () => {
           </div>
         </div>
 
-        {/* GRADES TABLE */}
         <div className="grades-container">
           <table className="grades-table-elegant">
             <thead>
@@ -263,17 +249,10 @@ const StudentReportCard = () => {
                 <td className="td-center td-total">{report.statistics.averageScore}%</td>
                 <td colSpan="2"></td>
               </tr>
-              <tr className="summary-row">
-                <td colSpan="7" className="td-right summary-label">POSITION IN CLASS:</td>
-                <td className="td-center td-total" colSpan="3">
-                  {report.statistics.position}th out of {report.statistics.totalInClass}
-                </td>
-              </tr>
             </tfoot>
           </table>
         </div>
 
-        {/* GRADING KEY */}
         <div className="grading-key-elegant">
           <span className="key-label">GRADING SCALE:</span>
           <span className="key-text">
@@ -281,7 +260,6 @@ const StudentReportCard = () => {
           </span>
         </div>
 
-        {/* ========== ATTENDANCE SUMMARY ========== */}
         <div className="attendance-section">
           <div className="attendance-title">ATTENDANCE RECORD</div>
           <div className="attendance-grid">
@@ -306,25 +284,22 @@ const StudentReportCard = () => {
           </div>
         </div>
 
-        {/* ========== PSYCHOMOTOR SKILLS ========== */}
-        <div className="psychomotor-section">
-          <div className="psychomotor-title">PSYCHOMOTOR / AFFECTIVE DOMAIN</div>
-          <div className="psychomotor-key-note">
-            Rating Key: <strong>A</strong> – Excellent &nbsp;|&nbsp;
-            <strong>B</strong> – Very Good &nbsp;|&nbsp;
-            <strong>C</strong> – Good &nbsp;|&nbsp;
-            <strong>D</strong> – Fair &nbsp;|&nbsp;
-            <strong>E</strong> – Poor
+        <div className="psychomotor-section-compact">
+          <div className="psychomotor-title-compact">
+            PSYCHOMOTOR / AFFECTIVE DOMAIN
+            <span className="psychomotor-key-inline">
+              &nbsp; (A – Excellent | B – Very Good | C – Good)
+            </span>
           </div>
-          <table className="psychomotor-table">
+          <table className="psychomotor-table-compact">
             <thead>
               <tr>
-                <th className="pm-th-sn">S/N</th>
-                <th className="pm-th-skill">Skill / Trait</th>
-                <th className="pm-th-rating">Rating</th>
-                <th className="pm-th-sn">S/N</th>
-                <th className="pm-th-skill">Skill / Trait</th>
-                <th className="pm-th-rating">Rating</th>
+                <th className="pmc-th-sn">S/N</th>
+                <th className="pmc-th-skill">Skill / Trait</th>
+                <th className="pmc-th-rating">Rating</th>
+                <th className="pmc-th-sn">S/N</th>
+                <th className="pmc-th-skill">Skill / Trait</th>
+                <th className="pmc-th-rating">Rating</th>
               </tr>
             </thead>
             <tbody>
@@ -335,25 +310,15 @@ const StudentReportCard = () => {
                 const rows = Math.max(leftCol.length, rightCol.length);
                 return Array.from({ length: rows }, (_, idx) => (
                   <tr key={idx}>
-                    <td className="pm-td-center">{idx + 1}</td>
-                    <td className="pm-td-skill">
-                      {leftCol[idx]?.skill || ''}
+                    <td className="pmc-td-sn">{idx + 1}</td>
+                    <td className="pmc-td-skill">{leftCol[idx]?.skill || ''}</td>
+                    <td className="pmc-td-rating">
+                      <span className="pmc-rating-letter">{leftCol[idx]?.rating || '–'}</span>
                     </td>
-                    <td className="pm-td-rating">
-                      {leftCol[idx]?.rating
-                        ? <span className="pm-rating-badge">{leftCol[idx].rating}</span>
-                        : '––'
-                      }
-                    </td>
-                    <td className="pm-td-center">{half + idx + 1}</td>
-                    <td className="pm-td-skill">
-                      {rightCol[idx]?.skill || ''}
-                    </td>
-                    <td className="pm-td-rating">
-                      {rightCol[idx]?.rating
-                        ? <span className="pm-rating-badge">{rightCol[idx].rating}</span>
-                        : '––'
-                      }
+                    <td className="pmc-td-sn">{half + idx + 1}</td>
+                    <td className="pmc-td-skill">{rightCol[idx]?.skill || ''}</td>
+                    <td className="pmc-td-rating">
+                      <span className="pmc-rating-letter">{rightCol[idx]?.rating || '–'}</span>
                     </td>
                   </tr>
                 ));
@@ -362,38 +327,41 @@ const StudentReportCard = () => {
           </table>
         </div>
 
-        {/* COMMENTS & SIGNATURES */}
         <div className="comments-container">
           <div className="comment-box-elegant">
-            <div className="comment-title">CLASS TEACHER'S COMMENT</div>
+            <div className="comment-title" style={{ textAlign: 'center' }}>CLASS TEACHER'S COMMENT</div>
             <div className="comment-text-area">
               {classTeacherComment 
                 ? <><strong>{report.student.firstName} {report.student.lastName}</strong> - {classTeacherComment}</>
                 : <span className="blank-line">................................................................................</span>
               }
             </div>
-            <div className="signature-section">
+            <div className="signature-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <div className="sig-line"></div>
               <span className="sig-text">Class Teacher</span>
             </div>
           </div>
 
           <div className="comment-box-elegant">
-            <div className="comment-title">PRINCIPAL'S COMMENT</div>
+            <div className="comment-title" style={{ textAlign: 'center' }}>PRINCIPAL'S COMMENT</div>
             <div className="comment-text-area">
               {report.principalComment 
                 ? <>{report.principalComment}</>
                 : <span className="blank-line">................................................................................</span>
               }
             </div>
-            <div className="signature-section">
+            <div className="signature-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <img 
+                src={principalSignature} 
+                alt="Principal's Signature" 
+                className="principal-sig-img"
+              />
               <div className="sig-line"></div>
               <span className="sig-text">Principal/Headteacher</span>
             </div>
           </div>
         </div>
 
-        {/* FOOTER / NEXT TERM */}
         <footer className="sheet-footer-elegant">
           <div className="footer-dates-grid">
             <div className="footer-date-item">
@@ -405,7 +373,6 @@ const StudentReportCard = () => {
               <span className="fd-value">{formatDate(report.term.endDate)}</span>
             </div>
           </div>
-          
           {report.term.nextTermBegins && (
             <div className="next-term-highlight">
               <span className="nt-label">NEXT TERM BEGINS:</span>

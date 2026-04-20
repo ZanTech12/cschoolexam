@@ -224,10 +224,11 @@
 
 .school-name {
   font-family: var(--font-heading);
-  font-size: 1.25rem;
-  font-weight: 700;
+  font-size: 2rem; /* Increased size */
+  font-weight: 500;
+  letter-spacing: 1px;
+  margin: 0;
   color: var(--clr-primary);
-  letter-spacing: 0.05em;
   text-transform: uppercase;
   line-height: 1.3;
   margin-bottom: 2px;
@@ -647,17 +648,122 @@
   color: var(--clr-bg);
 }
 
+.pm-rating-placeholder {
+  color: #999;
+  font-size: 0.7rem;
+  font-style: italic;
+  letter-spacing: 0.3px;
+}
+
+/* ========== COMPACT PSYCHOMOTOR SECTION ========== */
+.psychomotor-section-compact {
+  margin: 8px 0 10px;
+  padding: 0;
+}
+
+.psychomotor-title-compact {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #1a1a2e;
+  margin-bottom: 4px;
+  border-bottom: 1.5px solid #1a1a2e;
+  padding-bottom: 3px;
+}
+
+.psychomotor-key-inline {
+  font-weight: 400;
+  font-size: 0.6rem;
+  color: #555;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.psychomotor-table-compact {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid #333;
+  font-size: 0.68rem;
+}
+
+.psychomotor-table-compact thead tr {
+  background-color: #f0f0f0;
+}
+
+.pmc-th-sn {
+  width: 28px;
+  padding: 2px 4px;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  border: 1px solid #333;
+}
+
+.pmc-th-skill {
+  padding: 2px 6px;
+  text-align: left;
+  font-size: 0.62rem;
+  font-weight: 600;
+  border: 1px solid #333;
+}
+
+.pmc-th-rating {
+  width: 42px;
+  padding: 2px 4px;
+  text-align: center;
+  font-size: 0.62rem;
+  font-weight: 600;
+  border: 1px solid #333;
+}
+
+.pmc-td-sn {
+  padding: 1px 4px;
+  text-align: center;
+  border: 1px solid #999;
+  font-size: 0.65rem;
+  color: #555;
+}
+
+.pmc-td-skill {
+  padding: 2px 6px;
+  border: 1px solid #999;
+  font-size: 0.65rem;
+}
+
+.pmc-td-rating {
+  padding: 1px 4px;
+  text-align: center;
+  border: 1px solid #999;
+}
+
+.pmc-rating-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 18px;
+  font-weight: 700;
+  font-size: 0.72rem;
+  color: #1a1a2e;
+  background: transparent;
+}
+
 /* ============================================================
-   COMMENTS & SIGNATURES
+   COMMENTS & SIGNATURES (MERGED & CENTERED)
    ============================================================ */
 .comments-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin: 14px 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 24px;
+  margin-top: 20px;
 }
 
 .comment-box-elegant {
+  width: 48%;
+  min-width: 280px;
+  box-sizing: border-box;
   padding: 10px 12px;
   border: 1.5px solid var(--clr-border-strong);
   border-radius: var(--radius-md);
@@ -715,6 +821,35 @@
   color: var(--clr-text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+/* ===== Signature helpers within .signature-section ===== */
+.signature-section .sig-space {
+  height: 40px;
+  width: 100%;
+}
+
+.signature-section .sig-stamp {
+  width: 200px;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.signature-section .sig-stamp img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* ===== Fixed Principal Signature ===== */
+.principal-sig-img {
+  width: 100px;
+  height: auto;
+  margin-bottom: -10px; /* pulls the signature down to overlap the line */
+  object-fit: contain;
 }
 
 /* ============================================================
@@ -1016,11 +1151,13 @@
 
   /* Comments */
   .comments-container {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     gap: 10px;
   }
 
   .comment-box-elegant {
+    width: 100%;
+    min-width: unset;
     padding: 8px 10px;
   }
 
@@ -1504,12 +1641,15 @@
 
   /* ---- COMMENTS — side by side, compact ---- */
   .comments-container {
+    display: grid !important;
     grid-template-columns: 1fr 1fr !important;
     gap: 8px !important;
     margin: 8px 0 !important;
   }
 
   .comment-box-elegant {
+    width: 100% !important;
+    min-width: unset !important;
     border-color: #888 !important;
     background: #fff !important;
     padding: 6px 8px !important;
@@ -1555,6 +1695,15 @@
   .sig-text {
     color: #000 !important;
     font-size: 5.5pt !important;
+  }
+
+  .principal-sig-img {
+    width: 80px !important;
+    margin-bottom: -6px !important;
+  }
+
+  .signature-section .sig-space {
+    height: 30px !important;
   }
 
   /* ---- FOOTER — tight ---- */
