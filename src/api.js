@@ -101,6 +101,13 @@ export const dashboardAPI = {
         return response.data;
     },
 
+    // Get last teacher logins for teacher dashboard
+    // Returns: { success: true, data: [{ _id, name, firstName, lastName, email, lastLogin, device, ip }] }
+    getLastTeacherLogins: async () => {
+        const response = await api.get('/dashboard/teacher-logins');
+        return response.data;
+    },
+
     // ==========================================
     // TEACHER ASSIGNMENTS (For AssignTeachers component)
     // ==========================================
@@ -204,7 +211,7 @@ export const teachersAPI = {
 };
 
 // ============================================
-// STUDENTS API (UPDATED FOR AUTO-GENERATED ADMISSION NUMBER)
+// STUDENTS API (UPDATED FOR AUTO-GENERATED ADMISSION NUMBER & FEES ACCESS)
 // ============================================
 export const studentsAPI = {
     getAll: async () => {
@@ -242,6 +249,27 @@ export const studentsAPI = {
 
     deleteTestResult: async (studentId, testId) => {
         const response = await api.delete(`/students/${studentId}/test-results/${testId}`);
+        return response.data;
+    },
+
+    // ==========================================
+    // FEES ACCESS MANAGEMENT
+    // ==========================================
+
+    // Toggle fees access (grant/revoke) for a student
+    // Admin only - allows temporary login access for students owing fees
+    // Returns: { success: true, message: '...', data: { _id, firstName, lastName, admissionNumber, owingFees, feesAccessGranted } }
+    toggleFeesAccess: async (studentId) => {
+        const response = await api.patch(`/students/${studentId}/toggle-fees-access`);
+        return response.data;
+    },
+
+    // Toggle owing status for a student
+    // Admin only - marks student as owing or clears their fees
+    // Note: Clearing fees (marking as NOT owing) automatically revokes any granted access
+    // Returns: { success: true, message: '...', data: { _id, firstName, lastName, admissionNumber, owingFees, feesAccessGranted } }
+    toggleOwing: async (studentId) => {
+        const response = await api.patch(`/students/${studentId}/toggle-owing`);
         return response.data;
     },
 };
@@ -596,7 +624,7 @@ export const termsAPI = {
 
 // ===========================================
 // GRADING SYSTEMS API
-// ============================================
+// ===========================================
 export const gradingSystemsAPI = {
     getAll: async () => {
         const response = await api.get('/grading-systems');
