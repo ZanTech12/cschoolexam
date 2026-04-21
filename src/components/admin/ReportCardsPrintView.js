@@ -3,26 +3,37 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { reportCardsAPI } from '../../api';
 import schoolLogo from '../../pages/logo.png';
+import principalSignature from './principal_signature.png';
 import './ReportCardsPrintView.css';
 
 const ReportCardsPrintView = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   const termId = searchParams.get('termId');
   const classIdsString = searchParams.get('classIds') || '';
-  
-  // Default psychomotor skills when data doesn't include them
+
+  // Default psychomotor skills with filled ratings (matching StudentReportCard)
   const defaultPsychomotor = useMemo(() => [
-    { skill: 'Handwriting', rating: '' },
-    { skill: 'Sports', rating: '' },
-    { skill: 'Drawing & Painting', rating: '' },
-    { skill: 'Music & Drama', rating: '' },
-    { skill: 'Crafts', rating: '' },
-    { skill: 'Cleanliness', rating: '' },
-    { skill: 'Punctuality', rating: '' },
-    { skill: 'Politeness', rating: '' },
+    { skill: 'Handwriting', rating: 'A' },
+    { skill: 'Sports', rating: 'B' },
+    { skill: 'Drawing & Painting', rating: 'A' },
+    { skill: 'Music & Drama', rating: 'B' },
+    { skill: 'Crafts', rating: 'C' },
+    { skill: 'Cleanliness', rating: 'A' },
+    { skill: 'Punctuality', rating: 'B' },
+    { skill: 'Politeness', rating: 'A' },
   ], []);
+
+  // Normalize psychomotor rating to A/B/C (matching StudentReportCard)
+  const normalizePsychomotorRating = (rating) => {
+    if (!rating) return '';
+    const upperRating = rating.toString().toUpperCase().trim();
+    if (['A', 'B', 'C'].includes(upperRating)) {
+      return upperRating;
+    }
+    return 'C';
+  };
 
   // ============================================
   // MAIN QUERY: Batch Print Data for All Classes
@@ -59,53 +70,50 @@ const ReportCardsPrintView = () => {
       })
     : 'N/A';
 
-  // Reusable psychomotor table renderer
+  // Reusable psychomotor table renderer (with normalization)
   const renderPsychomotorTable = (psychomotorData) => {
-    const skills = psychomotorData?.length ? psychomotorData : defaultPsychomotor;
+    const rawSkills = psychomotorData?.length ? psychomotorData : defaultPsychomotor;
+    const skills = rawSkills.map(skill => ({
+      ...skill,
+      rating: normalizePsychomotorRating(skill.rating)
+    }));
+
     const half = Math.ceil(skills.length / 2);
     const leftCol = skills.slice(0, half);
     const rightCol = skills.slice(half);
     const rows = Math.max(leftCol.length, rightCol.length);
 
     return (
-      <div className="psychomotor-section">
-        <div className="psychomotor-title">PSYCHOMOTOR / AFFECTIVE DOMAIN</div>
-        <div className="psychomotor-key-note">
-          Rating Key: <strong>A</strong> – Excellent &nbsp;|&nbsp;
-          <strong>B</strong> – Very Good &nbsp;|&nbsp;
-          <strong>C</strong> – Good &nbsp;|&nbsp;
-          <strong>D</strong> – Fair &nbsp;|&nbsp;
-          <strong>E</strong> – Poor
+      <div className="psychomotor-section-compact">
+        <div className="psychomotor-title-compact">
+          PSYCHOMOTOR / AFFECTIVE DOMAIN
+          <span className="psychomotor-key-inline">
+            &nbsp; (A – Excellent | B – Very Good | C – Good)
+          </span>
         </div>
-        <table className="psychomotor-table">
+        <table className="psychomotor-table-compact">
           <thead>
             <tr>
-              <th className="pm-th-sn">S/N</th>
-              <th className="pm-th-skill">Skill / Trait</th>
-              <th className="pm-th-rating">Rating</th>
-              <th className="pm-th-sn">S/N</th>
-              <th className="pm-th-skill">Skill / Trait</th>
-              <th className="pm-th-rating">Rating</th>
+              <th className="pmc-th-sn">S/N</th>
+              <th className="pmc-th-skill">Skill / Trait</th>
+              <th className="pmc-th-rating">Rating</th>
+              <th className="pmc-th-sn">S/N</th>
+              <th className="pmc-th-skill">Skill / Trait</th>
+              <th className="pmc-th-rating">Rating</th>
             </tr>
           </thead>
           <tbody>
             {Array.from({ length: rows }, (_, idx) => (
               <tr key={idx}>
-                <td className="pm-td-center">{idx + 1}</td>
-                <td className="pm-td-skill">{leftCol[idx]?.skill || ''}</td>
-                <td className="pm-td-rating">
-                  {leftCol[idx]?.rating
-                    ? <span className="pm-rating-badge">{leftCol[idx].rating}</span>
-                    : '––'
-                  }
+                <td className="pmc-td-sn">{idx + 1}</td>
+                <td className="pmc-td-skill">{leftCol[idx]?.skill || ''}</td>
+                <td className="pmc-td-rating">
+                  <span className="pmc-rating-letter">{leftCol[idx]?.rating || '–'}</span>
                 </td>
-                <td className="pm-td-center">{half + idx + 1}</td>
-                <td className="pm-td-skill">{rightCol[idx]?.skill || ''}</td>
-                <td className="pm-td-rating">
-                  {rightCol[idx]?.rating
-                    ? <span className="pm-rating-badge">{rightCol[idx].rating}</span>
-                    : '––'
-                  }
+                <td className="pmc-td-sn">{half + idx + 1}</td>
+                <td className="pmc-td-skill">{rightCol[idx]?.skill || ''}</td>
+                <td className="pmc-td-rating">
+                  <span className="pmc-rating-letter">{rightCol[idx]?.rating || '–'}</span>
                 </td>
               </tr>
             ))}
@@ -116,33 +124,128 @@ const ReportCardsPrintView = () => {
   };
 
   // ============================================
+  // ROBUST PRINT HANDLER (matching StudentReportCard)
+  // ============================================
+  const handlePrint = () => {
+    const printArea = document.querySelector('.print-area');
+    if (!printArea) return;
+
+    const clonedElement = printArea.cloneNode(true);
+    const screenControls = clonedElement.querySelector('.screen-controls');
+    if (screenControls) screenControls.remove();
+
+    // Pull global styles (fonts, tables, etc)
+    const headStyles = Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(el => el.outerHTML)
+      .join('\n');
+
+    // Strict A4 & Border styling injected directly into the print window's head
+    const a4PrintStyles = `
+      @page {
+        size: A4 portrait;
+        margin: 0;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .print-area {
+        display: block !important;
+      }
+      .print-class-section {
+        display: block !important;
+      }
+      .a4-document {
+        width: 210mm;
+        min-height: 297mm;
+        padding: 14mm 16mm !important;
+        background-color: #ffffff !important;
+        position: relative;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      /* Elegant Double Frame Border */
+      .a4-document::before,
+      .a4-document::after {
+        content: "" !important;
+        position: absolute !important;
+        pointer-events: none !important;
+        z-index: 1000 !important;
+        border: 3px solid #111 !important;
+        border-radius: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .a4-document::before {
+        inset: 0 !important;
+      }
+      .a4-document::after {
+        inset: 7px !important;
+        border-width: 1.5px !important;
+      }
+    `;
+
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+      alert('Please allow pop-ups for this site to print the report cards.');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <title>Student Report Cards - Batch Print</title>
+        ${headStyles}
+        <style>${a4PrintStyles}</style>
+      </head>
+      <body>
+        ${clonedElement.outerHTML}
+        <script>
+          window.onafterprint = () => window.close();
+          document.fonts.ready.then(() => {
+            setTimeout(() => window.print(), 250);
+          });
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  // ============================================
   // UI RENDERING
   // ============================================
   if (isLoading) {
     return (
-      <div className="print-loading-screen">
-        <div className="spinner-large"></div>
-        <h2>Gathering Report Cards...</h2>
-        <p>This might take a moment for multiple classes.</p>
+      <div className="print-loading">
+        <div className="spinner"></div>
+        <p>Gathering Report Cards...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="print-error-screen">
-        <h2>Error Loading Data</h2>
+      <div className="print-error-page">
+        <h3>Error Loading Data</h3>
         <p>{error}</p>
-        <button onClick={() => navigate(-1)} className="btn-back">Go Back</button>
+        <button onClick={() => navigate(-1)}>Go Back</button>
       </div>
     );
   }
 
   if (!printData) {
     return (
-      <div className="print-error-screen">
-        <h2>No Data Available</h2>
-        <button onClick={() => navigate(-1)} className="btn-back">Go Back</button>
+      <div className="print-error-page">
+        <p>No Data Available</p>
+        <button onClick={() => navigate(-1)}>Go Back</button>
       </div>
     );
   }
@@ -151,28 +254,59 @@ const ReportCardsPrintView = () => {
 
   return (
     <div className="print-view-wrapper">
+      {/* Inline style to preview the exact beautiful border on the screen */}
+      <style>{`
+        .a4-document {
+          width: 210mm;
+          min-height: 297mm;
+          padding: 14mm 16mm;
+          background-color: #ffffff;
+          position: relative;
+          box-sizing: border-box;
+          margin: 20px auto;
+          box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        /* Elegant Double Frame Border */
+        .a4-document::before,
+        .a4-document::after {
+          content: "";
+          position: absolute;
+          pointer-events: none;
+          z-index: 1000;
+          border: 3px solid #111;
+        }
+        .a4-document::before {
+          inset: 0;
+        }
+        .a4-document::after {
+          inset: 7px;
+          border-width: 1.5px;
+        }
+      `}</style>
+
       {/* Screen-only controls */}
       <div className="screen-controls">
         <button onClick={() => navigate(-1)} className="ctrl-btn back">
           &larr; Back
         </button>
-        <button onClick={() => window.print()} className="ctrl-btn print">
+        <button onClick={handlePrint} className="ctrl-btn print">
           Print All Report Cards
         </button>
       </div>
 
       {/* Print Area */}
       <div className="print-area">
-        {classes.map((classObj) => (
+        {classes.map((classObj, classIdx) => (
           <div
             key={classObj.classInfo._id}
             className="print-class-section"
-            style={{ pageBreakBefore: 'always' }}
+            style={classIdx > 0 ? { pageBreakBefore: 'always' } : undefined}
           >
             {classObj.students.map((student) => {
               const timesOpen = student.attendance?.timesOpen || '';
               const timesPresent = student.attendance?.timesPresent || '';
               const timesAbsent = getAbsentDays(timesPresent, timesOpen);
+              const totalScoreObtainable = student.subjects.length * 100;
 
               return (
                 <div
@@ -303,6 +437,18 @@ const ReportCardsPrintView = () => {
                             colSpan="7"
                             className="td-right summary-label"
                           >
+                            TOTAL SCORE OBTAINABLE:
+                          </td>
+                          <td className="td-center td-total">
+                            {totalScoreObtainable}
+                          </td>
+                          <td colSpan="2"></td>
+                        </tr>
+                        <tr className="summary-row">
+                          <td
+                            colSpan="7"
+                            className="td-right summary-label"
+                          >
                             TOTAL SCORE OBTAINED:
                           </td>
                           <td className="td-center td-total">
@@ -384,7 +530,7 @@ const ReportCardsPrintView = () => {
                   {/* ===== COMMENTS & SIGNATURES ===== */}
                   <div className="comments-container">
                     <div className="comment-box-elegant">
-                      <div className="comment-title">
+                      <div className="comment-title" style={{ textAlign: 'center' }}>
                         CLASS TEACHER'S COMMENT
                       </div>
                       <div className="comment-text-area">
@@ -402,14 +548,16 @@ const ReportCardsPrintView = () => {
                           </span>
                         )}
                       </div>
-                      <div className="signature-section">
+                      <div className="signature-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <div className="sig-line"></div>
                         <span className="sig-text">Class Teacher</span>
                       </div>
                     </div>
 
                     <div className="comment-box-elegant">
-                      <div className="comment-title">PRINCIPAL'S COMMENT</div>
+                      <div className="comment-title" style={{ textAlign: 'center' }}>
+                        PRINCIPAL'S COMMENT
+                      </div>
                       <div className="comment-text-area">
                         {student.principalComment ? (
                           <>{student.principalComment}</>
@@ -419,7 +567,12 @@ const ReportCardsPrintView = () => {
                           </span>
                         )}
                       </div>
-                      <div className="signature-section">
+                      <div className="signature-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <img
+                          src={principalSignature}
+                          alt="Principal's Signature"
+                          className="principal-sig-img"
+                        />
                         <div className="sig-line"></div>
                         <span className="sig-text">Principal/Headteacher</span>
                       </div>
