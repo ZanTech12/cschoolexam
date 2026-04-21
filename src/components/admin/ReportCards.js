@@ -1,529 +1,716 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useMemo } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { classesAPI, termsAPI, reportCardsAPI } from '../../api'; // ← Removed N+1 imports, added reportCardsAPI
-import './ReportCards.css';
+import { reportCardsAPI, classTeacherCommentsAPI, attendanceAPI, principalCommentsAPI } from '../../api';
+import schoolLogo from '../../pages/logo.png';
+import principalSignature from './principal_signature.png';
+import './StudentReportCard.css';
 
-// Modern Skeleton Loader for Cards
-const SkeletonCard = () => (
-  <div className="rc-card rc-skeleton-wrapper">
-    <div className="rc-card-header">
-      <div className="rc-icon-box skeleton-shimmer"></div>
-      <div className="rc-header-text">
-        <div className="skeleton-shimmer skeleton-line w-60"></div>
-        <div className="skeleton-shimmer skeleton-line w-40 mt-1"></div>
-      </div>
-    </div>
-    <div className="rc-card-body">
-      <div className="skeleton-shimmer skeleton-block h-40"></div>
-    </div>
-    <div className="rc-card-footer">
-      <div className="skeleton-shimmer skeleton-line w-100"></div>
-    </div>
-  </div>
-);
-
-// Sub-component to display individual class comment status
-// ✅ UPDATED: No longer makes its own API calls. Receives pre-fetched `status` prop.
-const ClassCard = ({ 
-  cls, 
-  status,         // ← NEW: Pre-fetched status object for this class
-  navigate,
-  isSelected,
-  onToggleSelect,
-  onPrint 
-}) => {
-  // Extract counts directly from the optimized status object
-  const totalClassTeacherRemarks = status?.classTeacherCommentCount || 0;
-  const totalSubjectRemarks = status?.teacherCommentCount || 0;
-  const uniqueSubjects = status?.uniqueSubjectsCount || 0;
-  
-  const hasRequiredData = totalClassTeacherRemarks > 0 || totalSubjectRemarks > 0;
-
-  // Determine overall card status for the subtle top border
-  const getCardStatusStyle = () => {
-    if (!hasRequiredData) return 'border-neutral';
-    if (totalClassTeacherRemarks > 0 && totalSubjectRemarks > 0) return 'border-success';
-    return 'border-warning';
-  };
-
-  const handleCardClick = (e) => {
-    if (
-      e.target.closest('.rc-checkbox-wrapper') || 
-      e.target.closest('.rc-print-btn') ||
-      e.target.closest('.rc-action-btn')
-    ) {
-      return;
-    }
-    // We allow clicking to view details even if pending, so users can add comments
-    if (cls._id) {
-      navigate(`/admin/report-cards/class/${cls._id}?termId=${status?.termId}`);
-    }
-  };
-
-  const handlePrintClick = (e) => {
-    e.stopPropagation();
-    onPrint(cls._id);
-  };
-
-  return (
-    <div 
-      className={`rc-card ${getCardStatusStyle()} ${isSelected ? 'rc-card-selected' : ''}`}
-      onClick={handleCardClick}
-      style={{ cursor: 'pointer' }}
-    >
-      {/* Header with Checkbox */}
-      <div className="rc-card-header">
-        <div className="rc-checkbox-wrapper">
-          <label className="rc-checkbox-label">
-            <input 
-              type="checkbox" 
-              checked={isSelected}
-              onChange={(e) => {
-                e.stopPropagation();
-                onToggleSelect(cls._id);
-              }}
-              className="rc-checkbox-input"
-            />
-            <span className="rc-checkbox-custom"></span>
-          </label>
-        </div>
-        <div className="rc-icon-box">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
-          </svg>
-        </div>
-        <div className="rc-header-text">
-          <h3>{cls.name} {cls.section}</h3>
-          <p>{cls.level}</p>
-        </div>
-      </div>
-
-      {/* Body Status */}
-      <div className="rc-card-body">
-        <div className="rc-status-container">
-          {/* Class Teacher Status */}
-          <div className="rc-status-row">
-            <span className="rc-status-label">Class Teacher</span>
-            {totalClassTeacherRemarks > 0 ? (
-              <span className="rc-badge success">
-                <span className="rc-dot"></span>
-                {totalClassTeacherRemarks} Comment{totalClassTeacherRemarks > 1 ? 's' : ''}
-              </span>
-            ) : (
-              <span className="rc-badge warning">
-                <span className="rc-dot"></span>
-                Pending
-              </span>
-            )}
-          </div>
-          
-          {/* Subject Remarks Status */}
-          <div className="rc-status-row">
-            <span className="rc-status-label">Subjects</span>
-            {totalSubjectRemarks > 0 ? (
-              <span className="rc-badge success">
-                <span className="rc-dot"></span>
-                {uniqueSubjects > 0 
-                  ? `${uniqueSubjects} Subject${uniqueSubjects > 1 ? 's' : ''}`
-                  : `${totalSubjectRemarks} Remark${totalSubjectRemarks > 1 ? 's' : ''}`
-                }
-              </span>
-            ) : (
-              <span className="rc-badge warning">
-                <span className="rc-dot"></span>
-                No Remarks
-              </span>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Footer Actions */}
-      <div className="rc-card-footer">
-        <div className="rc-footer-actions">
-          <button 
-            className="rc-action-btn rc-action-secondary" 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleCardClick(e);
-            }}
-          >
-            View
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-              <polyline points="12 5 19 12 12 19"></polyline>
-            </svg>
-          </button>
-          <button 
-            className="rc-action-btn rc-print-btn" 
-            onClick={handlePrintClick}
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="6 9 6 2 18 2 18 9"></polyline>
-              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-              <rect x="6" y="14" width="12" height="8"></rect>
-            </svg>
-            Print
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ReportCards = () => {
+const StudentReportCard = () => {
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [classes, setClasses] = useState([]);
-  const [terms, setTerms] = useState([]);
-  const [selectedTerm, setSelectedTerm] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedClasses, setSelectedClasses] = useState(new Set());
-  const [isPrinting, setIsPrinting] = useState(false);
-  const [showPrintModal, setShowPrintModal] = useState(false);
+  const studentId = window.location.pathname.split('/').pop();
+  const termId = searchParams.get('termId');
+  
+  const defaultPsychomotor = useMemo(() => [
+    { skill: 'Handwriting', rating: 'A' },
+    { skill: 'Sports', rating: 'B' },
+    { skill: 'Drawing & Painting', rating: 'A' },
+    { skill: 'Music & Drama', rating: 'B' },
+    { skill: 'Crafts', rating: 'C' },
+    { skill: 'Cleanliness', rating: 'A' },
+    { skill: 'Punctuality', rating: 'B' },
+    { skill: 'Politeness', rating: 'A' },
+  ], []);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  // Reset selections when term changes
-  useEffect(() => {
-    setSelectedClasses(new Set());
-  }, [selectedTerm]);
-
-  const fetchData = async () => {
-    try {
-      setError(null);
-      const [classesRes, termsRes] = await Promise.all([
-        classesAPI.getAllForDropdown(), 
-        termsAPI.getAll()
-      ]);
-      
-      const classesData = classesRes?.data?.data || classesRes?.data || classesRes || [];
-      setClasses(Array.isArray(classesData) ? classesData : []);
-      
-      const termsData = termsRes?.data || termsRes || [];
-      setTerms(Array.isArray(termsData) ? termsData : []);
-      
-      const active = Array.isArray(termsData) 
-        ? termsData.find(t => t.status === 'active' || t.isActive) 
-        : null;
-      if (active) setSelectedTerm(active._id);
-    } catch (err) {
-      console.error("Error fetching report card data:", err);
-      setError(err.message || 'Failed to load data');
-    } finally {
-      setLoading(false);
+  const normalizePsychomotorRating = (rating) => {
+    if (!rating) return '';
+    const upperRating = rating.toString().toUpperCase().trim();
+    if (['A', 'B', 'C'].includes(upperRating)) {
+      return upperRating;
     }
+    return 'C';
   };
 
-  // ✅ FIXED: Single optimized query replacing N+1 calls
-  const { 
-    data: statusMap, 
-    isLoading: isStatusLoading,
-    isError: isStatusError
-  } = useQuery({
-    queryKey: ['report-card-status', selectedTerm],
-    queryFn: () => reportCardsAPI.getStatus(selectedTerm),
-    enabled: !!selectedTerm && !loading,
+  const { data: reportResponse, isLoading: isReportLoading, isError: isReportError } = useQuery({
+    queryKey: ['student-report', studentId, termId],
+    queryFn: () => reportCardsAPI.getStudentReport(studentId, { termId }),
+    enabled: !!studentId && !!termId,
     staleTime: 60000,
-    select: (res) => res?.data || {} // <-- THIS IS THE FIX: Extracts the inner 'data' object
   });
 
-  const selectedTermObj = useMemo(() => {
-    return terms.find(t => t._id === selectedTerm);
-  }, [terms, selectedTerm]);
+  const report = reportResponse?.data || null;
 
-  const toggleClassSelection = useCallback((classId) => {
-    setSelectedClasses(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(classId)) {
-        newSet.delete(classId);
-      } else {
-        newSet.add(classId);
+  const classId = report?.student?.class?._id || report?.student?.class?.id || null;
+  const termName = report?.term?.name || null;
+  const sessionName = report?.session?.name || null;
+
+  const { data: classTeacherComment } = useQuery({
+    queryKey: ['class-teacher-comment', classId, termName, sessionName, studentId],
+    queryFn: async () => {
+      const response = await classTeacherCommentsAPI.getByClass(classId, { term: termName, session: sessionName });
+      
+      let comments = [];
+      if (Array.isArray(response)) comments = response;
+      else if (response?.data && Array.isArray(response.data)) comments = response.data;
+      else if (response?.comments && Array.isArray(response.comments)) comments = response.comments;
+
+      const studentComment = comments.find(c => {
+        const cStudentId = c.student_id || c.studentId || c.student?._id;
+        return cStudentId === studentId || cStudentId?._id === studentId;
+      });
+
+      return studentComment?.comment || '';
+    },
+    enabled: !!classId && !!termName && !!sessionName && !!studentId,
+    staleTime: 60000,
+  });
+
+  // ============================================
+  // PRINCIPAL COMMENT QUERY
+  // ============================================
+  const { data: principalCommentData } = useQuery({
+    queryKey: ['principal-comment', studentId, termName, sessionName],
+    queryFn: async () => {
+      const response = await principalCommentsAPI.getAll({ 
+        term: termName, 
+        session: sessionName,
+        student_id: studentId
+      });
+      
+      let comments = [];
+      if (Array.isArray(response)) {
+        comments = response;
+      } else if (response?.data && Array.isArray(response.data)) {
+        comments = response.data;
+      } else if (response?.comments && Array.isArray(response.comments)) {
+        comments = response.comments;
       }
-      return newSet;
-    });
-  }, []);
 
-  const selectAllClasses = useCallback(() => {
-    if (selectedClasses.size === classes.length) {
-      setSelectedClasses(new Set());
-    } else {
-      setSelectedClasses(new Set(classes.map(c => c._id)));
+      // Find the comment for this specific student
+      const studentComment = comments.find(c => {
+        const cStudentId = c.student_id || c.studentId || c.student?._id;
+        const cStudentIdStr = cStudentId?.toString?.() || cStudentId;
+        return cStudentIdStr === studentId || cStudentIdStr === studentId?.toString();
+      });
+
+      return studentComment?.comment || studentComment?.principalComment || studentComment?.text || '';
+    },
+    enabled: !!studentId && !!termName && !!sessionName,
+    staleTime: 60000,
+  });
+
+  const { data: attendanceResponse } = useQuery({
+    queryKey: ['student-attendance', classId, termName, sessionName, studentId],
+    queryFn: async () => {
+      const response = await attendanceAPI.getStudentCountsByClass(classId, {
+        term: termName,
+        session: sessionName
+      });
+      
+      if (!response?.success) return { timesPresent: '', timesSchoolOpen: '', timesAbsent: '' };
+
+      const schoolOpenDays = response.schoolOpenDays || response.data?.schoolOpenDays || '';
+      const students = response.data || [];
+      
+      const studentRecord = students.find(s => {
+        const sId = s.student_id || s.studentId || s.student?._id;
+        return sId === studentId || sId?._id === studentId || sId?.toString() === studentId?.toString();
+      });
+      
+      const timesPresent = studentRecord?.times_present || studentRecord?.timesPresent || '';
+      const timesSchoolOpen = typeof schoolOpenDays === 'number' ? schoolOpenDays : '';
+      
+      const timesAbsent = (timesPresent !== '' && timesSchoolOpen !== '' && timesSchoolOpen >= timesPresent)
+        ? timesSchoolOpen - timesPresent
+        : '';
+        
+      return { timesPresent, timesSchoolOpen, timesAbsent };
+    },
+    enabled: !!classId && !!termName && !!sessionName && !!studentId,
+    staleTime: 60000,
+  });
+
+  const isLoading = isReportLoading;
+  const error = isReportError ? 'Failed to load report data.' : null;
+
+  const psychomotorSkills = useMemo(() => {
+    const skills = report?.psychomotor?.length ? report.psychomotor : defaultPsychomotor;
+    return skills.map(skill => ({
+      ...skill,
+      rating: normalizePsychomotorRating(skill.rating)
+    }));
+  }, [report?.psychomotor, defaultPsychomotor]);
+
+  const timesPresent = attendanceResponse?.timesPresent || report?.attendance?.timesPresent || report?.timesPresent || '';
+  const timesSchoolOpen = attendanceResponse?.timesSchoolOpen || report?.attendance?.timesSchoolOpen || report?.timesSchoolOpen || '';
+  
+  const timesAbsent = attendanceResponse?.timesAbsent !== undefined 
+    ? attendanceResponse.timesAbsent 
+    : ((timesPresent !== '' && timesSchoolOpen !== '' && timesSchoolOpen >= timesPresent)
+      ? timesSchoolOpen - timesPresent
+      : '');
+
+  const formatDate = (date) => date 
+    ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) 
+    : 'N/A';
+
+  // ============================================
+  // GET EFFECTIVE PRINCIPAL COMMENT
+  // ============================================
+  const effectivePrincipalComment = principalCommentData || report?.principalComment || '';
+
+  // Isolated robust print handler with strict A4 borders
+  const handlePrint = () => {
+    const printElement = document.querySelector('.a4-document');
+    if (!printElement) return;
+
+    const clonedElement = printElement.cloneNode(true);
+    const screenControls = clonedElement.querySelector('.screen-controls');
+    if (screenControls) screenControls.remove();
+
+    // Pull global styles (fonts, tables, etc)
+    const headStyles = Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(el => el.outerHTML)
+      .join('\n');
+
+    // Strict A4 & Border styling injected directly into the print window's head
+    const a4PrintStyles = `
+      @page {
+        size: A4 portrait;
+        margin: 0; /* Force 0 margin so our CSS border touches the physical edge of the paper */
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .a4-document {
+        width: 210mm;
+        min-height: 297mm;
+        padding: 14mm 16mm !important; /* Inner spacing away from the border */
+        background-color: #ffffff !important;
+        position: relative;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      /* Elegant Double Frame Border */
+      .a4-document::before,
+      .a4-document::after {
+        content: "" !important;
+        position: absolute !important;
+        pointer-events: none !important;
+        z-index: 1000 !important;
+        border: 3px solid #111 !important;
+        border-radius: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .a4-document::before {
+        inset: 0 !important; /* Outer frame */
+      }
+      .a4-document::after {
+        inset: 7px !important; /* Inner frame */
+        border-width: 1.5px !important;
+      }
+      .school-name {
+        font-size: 14pt !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.8px !important;
+      }
+      .school-address {
+        font-size: 7pt !important;
+        color: #333 !important;
+        letter-spacing: 0.3px !important;
+      }
+      /* Expanded comment boxes for printing */
+      .comments-container {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 3mm !important;
+        margin-top: 3mm !important;
+      }
+      .comment-box-elegant {
+        border: 0.5px solid #555 !important;
+        padding: 2mm 2.5mm !important;
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 32mm !important;
+      }
+      .comment-title {
+        font-size: 7pt !important;
+        font-weight: 700 !important;
+        text-align: center !important;
+        margin-bottom: 1mm !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.3px !important;
+      }
+      .comment-text-area {
+        font-size: 6.5pt !important;
+        flex: 1 !important;
+        line-height: 1.4 !important;
+        min-height: 18mm !important;
+        max-height: none !important;
+        overflow: visible !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+      }
+      .blank-line {
+        font-size: 6.5pt !important;
+        letter-spacing: 1px !important;
+      }
+      .signature-section {
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: center !important;
+        margin-top: 1.5mm !important;
+      }
+      .sig-line {
+        width: 40mm !important;
+        border-top: 0.5px solid #333 !important;
+        margin-bottom: 0.5mm !important;
+      }
+      .sig-text {
+        font-size: 5.5pt !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.3px !important;
+      }
+      .principal-sig-img {
+        height: 10mm !important;
+        width: auto !important;
+      }
+    `;
+
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+      alert('Please allow pop-ups for this site to print the report card.');
+      return;
     }
-  }, [selectedClasses.size, classes]);
 
-  const handleSinglePrint = useCallback((classId) => {
-    navigate(`/admin/report-cards/print?termId=${selectedTerm}&classIds=${classId}`);
-  }, [navigate, selectedTerm]);
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <title>Student Report Card</title>
+        ${headStyles}
+        <style>${a4PrintStyles}</style>
+      </head>
+      <body>
+        ${clonedElement.outerHTML}
+        <script>
+          window.onafterprint = () => window.close();
+          document.fonts.ready.then(() => {
+            setTimeout(() => window.print(), 250);
+          });
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
 
-  const handleBulkPrint = useCallback(async () => {
-    if (selectedClasses.size === 0) return;
-    
-    setIsPrinting(true);
-    try {
-      const classIds = Array.from(selectedClasses).join(',');
-      navigate(`/admin/report-cards/print?termId=${selectedTerm}&classIds=${classIds}`);
-    } catch (err) {
-      console.error('Print error:', err);
-    } finally {
-      setIsPrinting(false);
-      setShowPrintModal(false);
-    }
-  }, [selectedClasses, navigate, selectedTerm]);
+  if (isLoading) {
+    return (
+      <div className="print-loading">
+        <div className="spinner"></div>
+        <p>Generating Report Sheet...</p>
+      </div>
+    );
+  }
 
-  const handlePrintAll = useCallback(() => {
-    if (classes.length === 0) return;
-    
-    setIsPrinting(true);
-    try {
-      const classIds = classes.map(c => c._id).join(',');
-      navigate(`/admin/report-cards/print?termId=${selectedTerm}&classIds=${classIds}`);
-    } catch (err) {
-      console.error('Print error:', err);
-    } finally {
-      setIsPrinting(false);
-      setShowPrintModal(false);
-    }
-  }, [classes, navigate, selectedTerm]);
+  if (error) {
+    return (
+      <div className="print-error-page">
+        <h3>Error Loading Report</h3>
+        <p>{error}</p>
+        <button onClick={() => navigate(-1)}>Go Back</button>
+      </div>
+    );
+  }
 
-  const isAllSelected = classes.length > 0 && selectedClasses.size === classes.length;
-  const isSomeSelected = selectedClasses.size > 0 && selectedClasses.size < classes.length;
+  if (!report) {
+    return (
+      <div className="print-error-page">
+        <p>Report card not found.</p>
+        <button onClick={() => navigate(-1)}>Go Back</button>
+      </div>
+    );
+  }
 
-  // Determine loading state (initial load OR status fetch)
-  const isGridLoading = loading || isStatusLoading;
+  const totalScoreObtainable = report.subjects.length * 100;
 
   return (
-    <div className="rc-page">
-      {/* Header Section */}
-      <div className="rc-top-bar">
-        <div className="rc-title-section">
-          <h1>Report Cards</h1>
-          <p className="rc-subtitle">Manage and preview teacher remarks before generating.</p>
-        </div>
-        <div className="rc-header-controls">
-          <div className="rc-filter-wrapper">
-            <select 
-              value={selectedTerm} 
-              onChange={(e) => setSelectedTerm(e.target.value)}
-              disabled={loading}
-              className="rc-select"
-            >
-              <option value="" disabled>Select Term</option>
-              {terms.map(t => (
-                <option key={t._id} value={t._id}>
-                  {t.name} {t.session?.name ? `• ${t.session.name}` : ''}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
+    <div className="report-sheet-wrapper">
+      {/* Inline style to preview the exact beautiful border on the screen */}
+      <style>{`
+        .a4-document {
+          width: 210mm;
+          min-height: 297mm;
+          padding: 14mm 16mm;
+          background-color: #ffffff;
+          position: relative;
+          box-sizing: border-box;
+          margin: 20px auto;
+          box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        /* Elegant Double Frame Border */
+        .a4-document::before,
+        .a4-document::after {
+          content: "";
+          position: absolute;
+          pointer-events: none;
+          z-index: 1000;
+          border: 3px solid #111;
+        }
+        .a4-document::before {
+          inset: 0; /* Outer frame */
+        }
+        .a4-document::after {
+          inset: 7px; /* Inner frame */
+          border-width: 1.5px;
+        }
+        .school-name {
+          font-size: 14pt;
+          font-weight: 800;
+          letter-spacing: 0.8px;
+          line-height: 1.3;
+        }
+        .school-address {
+          font-size: 7pt;
+          color: #333;
+          letter-spacing: 0.3px;
+          margin: 0.5mm 0 0 0;
+          line-height: 1.2;
+        }
+        
+        /* ============================================
+           EXPANDED COMMENT CONTAINERS
+           ============================================ */
+        .comments-container {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 3mm;
+          margin-top: 3mm;
+        }
+        
+        .comment-box-elegant {
+          border: 0.5px solid #555;
+          padding: 2.5mm 3mm;
+          display: flex;
+          flex-direction: column;
+          min-height: 35mm; /* Expanded from default */
+          background: #fff;
+        }
+        
+        .comment-title {
+          font-size: 7.5pt;
+          font-weight: 700;
+          text-align: center;
+          margin-bottom: 1.5mm;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          color: #111;
+        }
+        
+        .comment-text-area {
+          font-size: 7pt;
+          flex: 1;
+          line-height: 1.5;
+          min-height: 20mm; /* More space for text */
+          max-height: none;
+          overflow: visible;
+          word-wrap: break-word;
+          overflow-wrap: break-word;
+          color: #222;
+        }
+        
+        .comment-text-area strong {
+          font-weight: 700;
+          color: #000;
+        }
+        
+        .blank-line {
+          font-size: 7pt;
+          letter-spacing: 1px;
+          color: #888;
+          display: block;
+          white-space: nowrap;
+          overflow: hidden;
+        }
+        
+        .signature-section {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          margin-top: 2mm;
+          padding-top: 1.5mm;
+        }
+        
+        .sig-line {
+          width: 42mm;
+          border-top: 0.5px solid #333;
+          margin-bottom: 0.5mm;
+        }
+        
+        .sig-text {
+          font-size: 6pt;
+          text-transform: uppercase;
+          letter-spacing: 0.3px;
+          color: #333;
+        }
+        
+        .principal-sig-img {
+          height: 11mm;
+          width: auto;
+          margin-bottom: 0.5mm;
+        }
+      `}</style>
+
+      <div className="screen-controls">
+        <button onClick={() => navigate(-1)} className="ctrl-btn back">&larr; Back</button>
+        <button onClick={handlePrint} className="ctrl-btn print">Print Report Sheet</button>
       </div>
 
-      {/* Bulk Actions Bar */}
-      {selectedTerm && !loading && classes.length > 0 && (
-        <div className="rc-bulk-bar">
-          <div className="rc-bulk-left">
-            <label className="rc-checkbox-label rc-select-all-label">
-              <input 
-                type="checkbox" 
-                checked={isAllSelected}
-                ref={(el) => { if (el) el.indeterminate = isSomeSelected; }}
-                onChange={selectAllClasses}
-                className="rc-checkbox-input"
-              />
-              <span className="rc-checkbox-custom"></span>
-              <span className="rc-select-all-text">
-                {isAllSelected 
-                  ? 'Deselect All' 
-                  : isSomeSelected 
-                    ? `${selectedClasses.size} Selected` 
-                    : 'Select All'
-                }
+      <div className="a4-document">
+        
+        <header className="school-header-elegant">
+          <div className="header-ornament top"></div>
+          <div className="header-logo-wrap">
+            <img src={schoolLogo} alt="DATFORTE International School Logo" className="header-logo" />
+          </div>
+          <h1 className="school-name">DATFORTE INTERNATIONAL SCHOOLS LIMITED</h1>
+          <p className="school-address">14, Ahmed Tijani St, Ahmadiya Bus-Stop, Lagos, Nigeria.</p>
+          <h2 className="doc-title">STUDENT ACADEMIC REPORT CARD</h2>
+          <div className="header-meta-box">
+            <span className="meta-text">Term <strong>{report.term.name}</strong></span>
+            <span className="meta-divider"></span>
+            <span className="meta-text">Session <strong>{report.session.name}</strong></span>
+          </div>
+          <div className="header-ornament bottom"></div>
+        </header>
+
+        <div className="bio-data-section">
+          <div className="bio-grid">
+            <div className="bio-item">
+              <span className="bio-label">Name of Student</span>
+              <span className="bio-value name-highlight">
+                {report.student.firstName} {report.student.lastName}
               </span>
-            </label>
+            </div>
+            <div className="bio-item">
+              <span className="bio-label">Admission No.</span>
+              <span className="bio-value">{report.student.admissionNumber}</span>
+            </div>
+            <div className="bio-item">
+              <span className="bio-label">Class</span>
+              <span className="bio-value">
+                {report.student.class?.name} {report.student.class?.section}
+              </span>
+            </div>
+            <div className="bio-item">
+              <span className="bio-label">Gender</span>
+              <span className="bio-value">{report.student.gender}</span>
+            </div>
           </div>
-          <div className="rc-bulk-right">
-            <button 
-              className="rc-bulk-btn rc-bulk-btn-primary"
-              onClick={handlePrintAll}
-              disabled={isPrinting}
-            >
-              {isPrinting ? (
-                <>
-                  <span className="rc-spinner"></span>
-                  Printing...
-                </>
-              ) : (
-                <>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                    <rect x="6" y="14" width="12" height="8"></rect>
-                  </svg>
-                  Print All Classes
-                </>
+        </div>
+
+        <div className="grades-container">
+          <table className="grades-table-elegant">
+            <thead>
+              <tr>
+                <th rowSpan="2" className="th-sn">S/N</th>
+                <th rowSpan="2" className="th-subject">SUBJECTS</th>
+                <th colSpan="4" className="th-ca-header">CONTINUOUS ASSESSMENT (40)</th>
+                <th rowSpan="2" className="th-score">EXAM<br/>(60)</th>
+                <th rowSpan="2" className="th-score">TOTAL<br/>(100)</th>
+                <th rowSpan="2" className="th-grade">GRADE</th>
+                <th rowSpan="2" className="th-remark">REMARK</th>
+              </tr>
+              <tr>
+                <th className="th-sub-ca">Test<br/>(20)</th>
+                <th className="th-sub-ca">Notes<br/>(10)</th>
+                <th className="th-sub-ca">Assign<br/>(10)</th>
+                <th className="th-sub-ca">Total<br/>(40)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.subjects.map((sub, i) => (
+                <tr key={sub._id || i}>
+                  <td className="td-center">{i + 1}</td>
+                  <td className="td-subject">{sub.subject?.name}</td>
+                  <td className="td-center">{sub.testScore}</td>
+                  <td className="td-center">{sub.noteTakingScore}</td>
+                  <td className="td-center">{sub.assignmentScore}</td>
+                  <td className="td-center td-bold">{sub.totalCA}</td>
+                  <td className="td-center td-bold">{sub.examScore}</td>
+                  <td className="td-center td-bold td-total">{sub.totalScore}</td>
+                  <td className="td-center td-bold">{sub.grade}</td>
+                  <td className="td-remark">{sub.remark}</td>
+                </tr>
+              ))}
+              {report.subjects.length === 0 && (
+                <tr>
+                  <td colSpan="10" className="td-empty">No grades recorded for this term.</td>
+                </tr>
               )}
-            </button>
-            <button 
-              className="rc-bulk-btn rc-bulk-btn-secondary"
-              onClick={() => setShowPrintModal(true)}
-              disabled={selectedClasses.size === 0}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                <rect x="6" y="14" width="12" height="8"></rect>
-              </svg>
-              Print Selected
-              {selectedClasses.size > 0 && (
-                <span className="rc-bulk-count">{selectedClasses.size}</span>
-              )}
-            </button>
-          </div>
+            </tbody>
+            <tfoot>
+              <tr className="summary-row">
+                <td colSpan="7" className="td-right summary-label">TOTAL SCORE OBTAINABLE:</td>
+                <td className="td-center td-total">{totalScoreObtainable}</td>
+                <td colSpan="2"></td>
+              </tr>
+              <tr className="summary-row">
+                <td colSpan="7" className="td-right summary-label">TOTAL SCORE OBTAINED:</td>
+                <td className="td-center td-total">{report.statistics.totalScore}</td>
+                <td colSpan="2"></td>
+              </tr>
+              <tr className="summary-row">
+                <td colSpan="7" className="td-right summary-label">STUDENT AVERAGE:</td>
+                <td className="td-center td-total">{report.statistics.averageScore}%</td>
+                <td colSpan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
-      )}
 
-      {/* Print Confirmation Modal */}
-      {showPrintModal && (
-        <div className="rc-modal-overlay" onClick={() => setShowPrintModal(false)}>
-          <div className="rc-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="rc-modal-header">
-              <h3>Confirm Bulk Print</h3>
-              <button 
-                className="rc-modal-close"
-                onClick={() => setShowPrintModal(false)}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18"></line>
-                  <line x1="6" y1="6" x2="18" y2="18"></line>
-                </svg>
-              </button>
+        <div className="grading-key-elegant">
+          <span className="key-label">GRADING SCALE:</span>
+          <span className="key-text">
+            A (Excellent) | B (Very Good) | C (Good) | D (Fair) | E (Poor) | F (Fail)
+          </span>
+        </div>
+
+        <div className="attendance-section">
+          <div className="attendance-title">ATTENDANCE RECORD</div>
+          <div className="attendance-grid">
+            <div className="attendance-card">
+              <span className="attendance-label">No. of Times School Opened</span>
+              <span className="attendance-value">
+                {timesSchoolOpen !== '' ? timesSchoolOpen : '––––'}
+              </span>
             </div>
-            <div className="rc-modal-body">
-              <div className="rc-modal-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                  <rect x="6" y="14" width="12" height="8"></rect>
-                </svg>
-              </div>
-              <p className="rc-modal-text">
-                You are about to generate report cards for <strong>{selectedClasses.size} class{selectedClasses.size > 1 ? 'es' : ''}</strong>.
-              </p>
-              <div className="rc-modal-classes-preview">
-                {classes
-                  .filter(c => selectedClasses.has(c._id))
-                  .map(c => (
-                    <span key={c._id} className="rc-modal-class-tag">
-                      {c.name} {c.section}
-                    </span>
-                  ))
-                }
-              </div>
-              <p className="rc-modal-subtext">
-                Term: <strong>{selectedTermObj?.name}</strong> {selectedTermObj?.session?.name && `• Session: <strong>${selectedTermObj.session.name}</strong>`}
-              </p>
+            <div className="attendance-card">
+              <span className="attendance-label">No. of Times Present</span>
+              <span className="attendance-value present">
+                {timesPresent !== '' ? timesPresent : '––––'}
+              </span>
             </div>
-            <div className="rc-modal-footer">
-              <button 
-                className="rc-modal-btn rc-modal-btn-cancel"
-                onClick={() => setShowPrintModal(false)}
-              >
-                Cancel
-              </button>
-              <button 
-                className="rc-modal-btn rc-modal-btn-confirm"
-                onClick={handleBulkPrint}
-                disabled={isPrinting}
-              >
-                {isPrinting ? (
-                  <>
-                    <span className="rc-spinner"></span>
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="20 6 9 17 4 12"></polyline>
-                    </svg>
-                    Generate Report Cards
-                  </>
-                )}
-              </button>
+            <div className="attendance-card">
+              <span className="attendance-label">No. of Times Absent</span>
+              <span className="attendance-value absent">
+                {timesAbsent !== '' ? timesAbsent : '––––'}
+              </span>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Feedback Banners */}
-      {error && (
-        <div className="rc-banner error">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-          <div className="rc-banner-content">
-            <strong>Connection Error</strong>
-            <span>{error}</span>
+        <div className="psychomotor-section-compact">
+          <div className="psychomotor-title-compact">
+            PSYCHOMOTOR / AFFECTIVE DOMAIN
+            <span className="psychomotor-key-inline">
+              &nbsp; (A – Excellent | B – Very Good | C – Good)
+            </span>
           </div>
-          <button onClick={fetchData} className="rc-banner-btn">Retry</button>
+          <table className="psychomotor-table-compact">
+            <thead>
+              <tr>
+                <th className="pmc-th-sn">S/N</th>
+                <th className="pmc-th-skill">Skill / Trait</th>
+                <th className="pmc-th-rating">Rating</th>
+                <th className="pmc-th-sn">S/N</th>
+                <th className="pmc-th-skill">Skill / Trait</th>
+                <th className="pmc-th-rating">Rating</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(() => {
+                const half = Math.ceil(psychomotorSkills.length / 2);
+                const leftCol = psychomotorSkills.slice(0, half);
+                const rightCol = psychomotorSkills.slice(half);
+                const rows = Math.max(leftCol.length, rightCol.length);
+                return Array.from({ length: rows }, (_, idx) => (
+                  <tr key={idx}>
+                    <td className="pmc-td-sn">{idx + 1}</td>
+                    <td className="pmc-td-skill">{leftCol[idx]?.skill || ''}</td>
+                    <td className="pmc-td-rating">
+                      <span className="pmc-rating-letter">{leftCol[idx]?.rating || '–'}</span>
+                    </td>
+                    <td className="pmc-td-sn">{half + idx + 1}</td>
+                    <td className="pmc-td-skill">{rightCol[idx]?.skill || ''}</td>
+                    <td className="pmc-td-rating">
+                      <span className="pmc-rating-letter">{rightCol[idx]?.rating || '–'}</span>
+                    </td>
+                  </tr>
+                ));
+              })()}
+            </tbody>
+          </table>
         </div>
-      )}
 
-      {!selectedTerm && !loading && !error && (
-        <div className="rc-banner info">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-          <span>Please select a term from the dropdown to view class statuses.</span>
-        </div>
-      )}
-
-      {isStatusError && selectedTerm && (
-        <div className="rc-banner error">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
-          <div className="rc-banner-content">
-            <strong>Status Fetch Error</strong>
-            <span>Failed to load report card statuses.</span>
+        {/* ===== EXPANDED COMMENTS & SIGNATURES ===== */}
+        <div className="comments-container">
+          <div className="comment-box-elegant">
+            <div className="comment-title" style={{ textAlign: 'center' }}>CLASS TEACHER'S COMMENT</div>
+            <div className="comment-text-area">
+              {classTeacherComment 
+                ? <><strong>{report.student.firstName} {report.student.lastName}</strong> - {classTeacherComment}</>
+                : <span className="blank-line">................................................................................</span>
+              }
+            </div>
+            <div className="signature-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div className="sig-line"></div>
+              <span className="sig-text">Class Teacher</span>
+            </div>
           </div>
-          <button onClick={() => window.location.reload()} className="rc-banner-btn">Reload</button>
+
+          <div className="comment-box-elegant">
+            <div className="comment-title" style={{ textAlign: 'center' }}>PRINCIPAL/ HEADTEACHER'S COMMENT</div>
+            <div className="comment-text-area">
+              {effectivePrincipalComment 
+                ? <>{effectivePrincipalComment}</>
+                : <span className="blank-line">................................................................................</span>
+              }
+            </div>
+            <div className="signature-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <img 
+                src={principalSignature} 
+                alt="Principal's Signature" 
+                className="principal-sig-img"
+              />
+              <div className="sig-line"></div>
+              <span className="sig-text">Principal/Headteacher</span>
+            </div>
+          </div>
         </div>
-      )}
-      
-      {!loading && !error && classes.length === 0 && (
-        <div className="rc-empty-state">
-          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.5"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
-          <h3>No Classes Found</h3>
-          <p>You need to add classes before you can manage report cards.</p>
-        </div>
-      )}
-      
-      {/* Grid Layout */}
-      {isGridLoading ? (
-        <div className="rc-grid">
-          {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
-        </div>
-      ) : (
-        <div className="rc-grid">
-          {classes.map(cls => (
-            <ClassCard 
-              key={cls._id} 
-              cls={cls} 
-              status={{
-                // Pass the specific status object for this class ID
-                // alongside the termId needed for the "View" button
-                ...statusMap?.[cls._id],
-                termId: selectedTerm
-              }} 
-              navigate={navigate}
-              isSelected={selectedClasses.has(cls._id)}
-              onToggleSelect={toggleClassSelection}
-              onPrint={handleSinglePrint}
-            />
-          ))}
-        </div>
-      )}
+
+        <footer className="sheet-footer-elegant">
+          <div className="footer-dates-grid">
+            <div className="footer-date-item">
+              <span className="fd-label">Term Begins:</span>
+              <span className="fd-value">{formatDate(report.term.startDate)}</span>
+            </div>
+            <div className="footer-date-item">
+              <span className="fd-label">Term Ends:</span>
+              <span className="fd-value">{formatDate(report.term.endDate)}</span>
+            </div>
+          </div>
+          {report.term.nextTermBegins && (
+            <div className="next-term-highlight">
+              <span className="nt-label">NEXT TERM BEGINS:</span>
+              <span className="nt-date">{formatDate(report.term.nextTermBegins)}</span>
+            </div>
+          )}
+        </footer>
+
+      </div>
     </div>
   );
 };
 
-export default ReportCards;
+export default StudentReportCard;

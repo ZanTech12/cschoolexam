@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { reportCardsAPI, termsAPI } from '../../api'; // <-- Added termsAPI
+import { reportCardsAPI, termsAPI, principalCommentsAPI } from '../../api'; // <-- Added principalCommentsAPI
 import schoolLogo from '../../pages/logo.png';
 import principalSignature from './principal_signature.png';
 import './ReportCardsPrintView.css';
@@ -32,7 +32,7 @@ const ReportCardsPrintView = () => {
   };
 
   // ============================================
-  // MAIN QUERY
+  // MAIN QUERY - Print Data
   // ============================================
   const { data: printResponse, isLoading, isError, error: queryError } = useQuery({
     queryKey: ['batch-print-data', termId, classIdsString],
@@ -57,6 +57,63 @@ const ReportCardsPrintView = () => {
   const error = isError
     ? (queryError?.response?.data?.message || 'Failed to load print data.')
     : null;
+
+  // ============================================
+  // EXTRACT TERM & SESSION NAMES FOR QUERIES
+  // ============================================
+  const termName = printData?.term?.name || null;
+  const sessionName = printData?.session?.name || null;
+
+  // ============================================
+  // FETCH PRINCIPAL COMMENTS FOR BATCH
+  // ============================================
+  const { data: principalCommentsResponse } = useQuery({
+    queryKey: ['principal-comments-batch', termName, sessionName],
+    queryFn: async () => {
+      const response = await principalCommentsAPI.getAll({ 
+        term: termName, 
+        session: sessionName 
+      });
+      return response;
+    },
+    enabled: !!termName && !!sessionName,
+    staleTime: 60000,
+  });
+
+  // ============================================
+  // CREATE LOOKUP MAP FOR PRINCIPAL COMMENTS
+  // ============================================
+  const principalCommentsMap = useMemo(() => {
+    const map = {};
+    if (!principalCommentsResponse) return map;
+    
+    let comments = [];
+    
+    // Handle different response formats
+    if (Array.isArray(principalCommentsResponse)) {
+      comments = principalCommentsResponse;
+    } else if (principalCommentsResponse?.data && Array.isArray(principalCommentsResponse.data)) {
+      comments = principalCommentsResponse.data;
+    } else if (principalCommentsResponse?.comments && Array.isArray(principalCommentsResponse.comments)) {
+      comments = principalCommentsResponse.comments;
+    }
+    
+    // Build lookup map keyed by student ID
+    comments.forEach(comment => {
+      const studentId = 
+        comment.student_id || 
+        comment.studentId || 
+        comment.student?._id?.toString() ||
+        comment.student?.toString();
+      
+      if (studentId) {
+        const normalizedId = typeof studentId === 'object' ? studentId._id?.toString() : studentId.toString();
+        map[normalizedId] = comment.comment || comment.principalComment || comment.text || '';
+      }
+    });
+    
+    return map;
+  }, [principalCommentsResponse]);
 
   // ============================================
   // EXTRACT TERM DATES (Fallback logic)
@@ -85,6 +142,19 @@ const ReportCardsPrintView = () => {
         : `${diffDays} day${diffDays !== 1 ? 's' : ''}`
     };
   }, [termStartDate, termEndDate]);
+
+  // ============================================
+  // HELPER: Get Principal Comment for a Student
+  // ============================================
+  const getPrincipalComment = (studentId) => {
+    // Try from API lookup map first
+    const normalizedId = studentId?.toString();
+    const commentFromMap = principalCommentsMap[normalizedId];
+    
+    if (commentFromMap) return commentFromMap;
+    
+    return '';
+  };
 
   // ============================================
   // HELPERS
@@ -391,6 +461,9 @@ const ReportCardsPrintView = () => {
               const timesPresent = student.attendance?.timesPresent || '';
               const timesAbsent = getAbsentDays(timesPresent, timesSchoolOpen);
               const totalScoreObtainable = student.subjects.length * 100;
+              
+              // Get principal comment from our lookup map
+              const principalComment = getPrincipalComment(student.student._id);
 
               return (
                 <div key={student.student._id} className="a4-document print-student-card">
@@ -564,8 +637,8 @@ const ReportCardsPrintView = () => {
                     <div className="comment-box-elegant">
                       <div className="comment-title" style={{ textAlign: 'center' }}>PRINCIPAL/ HEADTEACHER'S COMMENT</div>
                       <div className="comment-text-area">
-                        {student.principalComment 
-                          ? <>{student.principalComment}</>
+                        {principalComment 
+                          ? <>{principalComment}</>
                           : <span className="blank-line">................................................................................</span>
                         }
                       </div>
