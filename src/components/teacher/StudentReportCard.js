@@ -581,10 +581,7 @@ const StudentReportCard = () => {
                   <p className="ng-blank-lines">............................................................................</p>
                 )}
               </div>
-              <div className="ng-signature">
-                <div className="ng-sig-line"></div>
-                <span className="ng-sig-label">Class Teacher's Signature</span>
-              </div>
+             
             </div>
 
             {/* Principal Comment */}

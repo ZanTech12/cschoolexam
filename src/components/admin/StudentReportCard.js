@@ -121,6 +121,94 @@ const StudentReportCard = () => {
     ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) 
     : 'N/A';
 
+  // Isolated robust print handler with strict A4 borders
+  const handlePrint = () => {
+    const printElement = document.querySelector('.a4-document');
+    if (!printElement) return;
+
+    const clonedElement = printElement.cloneNode(true);
+    const screenControls = clonedElement.querySelector('.screen-controls');
+    if (screenControls) screenControls.remove();
+
+    // Pull global styles (fonts, tables, etc)
+    const headStyles = Array.from(document.head.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(el => el.outerHTML)
+      .join('\n');
+
+    // Strict A4 & Border styling injected directly into the print window's head
+    const a4PrintStyles = `
+      @page {
+        size: A4 portrait;
+        margin: 0; /* Force 0 margin so our CSS border touches the physical edge of the paper */
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        background: #fff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .a4-document {
+        width: 210mm;
+        min-height: 297mm;
+        padding: 14mm 16mm !important; /* Inner spacing away from the border */
+        background-color: #ffffff !important;
+        position: relative;
+        box-sizing: border-box !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      /* Elegant Double Frame Border */
+      .a4-document::before,
+      .a4-document::after {
+        content: "" !important;
+        position: absolute !important;
+        pointer-events: none !important;
+        z-index: 1000 !important;
+        border: 3px solid #111 !important;
+        border-radius: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      .a4-document::before {
+        inset: 0 !important; /* Outer frame */
+      }
+      .a4-document::after {
+        inset: 7px !important; /* Inner frame */
+        border-width: 1.5px !important;
+      }
+    `;
+
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) {
+      alert('Please allow pop-ups for this site to print the report card.');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <title>Student Report Card</title>
+        ${headStyles}
+        <style>${a4PrintStyles}</style>
+      </head>
+      <body>
+        ${clonedElement.outerHTML}
+        <script>
+          window.onafterprint = () => window.close();
+          document.fonts.ready.then(() => {
+            setTimeout(() => window.print(), 250);
+          });
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
   if (isLoading) {
     return (
       <div className="print-loading">
@@ -149,11 +237,43 @@ const StudentReportCard = () => {
     );
   }
 
+  const totalScoreObtainable = report.subjects.length * 100;
+
   return (
     <div className="report-sheet-wrapper">
+      {/* Inline style to preview the exact beautiful border on the screen */}
+      <style>{`
+        .a4-document {
+          width: 210mm;
+          min-height: 297mm;
+          padding: 14mm 16mm;
+          background-color: #ffffff;
+          position: relative;
+          box-sizing: border-box;
+          margin: 20px auto;
+          box-shadow: 0 0 15px rgba(0,0,0,0.1);
+        }
+        /* Elegant Double Frame Border */
+        .a4-document::before,
+        .a4-document::after {
+          content: "";
+          position: absolute;
+          pointer-events: none;
+          z-index: 1000;
+          border: 3px solid #111;
+        }
+        .a4-document::before {
+          inset: 0; /* Outer frame */
+        }
+        .a4-document::after {
+          inset: 7px; /* Inner frame */
+          border-width: 1.5px;
+        }
+      `}</style>
+
       <div className="screen-controls">
         <button onClick={() => navigate(-1)} className="ctrl-btn back">&larr; Back</button>
-        <button onClick={() => window.print()} className="ctrl-btn print">Print Report Sheet</button>
+        <button onClick={handlePrint} className="ctrl-btn print">Print Report Sheet</button>
       </div>
 
       <div className="a4-document">
@@ -239,6 +359,11 @@ const StudentReportCard = () => {
               )}
             </tbody>
             <tfoot>
+              <tr className="summary-row">
+                <td colSpan="7" className="td-right summary-label">TOTAL SCORE OBTAINABLE:</td>
+                <td className="td-center td-total">{totalScoreObtainable}</td>
+                <td colSpan="2"></td>
+              </tr>
               <tr className="summary-row">
                 <td colSpan="7" className="td-right summary-label">TOTAL SCORE OBTAINED:</td>
                 <td className="td-center td-total">{report.statistics.totalScore}</td>
