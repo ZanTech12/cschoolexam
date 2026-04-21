@@ -54,6 +54,25 @@ const processInBatches = async (items, handler, batchSize = 5, onProgress) => {
     return { successCount, failCount };
 };
 
+const ExcludeCheckbox = ({ checked, indeterminate, onChange }) => (
+    <div
+        className={`aa-exclude-cb ${checked && !indeterminate ? 'aa-exclude-cb--checked' : ''} ${indeterminate ? 'aa-exclude-cb--indeterminate' : ''}`}
+        onClick={onChange}
+        role="checkbox"
+        aria-checked={indeterminate ? 'mixed' : checked}
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange(); } }}
+    >
+        {(checked || indeterminate) && (
+            indeterminate ? (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            ) : (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            )
+        )}
+    </div>
+);
+
 const ApproveAssessments = () => {
     const [assessments, setAssessments]                   = useState([]);
     const [termId, setTermId]                             = useState('');
@@ -74,6 +93,7 @@ const ApproveAssessments = () => {
     const [success, setSuccess]                           = useState('');
     const [error, setError]                               = useState('');
     const [unapprovingId, setUnapprovingId]               = useState(null);
+    const [excludedIds, setExcludedIds]                   = useState(new Set());
 
     const abortRef         = useRef(null);
     const debounceRef      = useRef(null);
@@ -81,12 +101,38 @@ const ApproveAssessments = () => {
     const fetchRef         = useRef(null);
     const subjectsCacheRef = useRef({});
 
+    /* ── Derived exclusion state ── */
+    const isAllExcluded  = assessments.length > 0 && excludedIds.size === assessments.length;
+    const isSomeExcluded = excludedIds.size > 0 && !isAllExcluded;
+    const effectivePendingCount  = Math.max(0, (status === 'submitted' ? assessments.length : 0) - excludedIds.size);
+    const effectiveApprovedCount = Math.max(0, (status === 'approved' ? assessments.length : 0) - excludedIds.size);
+
+    const toggleExclude = useCallback((id) => {
+        setExcludedIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    }, []);
+
+    const toggleExcludeAll = useCallback(() => {
+        setExcludedIds(prev => {
+            if (prev.size === assessments.length) return new Set();
+            return new Set(assessments.map(a => a._id));
+        });
+    }, [assessments]);
+
+    const clearExclusions = useCallback(() => setExcludedIds(new Set()), []);
+
+    /* ── Toast timer ── */
     useEffect(() => {
         if (!success && !error) return;
         const t = setTimeout(() => { setSuccess(''); setError(''); }, 5000);
         return () => clearTimeout(t);
     }, [success, error]);
 
+    /* ── Debounced fetch on filter change ── */
     const scheduleFetch = useCallback(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
         debounceRef.current = setTimeout(() => fetchRef.current?.(), 250);
@@ -94,6 +140,7 @@ const ApproveAssessments = () => {
 
     useEffect(() => {
         if (!initialDoneRef.current) return;
+        setExcludedIds(new Set());
         scheduleFetch();
         return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
     }, [termId, sessionId, classId, subjectId, status, scheduleFetch]);
@@ -177,6 +224,7 @@ const ApproveAssessments = () => {
             if (status)    params.status    = status;
             const response = await continuousAssessmentsAPI.getAll(params, { signal: controller.signal });
             setAssessments(extractDataArray(response));
+            setExcludedIds(new Set());
         } catch (err) {
             if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') return;
             console.error('[fetchAssessments]', err);
@@ -235,13 +283,15 @@ const ApproveAssessments = () => {
     const handleApproveAll = async () => {
         setConfirmBulk(false); setBulkLoading(true);
         setBulkProgress({ current: 0, total: 0 }); setSuccess(''); setError('');
-        const ids = assessments.map(a => a._id);
-        setAssessments(prev => prev.map(a => ({ ...a, status: 'approved' })));
+        const toApprove = assessments.filter(a => !excludedIds.has(a._id));
+        const ids = toApprove.map(a => a._id);
+        setAssessments(prev => prev.map(a => (!excludedIds.has(a._id) ? { ...a, status: 'approved' } : a)));
         const { successCount, failCount } = await processInBatches(
             ids, (id) => continuousAssessmentsAPI.approve(id).then(r => r.success), 5,
             (current, total) => setBulkProgress({ current, total })
         );
         setBulkLoading(false);
+        setExcludedIds(new Set());
         if (failCount === 0) setSuccess(`Successfully approved ${successCount} assessments`);
         else { setError(`Failed to approve ${failCount} assessment(s)`); setSuccess(`Approved ${successCount} of ${ids.length}`); fetchAssessments(); }
     };
@@ -249,13 +299,15 @@ const ApproveAssessments = () => {
     const handleUnapproveAll = async () => {
         setConfirmBulkUnapprove(false); setBulkLoading(true);
         setBulkProgress({ current: 0, total: 0 }); setSuccess(''); setError('');
-        const ids = assessments.map(a => a._id);
-        setAssessments(prev => prev.map(a => ({ ...a, status: 'submitted' })));
+        const toUnapprove = assessments.filter(a => !excludedIds.has(a._id));
+        const ids = toUnapprove.map(a => a._id);
+        setAssessments(prev => prev.map(a => (!excludedIds.has(a._id) ? { ...a, status: 'submitted' } : a)));
         const { successCount, failCount } = await processInBatches(
             ids, (id) => continuousAssessmentsAPI.unapprove(id).then(r => r.success), 5,
             (current, total) => setBulkProgress({ current, total })
         );
         setBulkLoading(false);
+        setExcludedIds(new Set());
         if (failCount === 0) setSuccess(`Successfully unapproved ${successCount} assessments`);
         else { setError(`Failed to unapprove ${failCount} assessment(s)`); setSuccess(`Unapproved ${successCount} of ${ids.length}`); fetchAssessments(); }
     };
@@ -268,9 +320,7 @@ const ApproveAssessments = () => {
         { value: 'approved',  label: 'Approved' }
     ];
 
-    const pendingCount  = status === 'submitted' ? assessments.length : 0;
-    const approvedCount = status === 'approved'  ? assessments.length : 0;
-    const bulkLabel     = bulkLoading && bulkProgress.total > 0 ? `${bulkProgress.current}/${bulkProgress.total}` : null;
+    const bulkLabel = bulkLoading && bulkProgress.total > 0 ? `${bulkProgress.current}/${bulkProgress.total}` : null;
 
     return (
         <div className="aa-root">
@@ -289,7 +339,7 @@ const ApproveAssessments = () => {
                     color: var(--text); -webkit-font-smoothing: antialiased; background: var(--bg); min-height: 100vh;
                 }
 
-                /* ===== ALERTS / TOASTS ===== */
+                /* ===== TOASTS ===== */
                 .aa-toasts { position: fixed; top: 16px; right: 16px; z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; max-width: 380px; }
                 .aa-toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.84rem; font-weight: 500; box-shadow: var(--shadow-lg); animation: aaToastIn 0.3s cubic-bezier(0.16,1,0.3,1); }
                 .aa-toast--success { background: var(--success-light); color: #065f46; border: 1px solid #a7f3d0; }
@@ -328,6 +378,26 @@ const ApproveAssessments = () => {
                 .aa-btn-spinner--dark { border-color: rgba(0,0,0,0.12); border-top-color: var(--text-secondary); }
                 @keyframes aaSpin { to { transform: rotate(360deg); } }
 
+                /* ===== EXCLUDE CHECKBOX ===== */
+                .aa-exclude-cb { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 5px; border: 2px solid #cbd5e1; background: var(--surface); cursor: pointer; transition: all var(--transition); flex-shrink: 0; }
+                .aa-exclude-cb:hover { border-color: #94a3b8; background: #f8fafc; }
+                .aa-exclude-cb--checked { background: var(--danger); border-color: var(--danger); }
+                .aa-exclude-cb--checked:hover { background: var(--danger-hover); border-color: var(--danger-hover); }
+                .aa-exclude-cb--indeterminate { background: var(--danger); border-color: var(--danger); }
+                .aa-exclude-cb--indeterminate:hover { background: var(--danger-hover); border-color: var(--danger-hover); }
+                .aa-exclude-cb svg { width: 12px; height: 12px; color: #fff; pointer-events: none; }
+                .aa-exclude-cb:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+                /* ===== EXCLUSION BAR ===== */
+                .aa-exclusion-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 24px; background: #fef2f2; border-bottom: 1px solid #fecaca; animation: aaSlideDown 0.25s ease; }
+                .aa-exclusion-bar-inner { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: #991b1b; font-weight: 500; }
+                .aa-exclusion-bar-inner svg { flex-shrink: 0; }
+                .aa-exclusion-bar-count { font-weight: 700; }
+                .aa-exclusion-bar-actions { display: flex; gap: 6px; }
+                .aa-exclusion-clear { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; border: 1px solid #fecaca; background: var(--surface); color: #991b1b; font-size: 0.76rem; font-weight: 600; cursor: pointer; transition: all var(--transition); }
+                .aa-exclusion-clear:hover { background: #fee2e2; border-color: #fca5a5; }
+                .aa-exclusion-clear svg { width: 12px; height: 12px; }
+
                 /* ===== FILTERS PANEL ===== */
                 .aa-filters { background: var(--surface); border-bottom: 1px solid var(--border); padding: 16px 24px; }
                 .aa-status-tabs { display: flex; gap: 4px; margin-bottom: 14px; background: #f1f5f9; border-radius: var(--radius-sm); padding: 3px; width: fit-content; }
@@ -355,6 +425,8 @@ const ApproveAssessments = () => {
                 .aa-bulk-confirm-inner { display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: #92400e; }
                 .aa-bulk-confirm--unapprove .aa-bulk-confirm-inner { color: #991b1b; }
                 .aa-bulk-confirm-icon { flex-shrink: 0; }
+                .aa-bulk-confirm-note { display: block; font-size: 0.78rem; color: #a16207; font-weight: 400; margin-top: 2px; }
+                .aa-bulk-confirm--unapprove .aa-bulk-confirm-note { color: #b91c1c; }
                 .aa-bulk-confirm-actions { display: flex; gap: 8px; }
 
                 /* ===== RESULTS INFO ===== */
@@ -379,15 +451,21 @@ const ApproveAssessments = () => {
                 /* ===== DESKTOP TABLE ===== */
                 .aa-table-section { background: var(--surface); min-height: 200px; }
                 .aa-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-                .aa-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 860px; }
+                .aa-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 920px; }
                 .aa-table thead { background: #f8fafc; position: sticky; top: 0; z-index: 5; }
                 .aa-table th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
                 .aa-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-                .aa-table tbody tr { transition: background var(--transition); animation: aaRowIn 0.3s ease both; }
+                .aa-table tbody tr { transition: background var(--transition), opacity var(--transition); animation: aaRowIn 0.3s ease both; }
                 .aa-table tbody tr:hover { background: #f8fafc; }
+                .aa-table tbody tr.aa-row-excluded { opacity: 0.45; }
+                .aa-table tbody tr.aa-row-excluded:hover { background: #fef2f2; }
                 .aa-table tbody tr:last-child td { border-bottom: none; }
                 @keyframes aaRowIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
 
+                .aa-th-exclude { width: 48px; text-align: center; }
+                .aa-td-exclude { text-align: center; }
+                .aa-th-exclude-label { display: flex; align-items: center; gap: 8px; justify-content: center; }
+                .aa-th-exclude-text { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
                 .aa-th-score, .aa-th-total { text-align: center; }
                 .aa-th-max { font-weight: 400; color: var(--text-muted); font-size: 0.68rem; margin-left: 2px; }
                 .aa-th-action { width: 110px; text-align: right; }
@@ -427,9 +505,11 @@ const ApproveAssessments = () => {
 
                 /* ===== MOBILE CARDS ===== */
                 .aa-cards { display: none; flex-direction: column; gap: 10px; padding: 12px 16px; }
-                .aa-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: box-shadow var(--transition); animation: aaRowIn 0.3s ease both; }
+                .aa-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: box-shadow var(--transition), opacity var(--transition); animation: aaRowIn 0.3s ease both; }
                 .aa-card:active { box-shadow: var(--shadow); }
+                .aa-card.aa-card-excluded { opacity: 0.45; border-color: #fecaca; }
                 .aa-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+                .aa-card-top-left { display: flex; align-items: flex-start; gap: 10px; min-width: 0; flex: 1; }
                 .aa-card-student { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
                 .aa-card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
                 .aa-card-scores { display: flex; align-items: center; gap: 0; background: #f8fafc; border-radius: var(--radius-sm); padding: 12px; margin-bottom: 14px; overflow-x: auto; }
@@ -444,7 +524,7 @@ const ApproveAssessments = () => {
                 .aa-card-action { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
                 .aa-card-action .aa-approve-btn, .aa-card-action .aa-unapprove-btn { flex: 1; justify-content: center; padding: 9px 12px; }
 
-                /* ===== ALERT INLINE (for modal-like contexts) ===== */
+                /* ===== ALERT INLINE ===== */
                 .aa-alert { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.84rem; font-weight: 500; display: flex; align-items: center; gap: 8px; animation: aaSlideDown 0.25s ease; }
                 .aa-alert--success { background: var(--success-light); color: #065f46; border: 1px solid #a7f3d0; }
                 .aa-alert--danger { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
@@ -460,6 +540,7 @@ const ApproveAssessments = () => {
                     .aa-table-section { display: block !important; }
                     .aa-header { padding: 24px 32px; }
                     .aa-filters { padding: 16px 32px; }
+                    .aa-exclusion-bar { padding: 10px 32px; }
                     .aa-bulk-confirm { padding: 14px 32px; }
                     .aa-results-info { padding: 12px 32px; }
                 }
@@ -476,6 +557,8 @@ const ApproveAssessments = () => {
                     .aa-status-tabs { width: 100%; }
                     .aa-status-tab { flex: 1; justify-content: center; padding: 8px 10px; font-size: 0.78rem; }
                     .aa-filter-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+                    .aa-exclusion-bar { padding: 10px 16px; }
+                    .aa-exclusion-bar-inner { font-size: 0.78rem; }
                     .aa-bulk-confirm { padding: 12px 16px; }
                     .aa-bulk-confirm-inner { font-size: 0.82rem; }
                     .aa-results-info { padding: 10px 16px; }
@@ -493,6 +576,9 @@ const ApproveAssessments = () => {
                     .aa-bulk-confirm { flex-direction: column; align-items: flex-start; }
                     .aa-bulk-confirm-actions { width: 100%; }
                     .aa-bulk-confirm-actions .aa-btn-sm { flex: 1; justify-content: center; }
+                    .aa-exclusion-bar { flex-direction: column; align-items: flex-start; gap: 8px; }
+                    .aa-exclusion-bar-actions { width: 100%; }
+                    .aa-exclusion-clear { flex: 1; justify-content: center; }
                 }
 
                 /* ===== SCROLLBAR ===== */
@@ -539,24 +625,24 @@ const ApproveAssessments = () => {
                     </div>
 
                     <div className="aa-header-actions">
-                        {pendingCount > 0 && (
+                        {effectivePendingCount > 0 && (
                             <button className="aa-btn aa-btn-success" onClick={() => setConfirmBulk(true)} disabled={bulkLoading}>
                                 {bulkLoading ? (
                                     <><div className="aa-btn-spinner" />{bulkLabel || 'Processing...'}</>
                                 ) : (
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                                 )}
-                                {!bulkLoading && `Approve All (${pendingCount})`}
+                                {!bulkLoading && `Approve All (${effectivePendingCount})`}
                             </button>
                         )}
-                        {approvedCount > 0 && (
+                        {effectiveApprovedCount > 0 && (
                             <button className="aa-btn aa-btn-danger-outline" onClick={() => setConfirmBulkUnapprove(true)} disabled={bulkLoading}>
                                 {bulkLoading ? (
                                     <><div className="aa-btn-spinner aa-btn-spinner--dark" />{bulkLabel || 'Processing...'}</>
                                 ) : (
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l18 18"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
                                 )}
-                                {!bulkLoading && `Unapprove All (${approvedCount})`}
+                                {!bulkLoading && `Unapprove All (${effectiveApprovedCount})`}
                             </button>
                         )}
                     </div>
@@ -646,6 +732,24 @@ const ApproveAssessments = () => {
                 )}
             </div>
 
+            {/* ===== EXCLUSION BAR ===== */}
+            {excludedIds.size > 0 && (
+                <div className="aa-exclusion-bar">
+                    <div className="aa-exclusion-bar-inner">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                        </svg>
+                        <span><span className="aa-exclusion-bar-count">{excludedIds.size}</span> student{excludedIds.size !== 1 ? 's' : ''} excluded from bulk actions</span>
+                    </div>
+                    <div className="aa-exclusion-bar-actions">
+                        <button className="aa-exclusion-clear" onClick={clearExclusions}>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            )}
+
             {/* ===== BULK CONFIRM: APPROVE ===== */}
             {confirmBulk && (
                 <div className="aa-bulk-confirm">
@@ -654,7 +758,12 @@ const ApproveAssessments = () => {
                             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                         </svg>
-                        <span>Approve all <strong>{assessments.length}</strong> assessments? This cannot be undone.</span>
+                        <span>
+                            Approve <strong>{effectivePendingCount}</strong> assessment{effectivePendingCount !== 1 ? 's' : ''}?
+                            {excludedIds.size > 0 && (
+                                <span className="aa-bulk-confirm-note">{excludedIds.size} student{excludedIds.size !== 1 ? 's' : ''} excluded from this action</span>
+                            )}
+                        </span>
                     </div>
                     <div className="aa-bulk-confirm-actions">
                         <button className="aa-btn aa-btn-ghost aa-btn-sm" onClick={() => setConfirmBulk(false)}>Cancel</button>
@@ -671,7 +780,12 @@ const ApproveAssessments = () => {
                             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                         </svg>
-                        <span>Unapprove all <strong>{assessments.length}</strong> assessments? They will be moved back to submitted.</span>
+                        <span>
+                            Unapprove <strong>{effectiveApprovedCount}</strong> assessment{effectiveApprovedCount !== 1 ? 's' : ''}?
+                            {excludedIds.size > 0 && (
+                                <span className="aa-bulk-confirm-note">{excludedIds.size} student{excludedIds.size !== 1 ? 's' : ''} excluded from this action</span>
+                            )}
+                        </span>
                     </div>
                     <div className="aa-bulk-confirm-actions">
                         <button className="aa-btn aa-btn-ghost aa-btn-sm" onClick={() => setConfirmBulkUnapprove(false)}>Cancel</button>
@@ -685,6 +799,11 @@ const ApproveAssessments = () => {
                 <div className="aa-results-info">
                     <span className="aa-results-count">
                         Showing <strong>{assessments.length}</strong> assessment{assessments.length !== 1 ? 's' : ''}
+                        {excludedIds.size > 0 && (
+                            <span style={{ color: '#ef4444', fontWeight: 600, marginLeft: 8 }}>
+                                ({excludedIds.size} excluded)
+                            </span>
+                        )}
                     </span>
                     <span className="aa-results-status" style={{ color: getStatusMeta(status).color }}>
                         {getStatusMeta(status).label}
@@ -724,6 +843,16 @@ const ApproveAssessments = () => {
                             <table className="aa-table">
                                 <thead>
                                     <tr>
+                                        <th className="aa-th-exclude">
+                                            <div className="aa-th-exclude-label">
+                                                <ExcludeCheckbox
+                                                    checked={isAllExcluded}
+                                                    indeterminate={isSomeExcluded}
+                                                    onChange={toggleExcludeAll}
+                                                />
+                                                <span className="aa-th-exclude-text">Exclude</span>
+                                            </div>
+                                        </th>
                                         <th>Student</th>
                                         <th>Class</th>
                                         <th>Subject</th>
@@ -739,8 +868,15 @@ const ApproveAssessments = () => {
                                     {assessments.map((a, i) => {
                                         const sm = getStatusMeta(a.status);
                                         const isUnapproving = unapprovingId === a._id;
+                                        const isExcluded = excludedIds.has(a._id);
                                         return (
-                                            <tr key={a._id} style={{ animationDelay: `${i * 0.03}s` }}>
+                                            <tr key={a._id} className={isExcluded ? 'aa-row-excluded' : ''} style={{ animationDelay: `${i * 0.03}s` }}>
+                                                <td className="aa-td-exclude">
+                                                    <ExcludeCheckbox
+                                                        checked={isExcluded}
+                                                        onChange={() => toggleExclude(a._id)}
+                                                    />
+                                                </td>
                                                 <td className="aa-td-student">
                                                     <span className="aa-student-name">{a.studentId?.lastName} {a.studentId?.firstName}</span>
                                                     <span className="aa-student-id">{a.studentId?.admissionNumber}</span>
@@ -793,15 +929,44 @@ const ApproveAssessments = () => {
 
                     {/* ===== MOBILE CARDS ===== */}
                     <div className="aa-cards">
+                        {/* Mobile select all bar */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '4px 4px 0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <ExcludeCheckbox
+                                    checked={isAllExcluded}
+                                    indeterminate={isSomeExcluded}
+                                    onChange={toggleExcludeAll}
+                                />
+                                <span style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                                    Exclude from bulk
+                                </span>
+                            </div>
+                            {excludedIds.size > 0 && (
+                                <button
+                                    onClick={clearExclusions}
+                                    style={{ fontSize: '0.72rem', fontWeight: 600, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}
+                                >
+                                    Clear ({excludedIds.size})
+                                </button>
+                            )}
+                        </div>
+
                         {assessments.map((a, i) => {
                             const sm = getStatusMeta(a.status);
                             const isUnapproving = unapprovingId === a._id;
+                            const isExcluded = excludedIds.has(a._id);
                             return (
-                                <div key={a._id} className="aa-card" style={{ animationDelay: `${i * 0.05}s` }}>
+                                <div key={a._id} className={`aa-card ${isExcluded ? 'aa-card-excluded' : ''}`} style={{ animationDelay: `${i * 0.05}s` }}>
                                     <div className="aa-card-top">
-                                        <div className="aa-card-student">
-                                            <span className="aa-student-name">{a.studentId?.lastName} {a.studentId?.firstName}</span>
-                                            <span className="aa-student-id">{a.studentId?.admissionNumber}</span>
+                                        <div className="aa-card-top-left">
+                                            <ExcludeCheckbox
+                                                checked={isExcluded}
+                                                onChange={() => toggleExclude(a._id)}
+                                            />
+                                            <div className="aa-card-student">
+                                                <span className="aa-student-name">{a.studentId?.lastName} {a.studentId?.firstName}</span>
+                                                <span className="aa-student-id">{a.studentId?.admissionNumber}</span>
+                                            </div>
                                         </div>
                                         <span className="aa-status-badge" style={{ color: sm.color, backgroundColor: sm.bg, flexShrink: 0 }}>
                                             <span className="aa-status-dot" style={{ backgroundColor: sm.dot }} />

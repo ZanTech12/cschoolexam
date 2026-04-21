@@ -980,3 +980,727 @@
     display: none;
   }
 }
+/* ═══════════════════════════════════════════════════════════════
+   CLASS COMPLETION ANALYSIS SECTION
+   ═══════════════════════════════════════════════════════════════ */
+
+.acp-class-analysis {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* ── Section Header ── */
+.acp-class-analysis__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 28px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.acp-class-analysis__header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.acp-class-analysis__header-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.acp-class-analysis__title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+
+.acp-class-analysis__subtitle {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.5;
+  max-width: 560px;
+}
+
+.acp-class-analysis__header-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-top: 4px;
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+/* ── Stats Row ── */
+.acp-class-analysis__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.acp-class-stat {
+  background: #fff;
+  padding: 16px 20px;
+  text-align: center;
+}
+
+.acp-class-stat__value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.2;
+  margin-bottom: 4px;
+}
+
+.acp-class-stat--total .acp-class-stat__value {
+  color: #334155;
+}
+
+.acp-class-stat--complete .acp-class-stat__value {
+  color: #059669;
+}
+
+.acp-class-stat--partial .acp-class-stat__value {
+  color: #d97706;
+}
+
+.acp-class-stat--not-started .acp-class-stat__value {
+  color: #dc2626;
+}
+
+.acp-class-stat__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.acp-class-stat__bar {
+  height: 4px;
+  background: #f1f5f9;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.acp-class-stat__bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.acp-class-stat--complete .acp-class-stat__bar-fill {
+  background: linear-gradient(90deg, #059669, #34d399);
+}
+
+.acp-class-stat--partial .acp-class-stat__bar-fill {
+  background: linear-gradient(90deg, #d97706, #fbbf24);
+}
+
+.acp-class-stat--not-started .acp-class-stat__bar-fill {
+  background: linear-gradient(90deg, #dc2626, #f87171);
+}
+
+/* ── Stacked Progress Bar ── */
+.acp-class-analysis__progress {
+  padding: 16px 28px;
+  background: #fff;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.acp-class-analysis__progress-bar {
+  display: flex;
+  height: 10px;
+  border-radius: 5px;
+  overflow: hidden;
+  background: #f1f5f9;
+}
+
+.acp-class-analysis__progress-segment {
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 0;
+}
+
+.acp-class-analysis__progress-segment--complete {
+  background: linear-gradient(90deg, #059669, #34d399);
+}
+
+.acp-class-analysis__progress-segment--partial {
+  background: linear-gradient(90deg, #d97706, #fbbf24);
+}
+
+.acp-class-analysis__progress-segment--not-started {
+  background: linear-gradient(90deg, #dc2626, #f87171);
+}
+
+.acp-class-analysis__progress-legend {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 10px;
+}
+
+.acp-class-analysis__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.acp-class-analysis__legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+}
+
+.acp-class-analysis__legend-dot--complete {
+  background: #059669;
+}
+
+.acp-class-analysis__legend-dot--partial {
+  background: #d97706;
+}
+
+.acp-class-analysis__legend-dot--not-started {
+  background: #dc2626;
+}
+
+/* ── Tab Navigation ── */
+.acp-class-analysis__tabs {
+  display: flex;
+  gap: 4px;
+  padding: 12px 28px 0;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.acp-class-analysis__tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px 10px 0 0;
+  background: transparent;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border-bottom: 2px solid transparent;
+  position: relative;
+  top: 1px;
+}
+
+.acp-class-analysis__tab:hover {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+.acp-class-analysis__tab--active {
+  background: #fff;
+  color: #0f172a;
+  border-bottom-color: #6366f1;
+  box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.acp-class-analysis__tab--active-partial {
+  border-bottom-color: #d97706;
+}
+
+.acp-class-analysis__tab--active-danger {
+  border-bottom-color: #dc2626;
+}
+
+.acp-class-analysis__tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.acp-class-analysis__tab--active .acp-class-analysis__tab-count {
+  background: #ede9fe;
+  color: #6366f1;
+}
+
+.acp-class-analysis__tab--active-partial .acp-class-analysis__tab-count {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.acp-class-analysis__tab--active-danger .acp-class-analysis__tab-count {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* ── Class List ── */
+.acp-class-analysis__list {
+  padding: 16px 28px 24px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.acp-class-analysis__list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.acp-class-analysis__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.acp-class-analysis__list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.acp-class-analysis__empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: #94a3b8;
+}
+
+.acp-class-analysis__empty-icon {
+  opacity: 0.4;
+  margin-bottom: 12px;
+}
+
+.acp-class-analysis__empty p {
+  margin: 0;
+  font-size: 14px;
+}
+
+/* ── Class Card ── */
+.acp-class-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.acp-class-card:last-child {
+  margin-bottom: 0;
+}
+
+.acp-class-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.acp-class-card--complete {
+  border-color: #a7f3d0;
+  background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 40%);
+}
+
+.acp-class-card--partial {
+  border-color: #fde68a;
+  background: linear-gradient(135deg, #fffbeb 0%, #ffffff 40%);
+}
+
+.acp-class-card--not-started {
+  border-color: #fecaca;
+  background: linear-gradient(135deg, #fef2f2 0%, #ffffff 40%);
+}
+
+/* ── Class Card Header ── */
+.acp-class-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 20px;
+  gap: 16px;
+}
+
+.acp-class-card__header-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.acp-class-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.acp-class-card__icon--complete {
+  background: linear-gradient(135deg, #059669, #34d399);
+  color: #fff;
+}
+
+.acp-class-card__icon--partial {
+  background: linear-gradient(135deg, #d97706, #fbbf24);
+  color: #fff;
+}
+
+.acp-class-card__icon--not-started {
+  background: linear-gradient(135deg, #dc2626, #f87171);
+  color: #fff;
+}
+
+.acp-class-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 4px;
+}
+
+.acp-class-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #64748b;
+  flex-wrap: wrap;
+}
+
+.acp-class-card__meta-sep {
+  color: #cbd5e1;
+}
+
+.acp-class-card__header-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.acp-class-card__subject-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.acp-class-card__subject-count {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.acp-class-card__subject-count--complete {
+  background: #d1fae5;
+  color: #059669;
+}
+
+.acp-class-card__subject-count--partial {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.acp-class-card__subject-count--pending {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.acp-class-card__percent {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.acp-class-card__percent-bar {
+  width: 80px;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.acp-class-card__percent-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.acp-class-card__percent-fill--complete {
+  background: linear-gradient(90deg, #059669, #34d399);
+}
+
+.acp-class-card__percent-fill--partial {
+  background: linear-gradient(90deg, #d97706, #fbbf24);
+}
+
+.acp-class-card__percent-fill--not-started {
+  background: #e2e8f0;
+}
+
+.acp-class-card__percent-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #334155;
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ── Complete Class Subject Tags ── */
+.acp-class-card__complete-subjects {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 20px 16px;
+}
+
+.acp-class-card__complete-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 8px;
+  background: #ecfdf5;
+  color: #059669;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #a7f3d0;
+}
+
+.acp-class-card__complete-tag svg {
+  flex-shrink: 0;
+  color: #059669;
+}
+
+.acp-class-card__complete-tag-teacher {
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* ── Subject Breakdown (for partial/not-started classes) ── */
+.acp-class-card__subjects {
+  border-top: 1px solid #f1f5f9;
+  margin-top: 4px;
+}
+
+.acp-class-card__subjects-header {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 0.7fr 0.9fr 1fr 1fr;
+  gap: 12px;
+  padding: 10px 20px;
+  background: #f8fafc;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.acp-class-card__subject-row {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr 0.7fr 0.9fr 1fr 1fr;
+  gap: 12px;
+  padding: 10px 20px;
+  align-items: center;
+  border-top: 1px solid #f8fafc;
+  transition: background 0.15s ease;
+}
+
+.acp-class-card__subject-row:hover {
+  background: #fafbfc;
+}
+
+.acp-class-card__subject-row--partial {
+  background: #fffdf7;
+}
+
+.acp-class-card__subject-row--pending {
+  background: #fef8f8;
+}
+
+.acp-class-card__subject-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #334155;
+  min-width: 0;
+}
+
+.acp-class-card__subject-cell--teacher {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.acp-class-card__subject-cell--students {
+  font-weight: 600;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.acp-class-card__subject-cell-icon {
+  flex-shrink: 0;
+  color: #94a3b8;
+}
+
+.acp-class-card__subject-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.acp-class-card__subject-code {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.acp-class-card__subject-cell--progress {
+  gap: 8px;
+}
+
+.acp-class-card__subj-progress-track {
+  flex: 1;
+  height: 5px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  min-width: 40px;
+}
+
+.acp-class-card__subj-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+.acp-class-card__subj-progress-fill--complete {
+  background: linear-gradient(90deg, #059669, #34d399);
+}
+
+.acp-class-card__subj-progress-fill--partial {
+  background: linear-gradient(90deg, #d97706, #fbbf24);
+}
+
+.acp-class-card__subj-progress-fill--pending {
+  background: #e2e8f0;
+}
+
+.acp-class-card__subj-progress-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #334155;
+  min-width: 32px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.acp-class-card__subject-cell--time {
+  font-size: 12px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 1024px) {
+  .acp-class-analysis__stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .acp-class-analysis__header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .acp-class-card__header {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .acp-class-card__header-right {
+    align-items: flex-start;
+  }
+
+  .acp-class-card__subjects-header,
+  .acp-class-card__subject-row {
+    grid-template-columns: 1.2fr 1fr 0.6fr 0.8fr 1fr 0.8fr;
+    gap: 8px;
+    font-size: 10px;
+    padding: 8px 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .acp-class-analysis__header {
+    padding: 20px;
+  }
+
+  .acp-class-analysis__tabs {
+    padding: 8px 16px 0;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+  }
+
+  .acp-class-analysis__tab {
+    font-size: 12px;
+    padding: 8px 12px;
+    white-space: nowrap;
+  }
+
+  .acp-class-analysis__list {
+    padding: 12px 16px 20px;
+  }
+
+  .acp-class-card__header {
+    padding: 14px 16px;
+  }
+
+  .acp-class-card__subjects-header {
+    display: none;
+  }
+
+  .acp-class-card__subject-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 16px;
+  }
+
+  .acp-class-card__subject-row > .acp-class-card__subject-cell {
+    flex: 1 1 auto;
+    min-width: 120px;
+  }
+
+  .acp-class-card__subject-row > .acp-class-card__subject-cell--progress {
+    flex: 1 1 100%;
+  }
+}

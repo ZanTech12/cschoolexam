@@ -7,7 +7,6 @@ import './AdminCATeacherProgress.css';
 /* ── Time Formatting Helpers ── */
 const formatTimeAgo = (date) => {
   if (!date) return null;
-  
   const now = new Date();
   const past = new Date(date);
   const diffMs = now - past;
@@ -15,14 +14,12 @@ const formatTimeAgo = (date) => {
   const diffMins = Math.floor(diffSecs / 60);
   const diffHours = Math.floor(diffMins / 60);
   const diffDays = Math.floor(diffHours / 24);
-  
   if (diffSecs < 60) return 'Just now';
   if (diffMins < 60) return `${diffMins}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays < 7) return `${diffDays}d ago`;
-  
-  return past.toLocaleDateString('en-US', { 
-    month: 'short', 
+  return past.toLocaleDateString('en-US', {
+    month: 'short',
     day: 'numeric',
     year: past.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
   });
@@ -42,10 +39,7 @@ const formatFullDateTime = (date) => {
 
 const getTimeColor = (date) => {
   if (!date) return '#94a3b8';
-  const now = new Date();
-  const past = new Date(date);
-  const diffHours = (now - past) / (1000 * 60 * 60);
-  
+  const diffHours = (new Date() - new Date(date)) / (1000 * 60 * 60);
   if (diffHours < 1) return '#059669';
   if (diffHours < 4) return '#0891b2';
   if (diffHours < 24) return '#d97706';
@@ -55,10 +49,7 @@ const getTimeColor = (date) => {
 
 const getTimeBg = (date) => {
   if (!date) return '#f8fafc';
-  const now = new Date();
-  const past = new Date(date);
-  const diffHours = (now - past) / (1000 * 60 * 60);
-  
+  const diffHours = (new Date() - new Date(date)) / (1000 * 60 * 60);
   if (diffHours < 1) return '#ecfdf5';
   if (diffHours < 4) return '#ecfeff';
   if (diffHours < 24) return '#fffbeb';
@@ -67,8 +58,7 @@ const getTimeBg = (date) => {
 };
 
 const getLatestSubjectTime = (subjects) => {
-  if (!subjects || subjects.length === 0) return null;
-  
+  if (!subjects || !Array.isArray(subjects) || subjects.length === 0) return null;
   let latest = null;
   for (const subject of subjects) {
     const time = subject.lastLoadedAt || subject.lastCAEntryAt || subject.updatedAt || subject.createdAt;
@@ -79,7 +69,6 @@ const getLatestSubjectTime = (subjects) => {
   return latest;
 };
 
-/* ── Clamp percentage to max 100 ── */
 const clampPercent = (val) => Math.min(Math.max(val || 0, 0), 100);
 
 /* ── Inline SVG Icon Components ── */
@@ -151,6 +140,45 @@ const Icons = {
       <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
     </svg>
   ),
+  trophy: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" /><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+      <path d="M4 22h16" /><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+      <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+      <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+    </svg>
+  ),
+  target: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><circle cx="12" cy="12" r="6" /><circle cx="12" cy="12" r="2" />
+    </svg>
+  ),
+  barChart: (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" />
+    </svg>
+  ),
+  shield: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  ),
+  info: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><line x1="12" y1="16" x2="12" y2="12" /><line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  ),
+  checkCircle2: (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" /><polyline points="22 4 12 14.01 9 11.01" />
+    </svg>
+  ),
+  alertTriangle: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+      <line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" />
+    </svg>
+  ),
 };
 
 const AdminCATeacherProgress = () => {
@@ -160,8 +188,9 @@ const AdminCATeacherProgress = () => {
   const [selectedTermId, setSelectedTermId] = useState('');
   const [selectedSessionId, setSelectedSessionId] = useState('');
   const [tooltipId, setTooltipId] = useState(null);
+  const [classAnalysisTab, setClassAnalysisTab] = useState('complete');
 
-  // Fetch terms and sessions for filters
+  /* ── API Queries ── */
   const { data: termsData } = useQuery({
     queryKey: ['terms'],
     queryFn: () => termsAPI.getAll(),
@@ -172,7 +201,6 @@ const AdminCATeacherProgress = () => {
     queryFn: () => sessionsAPI.getAll(),
   });
 
-  // Fetch teacher CA progress
   const { data: progressData, isLoading, refetch } = useQuery({
     queryKey: ['admin-ca-teacher-progress', selectedTermId, selectedSessionId],
     queryFn: () => adminCAProgressAPI.getTeacherProgress({
@@ -183,14 +211,17 @@ const AdminCATeacherProgress = () => {
     refetchOnWindowFocus: true,
   });
 
-  const terms = termsData?.data || [];
-  const sessions = sessionsData?.data || [];
+  /* ── Safe data extraction ── */
+  const terms = Array.isArray(termsData?.data) ? termsData.data : [];
+  const sessions = Array.isArray(sessionsData?.data) ? sessionsData.data : [];
   const summary = progressData?.data?.summary || {};
   const termInfo = progressData?.data?.termInfo;
   const sessionInfo = progressData?.data?.sessionInfo;
-  const teachers = progressData?.data?.teachers || [];
+  const teachers = Array.isArray(progressData?.data?.teachers)
+    ? progressData.data.teachers
+    : [];
 
-  // Close tooltip on outside click
+  /* ── Close tooltip on outside click ── */
   React.useEffect(() => {
     if (!tooltipId) return;
     const handleClick = (e) => {
@@ -202,30 +233,27 @@ const AdminCATeacherProgress = () => {
     return () => document.removeEventListener('click', handleClick);
   }, [tooltipId]);
 
-  // Auto-select active term/session if available
+  /* ── Auto-select active term/session if available ── */
   React.useEffect(() => {
     if (terms.length > 0 && !selectedTermId) {
       const activeTerm = terms.find(t => t.status === 'active');
       if (activeTerm) setSelectedTermId(activeTerm._id);
     }
-  }, [terms]);
+  }, [terms, selectedTermId]);
 
   React.useEffect(() => {
     if (sessions.length > 0 && !selectedSessionId && termInfo) {
       const matchedSession = sessions.find(s => s._id === termInfo.id || s.name === termInfo.name);
       if (matchedSession) setSelectedSessionId(matchedSession._id);
     }
-  }, [sessions, termInfo]);
+  }, [sessions, termInfo, selectedSessionId]);
 
-  // Toggle teacher expansion
+  /* ── Toggle helpers ── */
   const toggleTeacher = (teacherId) => {
     setExpandedTeachers(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(teacherId)) {
-        newSet.delete(teacherId);
-      } else {
-        newSet.add(teacherId);
-      }
+      if (newSet.has(teacherId)) newSet.delete(teacherId);
+      else newSet.add(teacherId);
       return newSet;
     });
   };
@@ -238,27 +266,137 @@ const AdminCATeacherProgress = () => {
     setExpandedTeachers(new Set());
   };
 
-  // Toggle time tooltip
   const toggleTooltip = (e, id) => {
     e.stopPropagation();
     setTooltipId(prev => prev === id ? null : id);
   };
 
-  // Filter teachers based on search and status
+  /* ═══════════════════════════════════════════════════════════════
+     ── CLASS-LEVEL COMPLETION ANALYSIS ──
+  ═══════════════════════════════════════════════════════════════ */
+  const classCompletionAnalysis = useMemo(() => {
+    const classMap = {};
+
+    for (const teacher of teachers) {
+      const subjects = Array.isArray(teacher.subjects) ? teacher.subjects : [];
+      if (subjects.length === 0) continue;
+
+      for (const subject of subjects) {
+        if (!subject) continue;
+
+        const classKey = `${subject.className || ''}|||${subject.classSection || ''}`;
+        const classLabel = `${subject.className || 'Unknown'}${subject.classSection ? ` ${subject.classSection}` : ''}`;
+
+        if (!classMap[classKey]) {
+          classMap[classKey] = {
+            classKey,
+            className: subject.className,
+            classSection: subject.classSection,
+            classLabel,
+            subjects: [],
+            totalStudents: subject.totalStudentsInClass || 0,
+          };
+        }
+
+        classMap[classKey].subjects.push({
+          subjectName: subject.subjectName || 'Unknown',
+          subjectCode: subject.subjectCode,
+          hasCA: subject.hasCA,
+          caPercentage: clampPercent(subject.caPercentage),
+          studentsWithCA: subject.studentsWithCA || 0,
+          totalStudents: subject.totalStudentsInClass || 0,
+          teacherName: teacher.teacherName || 'Unknown',
+          teacherEmail: teacher.email,
+          lastLoadedAt: subject.lastLoadedAt,
+          lastCAEntryAt: subject.lastCAEntryAt,
+          updatedAt: subject.updatedAt,
+          createdAt: subject.createdAt,
+        });
+
+        if (subject.totalStudentsInClass > classMap[classKey].totalStudents) {
+          classMap[classKey].totalStudents = subject.totalStudentsInClass;
+        }
+      }
+    }
+
+    const classList = Object.values(classMap).map(cls => {
+      const totalSubjects = cls.subjects.length;
+      const completeSubjects = cls.subjects.filter(s => s.caPercentage === 100).length;
+      const partialSubjects = cls.subjects.filter(s => s.caPercentage > 0 && s.caPercentage < 100).length;
+      const pendingSubjects = cls.subjects.filter(s => s.caPercentage === 0).length;
+      const completionPercent = totalSubjects > 0 ? Math.round((completeSubjects / totalSubjects) * 100) : 0;
+
+      let latestTime = null;
+      let latestSubjectName = null;
+      for (const subj of cls.subjects) {
+        const t = subj.lastLoadedAt || subj.lastCAEntryAt || subj.updatedAt || subj.createdAt;
+        if (t && (!latestTime || new Date(t) > new Date(latestTime))) {
+          latestTime = t;
+          latestSubjectName = subj.subjectName;
+        }
+      }
+
+      let status;
+      if (completionPercent === 100) status = 'complete';
+      else if (completionPercent > 0) status = 'partial';
+      else status = 'not-started';
+
+      return {
+        ...cls,
+        totalSubjects,
+        completeSubjects,
+        partialSubjects,
+        pendingSubjects,
+        completionPercent,
+        status,
+        latestTime,
+        latestSubjectName,
+      };
+    });
+
+    const statusOrder = { 'complete': 0, 'partial': 1, 'not-started': 2 };
+    classList.sort((a, b) => {
+      if (statusOrder[a.status] !== statusOrder[b.status]) {
+        return statusOrder[a.status] - statusOrder[b.status];
+      }
+      return a.classLabel.localeCompare(b.classLabel, undefined, { numeric: true });
+    });
+
+    const completeClasses = classList.filter(c => c.status === 'complete');
+    const partialClasses = classList.filter(c => c.status === 'partial');
+    const notStartedClasses = classList.filter(c => c.status === 'not-started');
+
+    return {
+      all: classList,
+      complete: completeClasses,
+      partial: partialClasses,
+      notStarted: notStartedClasses,
+      totalClasses: classList.length,
+      completeCount: completeClasses.length,
+      partialCount: partialClasses.length,
+      notStartedCount: notStartedClasses.length,
+      overallClassCompletion: classList.length > 0
+        ? Math.round((completeClasses.length / classList.length) * 100)
+        : 0,
+    };
+  }, [teachers]);
+
+  /* ── Filtered teachers (with safe subjects access) ── */
   const filteredTeachers = useMemo(() => {
     let result = teachers;
 
     if (searchTerm) {
       const lowerSearch = searchTerm.toLowerCase();
-      result = result.filter(teacher =>
-        teacher.teacherName.toLowerCase().includes(lowerSearch) ||
-        teacher.email?.toLowerCase().includes(lowerSearch) ||
-        teacher.username?.toLowerCase().includes(lowerSearch) ||
-        teacher.subjects.some(s =>
-          s.subjectName.toLowerCase().includes(lowerSearch) ||
-          s.className.toLowerCase().includes(lowerSearch)
-        )
-      );
+      result = result.filter(teacher => {
+        if ((teacher.teacherName || '').toLowerCase().includes(lowerSearch)) return true;
+        if ((teacher.email || '').toLowerCase().includes(lowerSearch)) return true;
+        if ((teacher.username || '').toLowerCase().includes(lowerSearch)) return true;
+        const subjects = Array.isArray(teacher.subjects) ? teacher.subjects : [];
+        return subjects.some(s =>
+          (s.subjectName || '').toLowerCase().includes(lowerSearch) ||
+          (s.className || '').toLowerCase().includes(lowerSearch)
+        );
+      });
     }
 
     if (filterStatus === 'complete') {
@@ -266,34 +404,39 @@ const AdminCATeacherProgress = () => {
     } else if (filterStatus === 'incomplete') {
       result = result.filter(t => t.completionPercentage > 0 && t.completionPercentage < 100);
     } else if (filterStatus === 'not-started') {
-      result = result.filter(t => t.filledAssignments === 0);
+      result = result.filter(t => (t.filledAssignments || 0) === 0);
     }
 
     return result;
   }, [teachers, searchTerm, filterStatus]);
 
-  // Get status badge info
+  /* ── Status helpers ── */
   const getStatusInfo = (teacher) => {
     if (teacher.completionPercentage === 100) {
       return { label: 'Complete', className: 'acp-status--complete', icon: Icons.checkCircle };
-    } else if (teacher.filledAssignments === 0) {
+    } else if ((teacher.filledAssignments || 0) === 0) {
       return { label: 'Not Started', className: 'acp-status--not-started', icon: Icons.xCircle };
     } else {
       return { label: 'In Progress', className: 'acp-status--in-progress', icon: Icons.alertCircle };
     }
   };
 
-  // Get subject status info
   const getSubjectStatusInfo = (subject) => {
     if (subject.hasCA && subject.caPercentage >= 100) {
       return { label: 'Complete', className: 'acp-subject--complete', icon: Icons.checkCircle };
     } else if (subject.hasCA) {
       return { label: 'Partial', className: 'acp-subject--partial', icon: Icons.alertCircle };
     } else {
-      return { label: 'Pending', className: 'acp-subject--pending', icon: Icons.xpCircle };
+      return { label: 'Pending', className: 'acp-subject--pending', icon: Icons.xCircle };
     }
   };
-  
+
+  /* ── Class analysis tab display ── */
+  const displayedClassAnalysis = classAnalysisTab === 'all'
+    ? classCompletionAnalysis.all
+    : (classCompletionAnalysis[classAnalysisTab] || []);
+
+  /* ── Loading state ── */
   if (isLoading) return <Loading message="Loading CA progress..." />;
 
   return (
@@ -427,11 +570,7 @@ const AdminCATeacherProgress = () => {
         </div>
 
         <div className={`acp-summary-card ${clampPercent(summary.completionPercentage) === 100 ? 'acp-summary-card--success' : 'acp-summary-card--warning'}`}>
-          <div className="acp-summary-card__icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
-            </svg>
-          </div>
+          <div className="acp-summary-card__icon">{Icons.barChart}</div>
           <div className="acp-summary-card__content">
             <div className="acp-summary-card__value">{clampPercent(summary.completionPercentage)}%</div>
             <div className="acp-summary-card__label">Overall Completion</div>
@@ -440,7 +579,7 @@ const AdminCATeacherProgress = () => {
       </div>
 
       {/* ── Progress Bar ── */}
-      {summary.totalAssignments > 0 && (
+      {(summary.totalAssignments || 0) > 0 && (
         <div className="acp-progress-section">
           <div className="acp-progress-header">
             <span className="acp-progress-label">Overall CA Entry Progress</span>
@@ -451,6 +590,267 @@ const AdminCATeacherProgress = () => {
               className={`acp-progress-fill ${clampPercent(summary.completionPercentage) === 100 ? 'acp-progress-fill--complete' : ''}`}
               style={{ width: `${clampPercent(summary.completionPercentage)}%` }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════
+          ── CLASS-LEVEL COMPLETION ANALYSIS SECTION ──
+      ═══════════════════════════════════════════════════════════ */}
+      {classCompletionAnalysis.totalClasses > 0 && (
+        <div className="acp-class-analysis">
+          <div className="acp-class-analysis__header">
+            <div className="acp-class-analysis__header-left">
+              <div className="acp-class-analysis__header-icon">{Icons.shield}</div>
+              <div>
+                <h2 className="acp-class-analysis__title">Class Completion Analysis</h2>
+                <p className="acp-class-analysis__subtitle">
+                  Breakdown of CA entry status at the class level — showing which classes have all subjects completed
+                </p>
+              </div>
+            </div>
+            <div className="acp-class-analysis__header-badge">
+              {classCompletionAnalysis.overallClassCompletion}% Classes Ready
+            </div>
+          </div>
+
+          <div className="acp-class-analysis__stats">
+            <div className="acp-class-stat acp-class-stat--total">
+              <div className="acp-class-stat__value">{classCompletionAnalysis.totalClasses}</div>
+              <div className="acp-class-stat__label">Total Classes</div>
+            </div>
+            <div className="acp-class-stat acp-class-stat--complete">
+              <div className="acp-class-stat__value">{classCompletionAnalysis.completeCount}</div>
+              <div className="acp-class-stat__label">Fully Complete</div>
+              <div className="acp-class-stat__bar">
+                <div
+                  className="acp-class-stat__bar-fill"
+                  style={{ width: `${classCompletionAnalysis.totalClasses > 0 ? (classCompletionAnalysis.completeCount / classCompletionAnalysis.totalClasses) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+            <div className="acp-class-stat acp-class-stat--partial">
+              <div className="acp-class-stat__value">{classCompletionAnalysis.partialCount}</div>
+              <div className="acp-class-stat__label">In Progress</div>
+              <div className="acp-class-stat__bar">
+                <div
+                  className="acp-class-stat__bar-fill"
+                  style={{ width: `${classCompletionAnalysis.totalClasses > 0 ? (classCompletionAnalysis.partialCount / classCompletionAnalysis.totalClasses) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+            <div className="acp-class-stat acp-class-stat--not-started">
+              <div className="acp-class-stat__value">{classCompletionAnalysis.notStartedCount}</div>
+              <div className="acp-class-stat__label">Not Started</div>
+              <div className="acp-class-stat__bar">
+                <div
+                  className="acp-class-stat__bar-fill"
+                  style={{ width: `${classCompletionAnalysis.totalClasses > 0 ? (classCompletionAnalysis.notStartedCount / classCompletionAnalysis.totalClasses) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="acp-class-analysis__progress">
+            <div className="acp-class-analysis__progress-bar">
+              <div
+                className="acp-class-analysis__progress-segment acp-class-analysis__progress-segment--complete"
+                style={{ width: `${classCompletionAnalysis.totalClasses > 0 ? (classCompletionAnalysis.completeCount / classCompletionAnalysis.totalClasses) * 100 : 0}%` }}
+                title={`Complete: ${classCompletionAnalysis.completeCount} classes`}
+              />
+              <div
+                className="acp-class-analysis__progress-segment acp-class-analysis__progress-segment--partial"
+                style={{ width: `${classCompletionAnalysis.totalClasses > 0 ? (classCompletionAnalysis.partialCount / classCompletionAnalysis.totalClasses) * 100 : 0}%` }}
+                title={`In Progress: ${classCompletionAnalysis.partialCount} classes`}
+              />
+              <div
+                className="acp-class-analysis__progress-segment acp-class-analysis__progress-segment--not-started"
+                style={{ width: `${classCompletionAnalysis.totalClasses > 0 ? (classCompletionAnalysis.notStartedCount / classCompletionAnalysis.totalClasses) * 100 : 0}%` }}
+                title={`Not Started: ${classCompletionAnalysis.notStartedCount} classes`}
+              />
+            </div>
+            <div className="acp-class-analysis__progress-legend">
+              <span className="acp-class-analysis__legend-item">
+                <span className="acp-class-analysis__legend-dot acp-class-analysis__legend-dot--complete" /> Complete
+              </span>
+              <span className="acp-class-analysis__legend-item">
+                <span className="acp-class-analysis__legend-dot acp-class-analysis__legend-dot--partial" /> In Progress
+              </span>
+              <span className="acp-class-analysis__legend-item">
+                <span className="acp-class-analysis__legend-dot acp-class-analysis__legend-dot--not-started" /> Not Started
+              </span>
+            </div>
+          </div>
+
+          <div className="acp-class-analysis__tabs">
+            <button
+              className={`acp-class-analysis__tab ${classAnalysisTab === 'complete' ? 'acp-class-analysis__tab--active' : ''}`}
+              onClick={() => setClassAnalysisTab('complete')}
+            >
+              {Icons.checkCircle2} Complete
+              <span className="acp-class-analysis__tab-count">{classCompletionAnalysis.completeCount}</span>
+            </button>
+            <button
+              className={`acp-class-analysis__tab ${classAnalysisTab === 'partial' ? 'acp-class-analysis__tab--active acp-class-analysis__tab--active-partial' : ''}`}
+              onClick={() => setClassAnalysisTab('partial')}
+            >
+              {Icons.alertTriangle} In Progress
+              <span className="acp-class-analysis__tab-count">{classCompletionAnalysis.partialCount}</span>
+            </button>
+            <button
+              className={`acp-class-analysis__tab ${classAnalysisTab === 'not-started' ? 'acp-class-analysis__tab--active acp-class-analysis__tab--active-danger' : ''}`}
+              onClick={() => setClassAnalysisTab('not-started')}
+            >
+              {Icons.xCircle} Not Started
+              <span className="acp-class-analysis__tab-count">{classCompletionAnalysis.notStartedCount}</span>
+            </button>
+            <button
+              className={`acp-class-analysis__tab ${classAnalysisTab === 'all' ? 'acp-class-analysis__tab--active' : ''}`}
+              onClick={() => setClassAnalysisTab('all')}
+            >
+              All
+              <span className="acp-class-analysis__tab-count">{classCompletionAnalysis.totalClasses}</span>
+            </button>
+          </div>
+
+          <div className="acp-class-analysis__list">
+            {displayedClassAnalysis.length === 0 ? (
+              <div className="acp-class-analysis__empty">
+                <div className="acp-class-analysis__empty-icon">{Icons.shield}</div>
+                <p>No classes in this category</p>
+              </div>
+            ) : (
+              displayedClassAnalysis.map((cls) => (
+                <div key={cls.classKey} className={`acp-class-card acp-class-card--${cls.status}`}>
+                  <div className="acp-class-card__header">
+                    <div className="acp-class-card__header-left">
+                      <div className={`acp-class-card__icon acp-class-card__icon--${cls.status}`}>
+                        {cls.status === 'complete' ? Icons.trophy : cls.status === 'partial' ? Icons.target : Icons.school}
+                      </div>
+                      <div>
+                        <div className="acp-class-card__name">{cls.classLabel}</div>
+                        <div className="acp-class-card__meta">
+                          <span>{cls.totalSubjects} subject{cls.totalSubjects !== 1 ? 's' : ''}</span>
+                          <span className="acp-class-card__meta-sep">•</span>
+                          <span>{cls.totalStudents} students</span>
+                          {cls.latestTime && (
+                            <>
+                              <span className="acp-class-card__meta-sep">•</span>
+                              <span style={{ color: getTimeColor(cls.latestTime) }}>
+                                Last: {formatTimeAgo(cls.latestTime)} ({cls.latestSubjectName})
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="acp-class-card__header-right">
+                      <div className="acp-class-card__subject-summary">
+                        <span className="acp-class-card__subject-count acp-class-card__subject-count--complete">
+                          {cls.completeSubjects} done
+                        </span>
+                        {cls.partialSubjects > 0 && (
+                          <span className="acp-class-card__subject-count acp-class-card__subject-count--partial">
+                            {cls.partialSubjects} partial
+                          </span>
+                        )}
+                        {cls.pendingSubjects > 0 && (
+                          <span className="acp-class-card__subject-count acp-class-card__subject-count--pending">
+                            {cls.pendingSubjects} pending
+                          </span>
+                        )}
+                      </div>
+                      <div className="acp-class-card__percent">
+                        <div className="acp-class-card__percent-bar">
+                          <div
+                            className={`acp-class-card__percent-fill acp-class-card__percent-fill--${cls.status}`}
+                            style={{ width: `${cls.completionPercent}%` }}
+                          />
+                        </div>
+                        <span className="acp-class-card__percent-label">{cls.completionPercent}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {cls.status !== 'complete' && (
+                    <div className="acp-class-card__subjects">
+                      <div className="acp-class-card__subjects-header">
+                        <span>Subject</span>
+                        <span>Teacher</span>
+                        <span>Students</span>
+                        <span>Status</span>
+                        <span>Progress</span>
+                        <span>Last Activity</span>
+                      </div>
+                      {cls.subjects.map((subj, idx) => {
+                        const subjTime = subj.lastLoadedAt || subj.lastCAEntryAt || subj.updatedAt || subj.createdAt;
+                        const subjStatus = subj.caPercentage === 100 ? 'complete' : subj.caPercentage > 0 ? 'partial' : 'pending';
+
+                        return (
+                          <div key={idx} className={`acp-class-card__subject-row acp-class-card__subject-row--${subjStatus}`}>
+                            <div className="acp-class-card__subject-cell">
+                              <span className="acp-class-card__subject-cell-icon">{Icons.book}</span>
+                              <span className="acp-class-card__subject-name">{subj.subjectName}</span>
+                              {subj.subjectCode && (
+                                <span className="acp-class-card__subject-code">{subj.subjectCode}</span>
+                              )}
+                            </div>
+                            <div className="acp-class-card__subject-cell acp-class-card__subject-cell--teacher">
+                              {subj.teacherName}
+                            </div>
+                            <div className="acp-class-card__subject-cell acp-class-card__subject-cell--students">
+                              {subj.studentsWithCA}/{subj.totalStudents}
+                            </div>
+                            <div className="acp-class-card__subject-cell">
+                              <span className={`acp-subject-status acp-subject--${subjStatus}`}>
+                                {subjStatus === 'complete' ? Icons.checkCircle : subjStatus === 'partial' ? Icons.alertCircle : Icons.xCircle}
+                                {subjStatus === 'complete' ? 'Done' : subjStatus === 'partial' ? 'Partial' : 'Pending'}
+                              </span>
+                            </div>
+                            <div className="acp-class-card__subject-cell acp-class-card__subject-cell--progress">
+                              <div className="acp-class-card__subj-progress-track">
+                                <div
+                                  className={`acp-class-card__subj-progress-fill acp-class-card__subj-progress-fill--${subjStatus}`}
+                                  style={{ width: `${subj.caPercentage}%` }}
+                                />
+                              </div>
+                              <span className="acp-class-card__subj-progress-label">{subj.caPercentage}%</span>
+                            </div>
+                            <div className="acp-class-card__subject-cell acp-class-card__subject-cell--time">
+                              {formatTimeAgo(subjTime) ? (
+                                <span
+                                  className="acp-time-badge"
+                                  style={{ color: getTimeColor(subjTime), backgroundColor: getTimeBg(subjTime) }}
+                                  title={formatFullDateTime(subjTime)}
+                                >
+                                  {Icons.clock}{formatTimeAgo(subjTime)}
+                                </span>
+                              ) : (
+                                <span className="acp-time-badge acp-time-badge--empty">—</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  {cls.status === 'complete' && cls.subjects.length > 0 && (
+                    <div className="acp-class-card__complete-subjects">
+                      {cls.subjects.map((subj, idx) => (
+                        <span key={idx} className="acp-class-card__complete-tag">
+                          {Icons.checkCircle}
+                          {subj.subjectName}
+                          <span className="acp-class-card__complete-tag-teacher">
+                            ({subj.teacherName})
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </div>
       )}
@@ -482,13 +882,13 @@ const AdminCATeacherProgress = () => {
           filteredTeachers.map((teacher) => {
             const isExpanded = expandedTeachers.has(teacher.teacherId);
             const statusInfo = getStatusInfo(teacher);
-            const latestTime = getLatestSubjectTime(teacher.subjects);
+            const teacherSubjects = Array.isArray(teacher.subjects) ? teacher.subjects : [];
+            const latestTime = getLatestSubjectTime(teacherSubjects);
             const latestTimeAgo = formatTimeAgo(latestTime);
             const latestTimeColor = getTimeColor(latestTime);
 
             return (
               <div key={teacher.teacherId} className="acp-teacher-card">
-                {/* Teacher Header Row */}
                 <div
                   className="acp-teacher-header"
                   onClick={() => toggleTeacher(teacher.teacherId)}
@@ -522,12 +922,12 @@ const AdminCATeacherProgress = () => {
                   <div className="acp-teacher-header__right">
                     <div className="acp-teacher-stats">
                       <span className="acp-teacher-stat">
-                        <span className="acp-teacher-stat-value">{teacher.filledAssignments}</span>
+                        <span className="acp-teacher-stat-value">{teacher.filledAssignments || 0}</span>
                         <span className="acp-teacher-stat-label">filled</span>
                       </span>
                       <span className="acp-teacher-stat-divider">/</span>
                       <span className="acp-teacher-stat">
-                        <span className="acp-teacher-stat-value">{teacher.totalAssignments}</span>
+                        <span className="acp-teacher-stat-value">{teacher.totalAssignments || 0}</span>
                         <span className="acp-teacher-stat-label">total</span>
                       </span>
                     </div>
@@ -553,7 +953,6 @@ const AdminCATeacherProgress = () => {
                   </div>
                 </div>
 
-                {/* Expanded Subject Details */}
                 {isExpanded && (
                   <div className="acp-teacher-subjects">
                     <div className="acp-subjects-header">
@@ -564,74 +963,80 @@ const AdminCATeacherProgress = () => {
                       <span>Progress</span>
                       <span className="acp-subjects-header-time">Time Loaded</span>
                     </div>
-                    {teacher.subjects.map((subject) => {
-                      const subjectStatus = getSubjectStatusInfo(subject);
-                      const subjectTime = subject.lastLoadedAt || subject.lastCAEntryAt || subject.updatedAt || subject.createdAt;
-                      const timeAgo = formatTimeAgo(subjectTime);
-                      const timeColor = getTimeColor(subjectTime);
-                      const timeBg = getTimeBg(subjectTime);
-                      const fullTime = formatFullDateTime(subjectTime);
-                      const tooltipKey = subject.assignmentId;
-                      const isTooltipOpen = tooltipId === tooltipKey;
+                    {teacherSubjects.length === 0 ? (
+                      <div className="acp-empty" style={{ padding: '20px' }}>
+                        <div className="acp-empty__text">No subjects assigned</div>
+                      </div>
+                    ) : (
+                      teacherSubjects.map((subject) => {
+                        const subjectStatus = getSubjectStatusInfo(subject);
+                        const subjectTime = subject.lastLoadedAt || subject.lastCAEntryAt || subject.updatedAt || subject.createdAt;
+                        const timeAgo = formatTimeAgo(subjectTime);
+                        const timeColor = getTimeColor(subjectTime);
+                        const timeBg = getTimeBg(subjectTime);
+                        const fullTime = formatFullDateTime(subjectTime);
+                        const tooltipKey = subject.assignmentId;
+                        const isTooltipOpen = tooltipId === tooltipKey;
 
-                      return (
-                        <div key={subject.assignmentId} className="acp-subject-row">
-                          <div className="acp-subject-cell acp-subject-cell--class">
-                            <span className="acp-subject-cell-icon">{Icons.school}</span>
-                            <span>{subject.className} {subject.classSection}</span>
-                          </div>
-                          <div className="acp-subject-cell acp-subject-cell--subject">
-                            <span className="acp-subject-cell-icon">{Icons.book}</span>
-                            <span>{subject.subjectName}</span>
-                            <span className="acp-subject-code">{subject.subjectCode}</span>
-                          </div>
-                          <div className="acp-subject-cell acp-subject-cell--students">
-                            {subject.studentsWithCA}/{subject.totalStudentsInClass}
-                          </div>
-                          <div className="acp-subject-cell acp-subject-cell--status">
-                            <span className={`acp-subject-status ${subjectStatus.className}`}>
-                              {subjectStatus.icon}
-                              {subjectStatus.label}
-                            </span>
-                          </div>
-                          <div className="acp-subject-cell acp-subject-cell--progress">
-                            <div className="acp-subject-progress-track">
-                              <div
-                                className={`acp-subject-progress-fill ${clampPercent(subject.caPercentage) === 100 ? 'acp-subject-progress-fill--complete' : clampPercent(subject.caPercentage) > 0 ? 'acp-subject-progress-fill--partial' : ''}`}
-                                style={{ width: `${clampPercent(subject.caPercentage)}%` }}
-                              />
+                        return (
+                          <div key={tooltipKey || Math.random()} className="acp-subject-row">
+                            <div className="acp-subject-cell acp-subject-cell--class">
+                              <span className="acp-subject-cell-icon">{Icons.school}</span>
+                              <span>{subject.className} {subject.classSection}</span>
                             </div>
-                            <span className="acp-subject-progress-label">{clampPercent(subject.caPercentage)}%</span>
-                          </div>
-                          <div className="acp-subject-cell acp-subject-cell--time acp-time-cell" onClick={(e) => toggleTooltip(e, tooltipKey)}>
-                            {timeAgo ? (
-                              <>
-                                <span
-                                  className="acp-time-badge"
-                                  style={{ color: timeColor, backgroundColor: timeBg }}
-                                >
-                                  {Icons.clock}
-                                  {timeAgo}
-                                </span>
-                                {isTooltipOpen && (
-                                  <div className="acp-time-tooltip">
-                                    <div className="acp-time-tooltip-arrow"></div>
-                                    <div className="acp-time-tooltip-content">
-                                      <div className="acp-time-tooltip-label">
-                                        {subject.lastLoadedAt ? 'Last Loaded' : subject.lastCAEntryAt ? 'Last CA Entry' : subject.updatedAt ? 'Last Updated' : 'Created'}
+                            <div className="acp-subject-cell acp-subject-cell--subject">
+                              <span className="acp-subject-cell-icon">{Icons.book}</span>
+                              <span>{subject.subjectName}</span>
+                              <span className="acp-subject-code">{subject.subjectCode}</span>
+                            </div>
+                            <div className="acp-subject-cell acp-subject-cell--students">
+                              {subject.studentsWithCA || 0}/{subject.totalStudentsInClass || 0}
+                            </div>
+                            <div className="acp-subject-cell acp-subject-cell--status">
+                              <span className={`acp-subject-status ${subjectStatus.className}`}>
+                                {subjectStatus.icon}
+                                {subjectStatus.label}
+                              </span>
+                            </div>
+                            <div className="acp-subject-cell acp-subject-cell--progress">
+                              <div className="acp-subject-progress-track">
+                                <div
+                                  className={`acp-subject-progress-fill ${clampPercent(subject.caPercentage) === 100 ? 'acp-subject-progress-fill--complete' : clampPercent(subject.caPercentage) > 0 ? 'acp-subject-progress-fill--partial' : ''}`}
+                                  style={{ width: `${clampPercent(subject.caPercentage)}%` }}
+                                />
+                              </div>
+                              <span className="acp-subject-progress-label">{clampPercent(subject.caPercentage)}%</span>
+                            </div>
+                            <div className="acp-subject-cell acp-subject-cell--time acp-time-cell" onClick={(e) => toggleTooltip(e, tooltipKey)}>
+                              {timeAgo ? (
+                                <>
+                                  <span
+                                    className="acp-time-badge"
+                                    style={{ color: timeColor, backgroundColor: timeBg }}
+                                  >
+                                    {Icons.clock}
+                                    {timeAgo}
+                                  </span>
+                                  {isTooltipOpen && (
+                                    <div className="acp-time-tooltip">
+                                      <div className="acp-time-tooltip-arrow"></div>
+                                      <div className="acp-time-tooltip-content">
+                                        <div className="acp-time-tooltip-label">
+                                          {subject.lastLoadedAt ? 'Last Loaded' : subject.lastCAEntryAt ? 'Last CA Entry' : subject.updatedAt ? 'Last Updated' : 'Created'}
+                                        </div>
+                                        <div className="acp-time-tooltip-value">{fullTime}</div>
                                       </div>
-                                      <div className="acp-time-tooltip-value">{fullTime}</div>
                                     </div>
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <span className="acp-time-badge acp-time-badge--empty">—</span>
-                            )}
+                                  )}
+                                </>
+                              ) : (
+                                <span className="acp-time-badge acp-time-badge--empty">—</span>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })
+                    )}
                   </div>
                 )}
               </div>

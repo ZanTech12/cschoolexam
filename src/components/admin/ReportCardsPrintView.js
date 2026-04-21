@@ -188,7 +188,8 @@ const ReportCardsPrintView = () => {
     .a4-document .header-ornament.bottom { margin-top: 1mm !important; }
     .a4-document .header-logo-wrap { margin-bottom: 0.5mm !important; }
     .a4-document .header-logo { width: 28px !important; height: 28px !important; }
-    .a4-document .school-name { font-size: 11pt !important; margin: 0 !important; padding: 0 !important; letter-spacing: 0.5px !important; line-height: 1.2 !important; }
+    .a4-document .school-name { font-size: 14pt !important; margin: 0 !important; padding: 0 !important; letter-spacing: 0.8px !important; line-height: 1.3 !important; font-weight: 800 !important; }
+    .a4-document .school-address { font-size: 7pt !important; margin: 0.5mm 0 0 0 !important; padding: 0 !important; color: #333 !important; letter-spacing: 0.3px !important; line-height: 1.2 !important; }
     .a4-document .doc-title { font-size: 7.5pt !important; margin: 0 !important; padding: 0 !important; line-height: 1.2 !important; }
     .a4-document .header-meta-box { display: flex !important; justify-content: center !important; align-items: center !important; gap: 3mm !important; margin-top: 0.5mm !important; }
     .a4-document .meta-text { font-size: 6.5pt !important; }
@@ -304,6 +305,8 @@ const ReportCardsPrintView = () => {
       }
       .a4-document::before { inset: 0 !important; }
       .a4-document::after { inset: 7px !important; border-width: 1.5px !important; }
+      .a4-document .school-name { font-size: 14pt !important; font-weight: 800 !important; letter-spacing: 0.8px !important; }
+      .a4-document .school-address { font-size: 7pt !important; color: #333 !important; letter-spacing: 0.3px !important; }
     `;
 
     const printWindow = window.open('', '_blank', 'width=900,height=700');
@@ -397,7 +400,8 @@ const ReportCardsPrintView = () => {
                     <div className="header-logo-wrap">
                       <img src={schoolLogo} alt="DATFORTE International School Logo" className="header-logo" />
                     </div>
-                    <h1 className="school-name">DATFORTE INTERNATIONAL SCHOOLS LIMITED</h1>
+                    <h1 className="school-name">DATFORTE INTERNATIONAL SCHOOLS LIMITED(DISL)</h1>
+                    <p className="school-address">14, Ahmed Tijani St, Ahmadiya Bus-Stop, Lagos State, Nigeria.</p>
                     <h2 className="doc-title">STUDENT ACADEMIC REPORT CARD</h2>
                     <div className="header-meta-box">
                       <span className="meta-text">Term <strong>{term.name}</strong></span>
