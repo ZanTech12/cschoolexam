@@ -103,6 +103,7 @@ const AssignTeachers = () => {
   const [filterSubject, setFilterSubject] = useState('');
   const [searchTeacher, setSearchTeacher] = useState('');
   const [notification, setNotification] = useState({ show: false, type: '', message: '' });
+  const [openActionMenu, setOpenActionMenu] = useState(null);
 
   const { data: teachersData, isLoading: teachersLoading } = useQuery({ queryKey: ['teachers-list'], queryFn: dashboardAPI.getTeachers });
   const { data: classesData, isLoading: classesLoading } = useQuery({ queryKey: ['classes-list'], queryFn: dashboardAPI.getClasses });
@@ -156,6 +157,15 @@ const AssignTeachers = () => {
     return assignments.filter((a) => { const aT = a.teacher_id?._id || a.teacherId?._id; return aT === formData.teacher_id && a.id !== editingId; });
   }, [formData.teacher_id, assignments, editingId]);
 
+  // Click-outside handler for action menus (matching ManageClasses pattern)
+  useEffect(() => {
+    const handleClickOutside = () => setOpenActionMenu(null);
+    if (openActionMenu) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [openActionMenu]);
+
   const resetForm = () => { setFormData({ teacher_id: '', class_id: '', subject_id: '' }); setEditingId(null); setShowForm(false); };
 
   const handleEdit = (assignment) => {
@@ -178,6 +188,11 @@ const AssignTeachers = () => {
   const showNotif = (type, message) => {
     setNotification({ show: true, type, message });
     setTimeout(() => setNotification({ show: false, type: '', message: '' }), 4000);
+  };
+
+  const toggleActionMenu = (id, e) => {
+    e.stopPropagation();
+    setOpenActionMenu(openActionMenu === id ? null : id);
   };
 
   const getAvatarColor = (name) => {
@@ -219,10 +234,13 @@ const AssignTeachers = () => {
         .at-btn-danger:hover { background: var(--danger-hover); }
         .at-btn-sm { padding: 6px 12px; font-size: 0.78rem; }
         .at-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .at-btn-icon { padding: 8px; min-width: 36px; justify-content: center; }
+        .at-btn-icon svg { width: 16px; height: 16px; }
 
         /* ===== STATS BAR ===== */
         .at-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; padding: 16px 24px; background: var(--surface); border-bottom: 1px solid var(--border); }
-        .at-stat { text-align: center; padding: 10px 8px; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border-light, #f1f5f9); }
+        .at-stat { text-align: center; padding: 10px 8px; background: var(--bg); border-radius: var(--radius-sm); border: 1px solid var(--border); transition: all var(--transition); }
+        .at-stat:hover { border-color: #cbd5e1; box-shadow: var(--shadow-sm); }
         .at-stat-value { display: block; font-size: 1.35rem; font-weight: 700; color: var(--text); line-height: 1.2; }
         .at-stat-label { display: block; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-top: 2px; }
 
@@ -230,28 +248,31 @@ const AssignTeachers = () => {
         .at-filter-bar { padding: 12px 24px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .at-search-wrap { flex: 1; min-width: 200px; position: relative; }
         .at-search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 16px; height: 16px; pointer-events: none; }
-        .at-search-input { width: 100%; padding: 10px 36px 10px 38px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); font-size: 0.88rem; color: var(--text); outline: none; transition: border-color var(--transition), box-shadow var(--transition); box-sizing: border-box; }
+        .at-search-input { width: 100%; padding: 10px 36px 10px 38px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); font-size: 0.88rem; color: var(--text); outline: none; transition: border-color var(--transition), box-shadow var(--transition); box-sizing: border-box; -webkit-appearance: none; }
         .at-search-input::placeholder { color: var(--text-muted); }
         .at-search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.12); }
-        .at-search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #e2e8f0; border: none; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; }
-        .at-filter-select { padding: 10px 32px 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); font-size: 0.84rem; color: var(--text); outline: none; transition: border-color var(--transition); box-sizing: border-box; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; cursor: pointer; min-width: 140px; }
+        .at-search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #e2e8f0; border: none; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; transition: background var(--transition); }
+        .at-search-clear:hover { background: #cbd5e1; }
+        .at-filter-select { padding: 10px 32px 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); font-size: 0.84rem; color: var(--text); outline: none; transition: border-color var(--transition), box-shadow var(--transition); box-sizing: border-box; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; cursor: pointer; min-width: 140px; }
         .at-filter-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(79,70,229,0.12); }
         .at-filter-select option { color: var(--text); background: var(--surface); }
         .at-result-count { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; white-space: nowrap; margin-left: auto; }
+        .at-result-count svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
 
         /* ===== NOTIFICATION TOAST ===== */
         .at-toast { position: fixed; top: 20px; right: 20px; z-index: 200; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.84rem; font-weight: 500; display: flex; align-items: center; gap: 10px; box-shadow: var(--shadow-lg); animation: atToastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1); max-width: 400px; }
         .at-toast-success { background: var(--success-light); color: #065f46; border: 1px solid #a7f3d0; }
         .at-toast-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-        .at-toast-close { margin-left: auto; background: none; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; opacity: 0.6; color: inherit; padding: 0 2px; }
+        .at-toast-close { margin-left: auto; background: none; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; opacity: 0.6; color: inherit; padding: 0 2px; transition: opacity var(--transition); }
         .at-toast-close:hover { opacity: 1; }
         @keyframes atToastIn { from { opacity: 0; transform: translateY(-12px) scale(0.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
         /* ===== FORM PANEL ===== */
         .at-form-panel { background: var(--surface); border-bottom: 1px solid var(--border); animation: atFormIn 0.25s ease; overflow: hidden; }
         @keyframes atFormIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-        .at-form-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border-light, #f1f5f9); }
-        .at-form-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 0; }
+        .at-form-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+        .at-form-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 0; display: flex; align-items: center; gap: 8px; }
+        .at-form-title-icon { font-size: 1rem; }
         .at-form-body { padding: 20px 24px; }
         .at-form-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
         .at-form-alert { padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.82rem; font-weight: 500; display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; }
@@ -282,6 +303,8 @@ const AssignTeachers = () => {
         .at-ss-search-input::placeholder { color: var(--text-muted); }
         .at-ss-search-clear { width: 18px; height: 18px; border-radius: 50%; border: none; background: #e2e8f0; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 12px; line-height: 1; flex-shrink: 0; }
         .at-ss-list { max-height: 200px; overflow-y: auto; }
+        .at-ss-list::-webkit-scrollbar { width: 5px; }
+        .at-ss-list::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .at-ss-option { padding: 10px 14px; font-size: 0.84rem; color: var(--text); cursor: pointer; transition: background var(--transition); }
         .at-ss-option:hover { background: #f8fafc; }
         .at-ss-option-selected { background: var(--primary-light) !important; color: var(--primary); font-weight: 600; }
@@ -321,7 +344,6 @@ const AssignTeachers = () => {
         .at-badge-blue { background: #dbeafe; color: #1e40af; }
         .at-badge-purple { background: #f3e8ff; color: #6b21a8; }
         .at-badge-gray { background: #f1f5f9; color: #64748b; }
-        .at-count-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 22px; height: 22px; border-radius: 11px; background: var(--primary-light); color: var(--primary); font-size: 0.72rem; font-weight: 700; margin-left: 8px; padding: 0 6px; }
 
         /* ===== QUESTION COUNT ===== */
         .at-qc { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
@@ -337,7 +359,7 @@ const AssignTeachers = () => {
         .at-teacher-name { font-weight: 600; font-size: 0.88rem; color: var(--text); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .at-teacher-email { font-size: 0.76rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        /* ===== ACTION MENU ===== */
+        /* ===== ACTION MENU (matching ManageClasses pattern) ===== */
         .at-action-wrap { position: relative; }
         .at-action-trigger { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
         .at-action-trigger:hover { background: #f8fafc; border-color: #cbd5e1; }
@@ -380,8 +402,9 @@ const AssignTeachers = () => {
         @media (max-width: 767px) {
           .at-header { padding: 16px; }
           .at-header-title { font-size: 1.15rem; }
+          .at-header-sub { font-size: 0.78rem; }
           .at-header-actions { width: 100%; }
-          .at-header-actions .at-btn { flex: 1; justify-content: center; }
+          .at-header-actions .at-btn { flex: 1; justify-content: center; padding: 10px 10px; font-size: 0.78rem; }
           .at-stats { grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 16px; }
           .at-stat-value { font-size: 1.1rem; }
           .at-filter-bar { padding: 10px 16px; }
@@ -465,7 +488,8 @@ const AssignTeachers = () => {
         <div className="at-form-panel">
           <div className="at-form-header">
             <h3 className="at-form-title">
-              {editingId ? '✏️ Edit Assignment' : '➕ New Assignment'}
+              <span className="at-form-title-icon">{editingId ? '✏️' : '➕'}</span>
+              {editingId ? 'Edit Assignment' : 'New Assignment'}
             </h3>
           </div>
           <div className="at-form-body">
@@ -570,7 +594,10 @@ const AssignTeachers = () => {
         {(filterClass || filterSubject || searchTeacher) && (
           <button className="at-btn at-btn-ghost at-btn-sm" onClick={() => { setFilterClass(''); setFilterSubject(''); setSearchTeacher(''); }}>Clear All</button>
         )}
-        <span className="at-result-count">{getResultText()}</span>
+        <span className="at-result-count">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          {getResultText()}
+        </span>
       </div>
 
       {/* ===== DESKTOP TABLE ===== */}
@@ -579,7 +606,9 @@ const AssignTeachers = () => {
           <table className="at-table">
             <thead>
               <tr>
-                <th style={{width:44}}>#</th>
+                <th style={{width:44}}>#
+                  <span style={{marginLeft: 4, fontSize: '0.65rem', fontWeight: 500, color: 'var(--text-muted)', textTransform: 'none', letterSpacing: 0 }}>{filteredAssignments.length}</span>
+                </th>
                 <th>Teacher</th>
                 <th>Class</th>
                 <th>Subject</th>
@@ -602,7 +631,7 @@ const AssignTeachers = () => {
                   <td>
                     <div className="at-teacher-cell">
                       <div className="at-teacher-avatar" style={{ background: getAvatarColor(assignment.teacher_name) }}>
-                        {assignment.teacher_name?.charAt(0)?.toUpperCase()}
+                        {assignment.teacher_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                       </div>
                       <div className="at-teacher-info">
                         <span className="at-teacher-name">{assignment.teacher_name}</span>
@@ -626,10 +655,26 @@ const AssignTeachers = () => {
                     {assignment.created_at ? new Date(assignment.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : '—'}
                   </td>
                   <td>
-                    <div className="at-action-wrap" key={`am-${assignment.id}`}>
-                      <button className="at-action-trigger" onClick={(e) => { e.stopPropagation(); }}>
+                    <div className="at-action-wrap">
+                      <button className="at-action-trigger" onClick={(e) => toggleActionMenu(assignment.id, e)}>
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                       </button>
+                      {openActionMenu === assignment.id && (
+                        <>
+                          <div className="at-click-outside" onClick={() => setOpenActionMenu(null)} />
+                          <div className="at-action-menu">
+                            <button className="at-action-item" onClick={() => { setOpenActionMenu(null); handleEdit(assignment); }}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              Edit Assignment
+                            </button>
+                            <div className="at-action-sep" />
+                            <button className="at-action-item danger" onClick={() => { setOpenActionMenu(null); handleDelete(assignment); }}>
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                              Remove Assignment
+                            </button>
+                          </div>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -644,13 +689,13 @@ const AssignTeachers = () => {
         {filteredAssignments.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-muted)' }}>
             <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: 8 }}>📋</span>
-            {assignments.length === 0 ? 'No assignments yet.' : 'No assignments match your filters.'}
+            {assignments.length === 0 ? 'No assignments yet. Create your first assignment.' : 'No assignments match your filters.'}
           </div>
         ) : filteredAssignments.map((assignment) => (
           <div className="at-card" key={assignment.id}>
             <div className="at-card-top">
               <div className="at-teacher-avatar" style={{ background: getAvatarColor(assignment.teacher_name), width: 42, height: 42, fontSize: '0.88rem' }}>
-                {assignment.teacher_name?.charAt(0)?.toUpperCase()}
+                {assignment.teacher_name?.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="at-card-name">{assignment.teacher_name}</div>
