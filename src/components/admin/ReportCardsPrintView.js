@@ -518,11 +518,11 @@ const ReportCardsPrintView = () => {
                     <div className="footer-dates-grid">
                       <div className="footer-date-item">
                         <span className="fd-label">Term Begins:</span>
-                        <span className="fd-value">{formatDate(result.term.startDate)}</span>
+                        <span className="fd-value">{formatDate(term?.startDate)}</span>
                       </div>
                       <div className="footer-date-item">
                         <span className="fd-label">Term Ends:</span>
-                        <span className="fd-value">{formatDate(result.term.endDate)}</span>
+                        <span className="fd-value">{formatDate(term?.endDate)}</span>
                       </div>
                     </div>
                     
