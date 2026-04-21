@@ -112,7 +112,7 @@ const ReportCardsPrintView = () => {
   };
 
   // ============================================
-  // COMPACT A4 STYLES (No content clipping allowed)
+  // COMPACT A4 STYLES
   // ============================================
   const compactA4Styles = `
     /* === A4 PAGE CONTAINER === */
@@ -239,16 +239,13 @@ const ReportCardsPrintView = () => {
     .a4-document .pmc-td-rating { text-align: center !important; font-size: 7pt !important; }
     .a4-document .pmc-rating-letter { font-weight: 700 !important; }
 
-    /* === COMMENTS & SIGNATURES (NO CLIPPING) === */
+    /* === COMMENTS & SIGNATURES === */
     .a4-document .comments-container { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 2mm !important; margin-bottom: 1mm !important; flex-shrink: 0 !important; }
     .a4-document .comment-box-elegant { border: 0.5px solid #555 !important; padding: 1.5mm 2mm !important; display: flex !important; flex-direction: column !important; }
     .a4-document .comment-title { font-size: 6.5pt !important; font-weight: 700 !important; text-align: center !important; margin-bottom: 0.5mm !important; text-transform: uppercase !important; letter-spacing: 0.3px !important; }
     .a4-document .comment-text-area {
       font-size: 6.5pt !important; flex: 1 !important; line-height: 1.3 !important; margin-bottom: 0.5mm !important;
-      /* Explicitly ensuring NO content is ever hidden */
-      min-height: 8mm !important; 
-      max-height: none !important;
-      overflow: visible !important;
+      min-height: 8mm !important; max-height: none !important; overflow: visible !important;
     }
     .a4-document .comment-text-area strong { font-size: 6.5pt !important; }
     .a4-document .blank-line { font-size: 6.5pt !important; letter-spacing: 1px !important; }
@@ -477,12 +474,6 @@ const ReportCardsPrintView = () => {
                           <td colSpan="7" className="td-right summary-label">STUDENT AVERAGE:</td>
                           <td className="td-center td-total">{student.statistics.averageScore}%</td>
                           <td colSpan="2"></td>
-                        </tr>
-                        <tr className="summary-row">
-                          <td colSpan="7" className="td-right summary-label">POSITION IN CLASS:</td>
-                          <td className="td-center td-total" colSpan="3">
-                            {student.statistics.position}th out of {student.statistics.totalInClass}
-                          </td>
                         </tr>
                       </tfoot>
                     </table>
