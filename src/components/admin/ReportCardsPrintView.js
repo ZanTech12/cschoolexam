@@ -432,7 +432,7 @@ const ReportCardsPrintView = () => {
                       <div className="bio-item">
                         <span className="bio-label">Name of Student</span>
                         <span className="bio-value name-highlight">
-                         {student.student.lastName} {student.student.firstName}
+                        {student.student.firstName} {student.student.lastName} 
                         </span>
                       </div>
                       <div className="bio-item">
