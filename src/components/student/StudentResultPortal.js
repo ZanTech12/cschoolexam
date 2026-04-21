@@ -874,7 +874,7 @@ const StudentResultPortal = () => {
             </div>
 
             <div className="comment-box-elegant">
-              <div className="comment-title" style={{ textAlign: 'center' }}>PRINCIPAL'S COMMENT</div>
+              <div className="comment-title" style={{ textAlign: 'center' }}>PRINCIPAL/HEADTEACHER'S COMMENT</div>
               <div className="comment-text-area">
                 {r?.principalComment
                   ? <>{r.principalComment}</>
