@@ -207,7 +207,7 @@ th{background:#1a365d;color:white;font-size:10px}
 
             <div className="rc-bio">
               <div className="rc-bio-grid">
-                <div className="rc-bio-item"><span className="rc-bio-lbl">Name of Student</span><span className="rc-bio-val">{report.student.firstName} {report.student.lastName}</span></div>
+                <div className="rc-bio-item"><span className="rc-bio-lbl">Name of Student</span><span className="rc-bio-val">{report.student.lastName} {report.student.firstName} </span></div>
                 <div className="rc-bio-item"><span className="rc-bio-lbl">Admission No.</span><span className="rc-bio-val">{report.student.admissionNumber}</span></div>
                 <div className="rc-bio-item"><span className="rc-bio-lbl">Class</span><span className="rc-bio-val">{report.student.class?.name} {report.student.class?.section}</span></div>
                 <div className="rc-bio-item"><span className="rc-bio-lbl">Gender</span><span className="rc-bio-val">{report.student.gender}</span></div>
@@ -264,7 +264,7 @@ th{background:#1a365d;color:white;font-size:10px}
             <div className="rc-comments">
               <div className="rc-cbox">
                 <div className="rc-ctitle">CLASS TEACHER'S COMMENT</div>
-                <div className="rc-ctext">{classTeacherComment ? <><strong>{report.student.firstName} {report.student.lastName}</strong> — {classTeacherComment}</> : <span className="rc-blank">................................................................................</span>}</div>
+                <div className="rc-ctext">{classTeacherComment ? <><strong>{report.student.lastName} {report.student.firstName} </strong> — {classTeacherComment}</> : <span className="rc-blank">................................................................................</span>}</div>
               </div>
               <div className="rc-cbox">
                 <div className="rc-ctitle">PRINCIPAL'S COMMENT</div>
