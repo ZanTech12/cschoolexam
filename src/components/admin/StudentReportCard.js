@@ -179,6 +179,16 @@ const StudentReportCard = () => {
         inset: 7px !important; /* Inner frame */
         border-width: 1.5px !important;
       }
+      .school-name {
+        font-size: 14pt !important;
+        font-weight: 800 !important;
+        letter-spacing: 0.8px !important;
+      }
+      .school-address {
+        font-size: 7pt !important;
+        color: #333 !important;
+        letter-spacing: 0.3px !important;
+      }
     `;
 
     const printWindow = window.open('', '_blank', 'width=900,height=700');
@@ -269,6 +279,19 @@ const StudentReportCard = () => {
           inset: 7px; /* Inner frame */
           border-width: 1.5px;
         }
+        .school-name {
+          font-size: 14pt;
+          font-weight: 800;
+          letter-spacing: 0.8px;
+          line-height: 1.3;
+        }
+        .school-address {
+          font-size: 7pt;
+          color: #333;
+          letter-spacing: 0.3px;
+          margin: 0.5mm 0 0 0;
+          line-height: 1.2;
+        }
       `}</style>
 
       <div className="screen-controls">
@@ -284,6 +307,7 @@ const StudentReportCard = () => {
             <img src={schoolLogo} alt="DATFORTE International School Logo" className="header-logo" />
           </div>
           <h1 className="school-name">DATFORTE INTERNATIONAL SCHOOLS LIMITED</h1>
+          <p className="school-address">14, Ahmed Tijani St, Ahmadiya Bus-Stop, Lagos, Nigeria.</p>
           <h2 className="doc-title">STUDENT ACADEMIC REPORT CARD</h2>
           <div className="header-meta-box">
             <span className="meta-text">Term <strong>{report.term.name}</strong></span>
