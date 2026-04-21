@@ -713,7 +713,7 @@ const StudentResultPortal = () => {
             <div className="bio-grid">
               <div className="bio-item">
                 <span className="bio-label">Name of Student</span>
-                <span className="bio-value name-highlight">{s.firstName} {s.lastName}</span>
+                <span className="bio-value name-highlight">{s.lastName} {s.firstName}</span>
               </div>
               <div className="bio-item">
                 <span className="bio-label">Admission No.</span>
