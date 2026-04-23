@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base API configuration
-const API_BASE_URL = 'https://schoolcbt.onrender.com';
+const API_BASE_URL = 'http://localhost:5000';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -211,7 +211,7 @@ export const teachersAPI = {
 };
 
 // ============================================
-// STUDENTS API (UPDATED FOR AUTO-GENERATED ADMISSION NUMBER & FEES ACCESS)
+// STUDENTS API (UPDATED WITH RECYCLE BIN FEATURE + RESULT ACCESS BLOCKING)
 // ============================================
 export const studentsAPI = {
     getAll: async () => {
@@ -242,6 +242,7 @@ export const studentsAPI = {
         return response.data;
     },
 
+    // SOFT DELETE: Moves student to Recycle Bin (hides them and all their data)
     delete: async (id) => {
         const response = await api.delete(`/students/${id}`);
         return response.data;
@@ -270,6 +271,62 @@ export const studentsAPI = {
     // Returns: { success: true, message: '...', data: { _id, firstName, lastName, admissionNumber, owingFees, feesAccessGranted } }
     toggleOwing: async (studentId) => {
         const response = await api.patch(`/students/${studentId}/toggle-owing`);
+        return response.data;
+    },
+
+    // ==========================================
+    // RESULT ACCESS BLOCKING (NEW)
+    // ==========================================
+
+    // Toggle individual student result access (block/unblock)
+    // Admin only - toggles the student's ability to view their results
+    // Returns: { success: true, message: '...', data: { _id, firstName, lastName, admissionNumber, resultAccessBlocked, resultBlockReason, resultBlockedAt } }
+    toggleResultAccess: async (studentId) => {
+        const response = await api.patch(`/students/${studentId}/toggle-result-access`);
+        return response.data;
+    },
+
+    // Set student result block with explicit reason
+    // Admin only - explicitly sets blocked status with a reason message
+    // Usage: await studentsAPI.blockResultAccess(studentId, { blocked: true, reason: 'Outstanding fees - contact bursar' })
+    // Returns: { success: true, message: '...', data: { _id, firstName, lastName, admissionNumber, resultAccessBlocked, resultBlockReason, resultBlockedAt } }
+    blockResultAccess: async (studentId, data) => {
+        const response = await api.patch(`/students/${studentId}/block-result-access`, data);
+        return response.data;
+    },
+
+    // Bulk block/unblock result access for students
+    // Admin only - can target by classId, studentIds array, or both
+    // Usage: await studentsAPI.bulkResultAccess({ classId: '...', blocked: true, reason: '...' })
+    //        OR await studentsAPI.bulkResultAccess({ studentIds: ['id1', 'id2'], blocked: false })
+    // Returns: { success: true, message: '...', data: { modified: number, matched: number } }
+    bulkResultAccess: async (data) => {
+        const response = await api.patch('/students/bulk-result-access', data);
+        return response.data;
+    },
+
+    // ==========================================
+    // RECYCLE BIN MANAGEMENT
+    // ==========================================
+
+    // Get all soft-deleted students in the recycle bin
+    // Usage: const deletedStudents = await studentsAPI.getRecycleBin();
+    getRecycleBin: async () => {
+        const response = await api.get('/students/recycle-bin');
+        return response.data;
+    },
+
+    // Restore a student and all their hidden data from the recycle bin
+    // Usage: await studentsAPI.restoreFromRecycleBin(studentId);
+    restoreFromRecycleBin: async (id) => {
+        const response = await api.patch(`/students/recycle-bin/${id}/restore`);
+        return response.data;
+    },
+
+    // Permanently delete a student and wipe ALL their data from the database forever
+    // Usage: await studentsAPI.permanentlyDelete(studentId);
+    permanentlyDelete: async (id) => {
+        const response = await api.delete(`/students/recycle-bin/${id}/permanent`);
         return response.data;
     },
 };
@@ -305,7 +362,7 @@ export const subjectsAPI = {
 };
 
 // ============================================
-// CLASSES API
+// CLASSES API (UPDATED WITH RESULT ACCESS BLOCKING)
 // ============================================
 export const classesAPI = {
     // Get all classes with pagination and filtering
@@ -361,6 +418,27 @@ export const classesAPI = {
 
     getClassSubjectResults: async (classId, subjectId) => {
         const response = await api.get(`/api/classes/${classId}/subjects/${subjectId}/results`);
+        return response.data;
+    },
+
+    // ==========================================
+    // RESULT ACCESS BLOCKING (NEW)
+    // ==========================================
+
+    // Toggle class result access (block/unblock)
+    // Admin only - toggles result access for ALL students in a class
+    // Returns: { success: true, message: '...', data: { _id, name, section, level, resultAccessBlocked, resultBlockReason, resultBlockedAt, affectedStudents } }
+    toggleResultAccess: async (classId) => {
+        const response = await api.patch(`/classes/${classId}/toggle-result-access`);
+        return response.data;
+    },
+
+    // Set class result block with explicit reason
+    // Admin only - explicitly sets blocked status with a reason message
+    // Usage: await classesAPI.blockResultAccess(classId, { blocked: true, reason: 'Results pending approval' })
+    // Returns: { success: true, message: '...', data: { _id, name, section, level, resultAccessBlocked, resultBlockReason, resultBlockedAt, affectedStudents } }
+    blockResultAccess: async (classId, data) => {
+        const response = await api.patch(`/classes/${classId}/block-result-access`, data);
         return response.data;
     },
 };
@@ -441,7 +519,7 @@ export const testsAPI = {
 };
 
 // ============================================
-// STUDENT-SPECIFIC API
+// STUDENT-SPECIFIC API (UPDATED WITH RESULT ACCESS STATUS)
 // ============================================
 export const studentAPI = {
     getDashboard: async () => {
@@ -481,6 +559,28 @@ export const studentAPI = {
 
     getTestSchedule: async () => {
         const response = await api.get('/student/test-schedule');
+        return response.data;
+    },
+
+    // ==========================================
+    // RESULT ACCESS STATUS (NEW)
+    // ==========================================
+
+    // Get result access status for logged-in student (for dashboard display)
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     canAccess: boolean,
+    //     studentBlocked: boolean,
+    //     classBlocked: boolean,
+    //     scheduleActive: boolean,
+    //     scheduleStatus: 'active' | 'before_start' | 'deadline_passed' | null,
+    //     scheduleDetails: { resultStartTime, resultDeadline, message, timeRemaining } | null,
+    //     blockReason: string | null
+    //   }
+    // }
+    getResultAccessStatus: async () => {
+        const response = await api.get('/student/result-access-status');
         return response.data;
     },
 };
@@ -1175,6 +1275,12 @@ export const reportCardsAPI = {
     },
 
     // Public endpoint for students to check results (existing)
+    // NOTE: This endpoint now returns blocking codes:
+    //   - FEES_BLOCKED: Student owes fees
+    //   - STUDENT_BLOCKED: Student individually blocked
+    //   - CLASS_BLOCKED: Student's class is blocked
+    //   - RESULTS_NOT_YET_AVAILABLE: Before result schedule start time
+    //   - RESULTS_DEADLINE_PASSED: After result schedule deadline
     checkResults: async (credentials) => {
         const response = await api.post('/student/check-results', credentials);
         return response.data;
@@ -1313,6 +1419,136 @@ export const adminCAProgressAPI = {
     // }
     getTeacherProgress: async (params = {}) => {
         const response = await api.get('/admin/ca/teacher-progress', { params });
+        return response.data;
+    },
+};
+
+// ============================================
+// RESULT ACCESS SCHEDULE API
+// ============================================
+export const resultScheduleAPI = {
+    // Get current result access schedule (for admin/student dashboard)
+    getCurrent: async (params = {}) => {
+        const response = await api.get('/result-access-schedule', { params });
+        return response.data;
+    },
+
+    // Get all result access schedules (admin view - includes inactive)
+    getAll: async () => {
+        const response = await api.get('/result-access-schedules');
+        return response.data;
+    },
+
+    // ✅ FIXED: Create a new result access schedule
+    // IMPORTANT: Dates MUST be valid ISO strings like "2025-01-15T09:00:00.000Z"
+    // If your date input gives "2025-01-15T09:00" (no Z), it still works
+    // But "2025-01-15" (date only) WILL fail backend validation
+    create: async (scheduleData) => {
+        // ✅ FIX: Ensure dates are valid ISO strings before sending
+        const payload = { ...scheduleData };
+
+        // Convert Date objects to ISO strings if needed
+        if (payload.resultStartTime instanceof Date) {
+            payload.resultStartTime = payload.resultStartTime.toISOString();
+        }
+        if (payload.resultDeadline instanceof Date) {
+            payload.resultDeadline = payload.resultDeadline.toISOString();
+        }
+
+        // ✅ FIX: If you have separate date/time fields, combine them properly
+        // Example: if your form has startDate + startTime fields:
+        // payload.resultStartTime = `${startDate}T${startTime}:00.000Z`;
+        // payload.resultDeadline = `${deadlineDate}T${deadlineTime}:00.000Z`;
+
+        try {
+            const response = await api.post('/result-access-schedule', payload);
+            
+            // ✅ Handle "schedule already exists" error gracefully
+            if (response.data?.existingScheduleId) {
+                return {
+                    success: false,
+                    alreadyExists: true,
+                    scheduleId: response.data.existingScheduleId,
+                    message: 'A schedule already exists for this term. Use the update option instead.'
+                };
+            }
+            
+            return response.data;
+        } catch (error) {
+            // ✅ Better error details
+            const backendMessage = error.response?.data?.message || error.message;
+            
+            if (backendMessage?.includes('already exists')) {
+                return {
+                    success: false,
+                    alreadyExists: true,
+                    message: backendMessage
+                };
+            }
+
+            throw error;
+        }
+    },
+
+    // Update an existing result access schedule
+    update: async (id, updateData) => {
+        const payload = { ...updateData };
+
+        // Convert Date objects to ISO strings
+        if (payload.resultStartTime instanceof Date) {
+            payload.resultStartTime = payload.resultStartTime.toISOString();
+        }
+        if (payload.resultDeadline instanceof Date) {
+            payload.resultDeadline = payload.resultDeadline.toISOString();
+        }
+
+        const response = await api.put(`/result-access-schedule/${id}`, payload);
+        return response.data;
+    },
+
+    // Toggle schedule active status
+    toggleActive: async (id) => {
+        const response = await api.patch(`/result-access-schedule/${id}/toggle-active`);
+        return response.data;
+    },
+
+    // Delete a result access schedule
+    delete: async (id) => {
+        const response = await api.delete(`/result-access-schedule/${id}`);
+        return response.data;
+    },
+};
+// ============================================
+// PUBLIC API (No Authentication Required)
+// ============================================
+export const publicAPI = {
+    // Get all active terms (for public result checking page)
+    // Usage: await publicAPI.getTerms({ sessionId: '...', status: 'active' })
+    // Returns: { success: true, data: [{ _id, name, session: { name }, startDate, endDate, status }, ...] }
+    getTerms: async (params = {}) => {
+        const response = await api.get('/public/terms', { params });
+        return response.data;
+    },
+
+    // Get all active sessions (for public result checking page)
+    // Returns: { success: true, data: [{ _id, name, startDate, endDate }, ...] }
+    getSessions: async () => {
+        const response = await api.get('/public/sessions');
+        return response.data;
+    },
+
+    // Get public result access status (for result check page - no auth required)
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     scheduleActive: boolean,
+    //     scheduleStatus: 'active' | 'before_start' | 'deadline_passed' | null,
+    //     scheduleDetails: { resultStartTime, resultDeadline, timeRemaining } | null,
+    //     message: string | null
+    //   }
+    // }
+    getResultAccessStatus: async () => {
+        const response = await api.get('/public/result-access-status');
         return response.data;
     },
 };

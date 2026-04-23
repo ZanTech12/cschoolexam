@@ -16,6 +16,8 @@ import ManageTests from '../components/admin/ManageTests';
 import AssignTeachers from '../components/admin/AssignTeachers';
 import QuestionSetManager from '../components/admin/QuestionSetManager';
 import StudentResultsView from '../components/admin/StudentResultsView';
+import RecycleBin from '../components/admin/RecycleBin';
+import Settings from '../components/admin/Settings';
 
 // ============================================
 // GRADING SYSTEM IMPORTS
@@ -44,6 +46,7 @@ const adminMenuItems = [
   { path: '/admin', label: 'Dashboard', icon: '📊', exact: true },
   { path: '/admin/teachers', label: 'Teachers', icon: '👨‍🏫' },
   { path: '/admin/students', label: 'Students', icon: '👨‍🎓' },
+  { path: '/admin/recycle-bin', label: 'Recycle Bin', icon: '🗑️' },
   { path: '/admin/classes', label: 'Classes', icon: '🏫' },
   { path: '/admin/subjects', label: 'Subjects', icon: '📚' },
   { path: '/admin/assign-teachers', label: 'Assign Teachers', icon: '🔗' },
@@ -65,6 +68,11 @@ const adminMenuItems = [
   { path: '/admin/question-sets', label: 'Question Sets', icon: '📑' },
   { path: '/admin/tests', label: 'Tests', icon: '📝' },
   { path: '/admin/results', label: 'Test Results', icon: '📊' },
+  
+  // --- Divider: System ---
+  { divider: true, label: 'SYSTEM' },
+  
+  { path: '/admin/settings', label: 'Settings', icon: '⚙️' },
 ];
 
 const AdminLayout = () => {
@@ -145,6 +153,7 @@ const AdminLayout = () => {
             <Route path="/" element={<AdminDashboard />} />
             <Route path="/teachers" element={<ManageTeachers />} />
             <Route path="/students" element={<ManageStudents />} />
+            <Route path="/recycle-bin" element={<RecycleBin />} />
             <Route path="/classes" element={<ManageClasses />} />
             <Route path="/subjects" element={<ManageSubjects />} />
             <Route path="/assign-teachers" element={<AssignTeachers />} />
@@ -167,6 +176,9 @@ const AdminLayout = () => {
             <Route path="/question-sets" element={<QuestionSetManager />} />
             <Route path="/tests" element={<ManageTests />} />
             <Route path="/results" element={<StudentResultsView />} />
+            
+            {/* System Routes */}
+            <Route path="/settings" element={<Settings />} />
             
             {/* Catch all */}
             <Route path="*" element={<Navigate to="/admin" replace />} />
