@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base API configuration
-const API_BASE_URL = 'https://schoolcbt.onrender.com';
+const API_BASE_URL = 'http://localhost:5000';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -839,10 +839,14 @@ export const attendanceAPI = {
 
 // ============================================
 // CONTINUOUS ASSESSMENTS API (Admin)
+// ✅ FIXED: getAll now accepts config parameter for AbortController support
 // ============================================
 export const continuousAssessmentsAPI = {
-    getAll: async (params = {}) => {
-        const response = await api.get('/continuous-assessments', { params });
+    getAll: async (params = {}, config = {}) => {
+        const response = await api.get('/continuous-assessments', { 
+            params,
+            ...config 
+        });
         return response.data;
     },
 
@@ -1518,6 +1522,7 @@ export const resultScheduleAPI = {
         return response.data;
     },
 };
+
 // ============================================
 // PUBLIC API (No Authentication Required)
 // ============================================
