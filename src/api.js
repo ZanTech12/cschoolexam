@@ -1435,7 +1435,7 @@ export const performanceAPI = {
 };
 
 // ============================================
-// ADMIN CA FILTERING API (NEW)
+// ADMIN CA FILTERING API (UPDATED WITH CLEAR APPROVAL STATUS)
 // ============================================
 export const adminCAAPI = {
     // Get subjects/classes/teachers that have actual CA submissions
@@ -1483,6 +1483,68 @@ export const adminCAAPI = {
         const response = await api.post('/continuous-assessments/bulk/reapprove', { ids });
         return response.data;
     },
+
+    // ==========================================
+    // CLEAR APPROVAL STATUS (NEW)
+    // ==========================================
+
+    // Get classes that have approved CA records (for dropdown selection)
+    // Usage: await adminCAAPI.getClassesWithApproved({ termId: '...', sessionId: '...' })
+    // Returns: {
+    //   success: true,
+    //   data: [{
+    //     classId, className, classLevel, classSession,
+    //     approvedRecords: number, uniqueSubjects: number
+    //   }, ...]
+    // }
+    getClassesWithApproved: async (params = {}) => {
+        const response = await api.get('/admin/ca/classes-with-approved', { params });
+        return response.data;
+    },
+
+    // Get subjects with approved CA for a specific class (for dropdown selection)
+    // Usage: await adminCAAPI.getSubjectsWithApproved(classId, { termId: '...', sessionId: '...' })
+    // Returns: {
+    //   success: true,
+    //   meta: { className, classId, totalSubjects, filters: {...} },
+    //   data: [{
+    //     subjectId, subjectName, subjectCode, classLevel,
+    //     approvedRecords: number, uniqueStudents: number,
+    //     teachers: string[]
+    //   }, ...]
+    // }
+    getSubjectsWithApproved: async (classId, params = {}) => {
+        const response = await api.get(`/admin/ca/classes/${classId}/subjects-with-approved`, { params });
+        return response.data;
+    },
+
+    // Clear approval status for CA records by class and subject
+    // Usage: await adminCAAPI.clearApprovalStatus({
+    //   classId: '...',
+    //   subjectId: '...',
+    //   termId: '...',      // optional - if omitted, clears ALL terms
+    //   sessionId: '...',   // optional - if omitted, clears ALL sessions
+    //   resetTo: 'draft'    // optional: 'draft' (default) or 'submitted'
+    // })
+    // Returns: {
+    //   success: true,
+    //   message: 'Successfully cleared approval status for X CA record(s).',
+    //   data: {
+    //     classInfo: { id, name, level },
+    //     subjectInfo: { id, name, code },
+    //     filters: { classId, subjectId, termId, sessionId },
+    //     result: {
+    //       recordsFound: number,
+    //       recordsAffected: number,
+    //       resetTo: 'draft',
+    //       nowInStatus: number
+    //     }
+    //   }
+    // }
+    clearApprovalStatus: async (data) => {
+        const response = await api.patch('/admin/ca/clear-approval-status', data);
+        return response.data;
+    },
 };
 
 // ============================================
@@ -1507,7 +1569,6 @@ export const adminCAProgressAPI = {
     //       }]
     //     }]
     //   }
-    // }
     // }
     getTeacherProgress: async (params = {}) => {
         const response = await api.get('/admin/ca/teacher-progress', { params });
@@ -1639,7 +1700,6 @@ export const publicAPI = {
     //     scheduleDetails: { resultStartTime, resultDeadline, timeRemaining } | null,
     //     message: string | null
     //   }
-    // }
     // }
     getResultAccessStatus: async () => {
         const response = await api.get('/public/result-access-status');
