@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base API configuration
-const API_BASE_URL = 'https://schoolcbt.onrender.com';
+const API_BASE_URL = 'http://localhost:5000';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -1000,6 +1000,42 @@ export const teacherCAAPI = {
 
         // Fallback for unexpected formats
         return { success: false, data: null };
+    },
+};
+
+// ============================================
+// TEACHER BROADSHEET API
+// ============================================
+export const teacherBroadsheetAPI = {
+    // Get broadsheet for a class (teacher's assigned class)
+    // Access: Class teacher sees ALL subjects, Subject teacher sees only assigned subjects by default
+    // 
+    // Usage: await teacherBroadsheetAPI.getBroadsheet(classId, { termId, sessionId, subjectFilter })
+    // 
+    // Params:
+    //   - termId: string (optional) - Specific term ID, defaults to active term
+    //   - sessionId: string (optional) - Specific session ID, defaults to term's session
+    //   - subjectFilter: 'all' | 'assigned' (optional) - 'all' shows all class subjects, 'assigned' shows only teacher's subjects
+    //
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     classInfo: { classId, className, classLevel, classSection, classTeacher, isClassTeacher, assignedSubjects },
+    //     termInfo: { id, name, status },
+    //     sessionInfo: { id, name },
+    //     subjects: [{ subjectId, subjectName, subjectCode }],
+    //     subjectStats: [{ subjectId, subjectName, averageScore, highestScore, lowestScore, passRate, gradeDistribution }],
+    //     students: [{
+    //       studentId, studentName, firstName, lastName, admissionNumber, gender, position,
+    //       scores: { [subjectId]: { testScore, noteTakingScore, assignmentScore, totalCA, examScore, totalScore, grade, remark } | null },
+    //       totalScore, averageScore, subjectsWithScores, totalSubjects
+    //     }],
+    //     statistics: { totalStudents, assessedStudents, notAssessedStudents, highestTotal, lowestTotal, classAverage, subjectsTotal, subjectsWithScores }
+    //   }
+    // }
+    getBroadsheet: async (classId, params = {}) => {
+        const response = await api.get(`/teacher/broadsheet/${classId}`, { params });
+        return response.data;
     },
 };
 

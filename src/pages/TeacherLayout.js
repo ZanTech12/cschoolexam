@@ -14,6 +14,7 @@ import MyClasses from '../components/teacher/MyClasses';
 // GRADING SYSTEM IMPORTS
 // ============================================
 import ContinuousAssessment from '../components/teacher/ContinuousAssessment';
+import Broadsheet from '../components/teacher/Broadsheet';
 import MyStudents from '../components/teacher/MyStudents';
 import TeacherSubmissions from '../components/teacher/TeacherSubmissions';
 import TeacherProfile from '../components/teacher/TeacherProfile';
@@ -22,18 +23,19 @@ const teacherMenuItems = [
   // --- Main ---
   { path: '/teacher', label: 'Dashboard', icon: '📊', exact: true },
   { path: '/teacher/classes', label: 'My Classes', icon: '🏫' },
-  { path: '/teacher/my-students/:classId', label: 'My Students', icon: '👨‍🎓', hidden: true }, // Hidden from menu (accessed from MyClasses)
+  { path: '/teacher/my-students/:classId', label: 'My Students', icon: '👨‍🎓', hidden: true },
   
   // --- Divider: Grading System ---
   { divider: true, label: 'GRADING' },
   
   { path: '/teacher/continuous-assessment', label: 'Enter CA', icon: '📝' },
+  { path: '/teacher/broadsheet', label: 'Broadsheet', icon: '📋' },
   
   // --- Divider: Examinations ---
   { divider: true, label: 'EXAMINATIONS' },
   
   { path: '/teacher/question-sets', label: 'Question Sets', icon: '📚' },
-  { path: '/teacher/create-test', label: 'Create Test', icon: '📋' },
+  { path: '/teacher/create-test', label: 'Create Test', icon: '✏️' },
   { path: '/teacher/results', label: 'Test Results', icon: '📈' },
   { path: '/teacher/submissions', label: 'Submissions', icon: '📨' },
   
@@ -124,6 +126,7 @@ const TeacherLayout = () => {
             
             {/* Grading Routes */}
             <Route path="/continuous-assessment" element={<ContinuousAssessment />} />
+            <Route path="/broadsheet" element={<Broadsheet />} />
             
             {/* Examination Routes */}
             <Route path="/question-sets" element={<QuestionSetManager />} />
