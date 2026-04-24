@@ -1435,6 +1435,57 @@ export const performanceAPI = {
 };
 
 // ============================================
+// ADMIN CA FILTERING API (NEW)
+// ============================================
+export const adminCAAPI = {
+    // Get subjects/classes/teachers that have actual CA submissions
+    // Usage: await adminCAAPI.getFilterOptions({ termId, sessionId, classId })
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     subjects: [{ _id, name, code, classLevel, submissionCount }],
+    //     classes: [{ _id, name, level, section, submissionCount }],
+    //     statusCounts: { draft: 5, submitted: 10, approved: 25 }
+    //   }
+    // }
+    getFilterOptions: async (params = {}) => {
+        const response = await api.get('/admin/ca/filter-options', { params });
+        return response.data;
+    },
+
+    // Get filtered CA assessments with all options
+    // Usage: await adminCAAPI.getAssessments({ termId, sessionId, subjectId, classId, status, search, page, limit })
+    // Returns: {
+    //   success: true,
+    //   data: [...assessments with populated refs...],
+    //   pagination: { page, limit, total, pages }
+    // }
+    getAssessments: async (params = {}) => {
+        const response = await api.get('/admin/ca/assessments', { params });
+        return response.data;
+    },
+
+    // Approve a single assessment
+    approve: async (id) => {
+        const response = await api.put(`/continuous-assessments/${id}/approve`);
+        return response.data;
+    },
+
+    // Unapprove (revert to submitted) a single assessment
+    unapprove: async (id) => {
+        const response = await api.put(`/continuous-assessments/${id}/unapprove`);
+        return response.data;
+    },
+
+    // Bulk approve multiple assessments at once
+    // Usage: await adminCAAPI.bulkApprove(['id1', 'id2', 'id3']);
+    bulkApprove: async (ids) => {
+        const response = await api.post('/continuous-assessments/bulk/reapprove', { ids });
+        return response.data;
+    },
+};
+
+// ============================================
 // ADMIN CA PROGRESS API (NEW)
 // ============================================
 export const adminCAProgressAPI = {
@@ -1456,6 +1507,7 @@ export const adminCAProgressAPI = {
     //       }]
     //     }]
     //   }
+    // }
     // }
     getTeacherProgress: async (params = {}) => {
         const response = await api.get('/admin/ca/teacher-progress', { params });
@@ -1587,6 +1639,7 @@ export const publicAPI = {
     //     scheduleDetails: { resultStartTime, resultDeadline, timeRemaining } | null,
     //     message: string | null
     //   }
+    // }
     // }
     getResultAccessStatus: async () => {
         const response = await api.get('/public/result-access-status');

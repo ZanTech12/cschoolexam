@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { continuousAssessmentsAPI, termsAPI, sessionsAPI, classesAPI, subjectsAPI } from '../../api';
+import { adminCAAPI, termsAPI, sessionsAPI, classesAPI, subjectsAPI } from '../../api';
 
 const getGradeColor = (grade) => {
     const g = (grade || '').toUpperCase().trim();
@@ -94,6 +94,7 @@ const ApproveAssessments = () => {
     const [error, setError]                               = useState('');
     const [unapprovingId, setUnapprovingId]               = useState(null);
     const [excludedIds, setExcludedIds]                   = useState(new Set());
+    const [totalResults, setTotalResults]                 = useState(0);
 
     const abortRef         = useRef(null);
     const debounceRef      = useRef(null);
@@ -209,24 +210,42 @@ const ApproveAssessments = () => {
     };
 
     const fetchAssessments = async () => {
-        if (abortRef.current) abortRef.current.abort();
-        const controller = new AbortController();
+        // Cancel any in-flight request
+        if (abortRef.current) {
+            abortRef.current.cancelled = true;
+        }
+        const controller = { cancelled: false };
         abortRef.current = controller;
+
         try {
             setLoading(true);
             setConfirmBulk(false);
             setConfirmBulkUnapprove(false);
-            const params = {};
+            const params = { limit: 1000 };
             if (termId)    params.termId    = termId;
             if (sessionId) params.sessionId = sessionId;
             if (classId)   params.classId   = classId;
             if (subjectId) params.subjectId = subjectId;
             if (status)    params.status    = status;
-            const response = await continuousAssessmentsAPI.getAll(params, { signal: controller.signal });
-            setAssessments(extractDataArray(response));
+
+            // Use admin CA endpoint for properly populated data
+            const response = await adminCAAPI.getAssessments(params);
+
+            // Check if this request was superseded
+            if (controller.cancelled) return;
+
+            const dataArray = extractDataArray(response);
+            setAssessments(dataArray);
             setExcludedIds(new Set());
+            
+            // Track total results from pagination if available
+            if (response.pagination?.total) {
+                setTotalResults(response.pagination.total);
+            } else {
+                setTotalResults(dataArray.length);
+            }
         } catch (err) {
-            if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') return;
+            if (controller.cancelled) return;
             console.error('[fetchAssessments]', err);
             setError(err.response?.data?.message || err.message || 'Failed to fetch assessments');
         } finally {
@@ -241,7 +260,7 @@ const ApproveAssessments = () => {
         const previous = { ...assessments.find(a => a._id === id) };
         setAssessments(prev => prev.map(a => a._id === id ? { ...a, status: 'approved' } : a));
         try {
-            const response = await continuousAssessmentsAPI.approve(id);
+            const response = await adminCAAPI.approve(id);
             if (response.success) {
                 setSuccess('Assessment approved successfully');
                 if (response.data) {
@@ -262,7 +281,7 @@ const ApproveAssessments = () => {
         const previous = { ...assessments.find(a => a._id === id) };
         setAssessments(prev => prev.map(a => a._id === id ? { ...a, status: 'submitted' } : a));
         try {
-            const response = await continuousAssessmentsAPI.unapprove(id);
+            const response = await adminCAAPI.unapprove(id);
             if (response.success) {
                 setSuccess('Assessment unapproved successfully');
                 if (response.data) {
@@ -281,35 +300,78 @@ const ApproveAssessments = () => {
     };
 
     const handleApproveAll = async () => {
-        setConfirmBulk(false); setBulkLoading(true);
-        setBulkProgress({ current: 0, total: 0 }); setSuccess(''); setError('');
+        setConfirmBulk(false);
+        setBulkLoading(true);
+        setBulkProgress({ current: 0, total: 0 });
+        setSuccess('');
+        setError('');
+
         const toApprove = assessments.filter(a => !excludedIds.has(a._id));
         const ids = toApprove.map(a => a._id);
+
+        if (ids.length === 0) {
+            setBulkLoading(false);
+            return;
+        }
+
+        // Optimistically update UI
         setAssessments(prev => prev.map(a => (!excludedIds.has(a._id) ? { ...a, status: 'approved' } : a)));
-        const { successCount, failCount } = await processInBatches(
-            ids, (id) => continuousAssessmentsAPI.approve(id).then(r => r.success), 5,
-            (current, total) => setBulkProgress({ current, total })
-        );
-        setBulkLoading(false);
-        setExcludedIds(new Set());
-        if (failCount === 0) setSuccess(`Successfully approved ${successCount} assessments`);
-        else { setError(`Failed to approve ${failCount} assessment(s)`); setSuccess(`Approved ${successCount} of ${ids.length}`); fetchAssessments(); }
+
+        try {
+            // Use bulk approve endpoint for efficiency
+            const response = await adminCAAPI.bulkApprove(ids);
+            setBulkLoading(false);
+            setExcludedIds(new Set());
+
+            if (response.success) {
+                setSuccess(`Successfully approved ${ids.length} assessments`);
+            } else {
+                setError(response.message || 'Failed to approve some assessments');
+                fetchAssessments();
+            }
+        } catch (err) {
+            setBulkLoading(false);
+            setError(err.response?.data?.message || err.message || 'Failed to approve assessments');
+            fetchAssessments();
+        }
     };
 
     const handleUnapproveAll = async () => {
-        setConfirmBulkUnapprove(false); setBulkLoading(true);
-        setBulkProgress({ current: 0, total: 0 }); setSuccess(''); setError('');
+        setConfirmBulkUnapprove(false);
+        setBulkLoading(true);
+        setBulkProgress({ current: 0, total: 0 });
+        setSuccess('');
+        setError('');
+
         const toUnapprove = assessments.filter(a => !excludedIds.has(a._id));
         const ids = toUnapprove.map(a => a._id);
+
+        if (ids.length === 0) {
+            setBulkLoading(false);
+            return;
+        }
+
+        // Optimistically update UI
         setAssessments(prev => prev.map(a => (!excludedIds.has(a._id) ? { ...a, status: 'submitted' } : a)));
+
+        // No bulk unapprove endpoint, use batch processing
         const { successCount, failCount } = await processInBatches(
-            ids, (id) => continuousAssessmentsAPI.unapprove(id).then(r => r.success), 5,
+            ids,
+            (id) => adminCAAPI.unapprove(id).then(r => r.success),
+            5,
             (current, total) => setBulkProgress({ current, total })
         );
+
         setBulkLoading(false);
         setExcludedIds(new Set());
-        if (failCount === 0) setSuccess(`Successfully unapproved ${successCount} assessments`);
-        else { setError(`Failed to unapprove ${failCount} assessment(s)`); setSuccess(`Unapproved ${successCount} of ${ids.length}`); fetchAssessments(); }
+
+        if (failCount === 0) {
+            setSuccess(`Successfully unapproved ${successCount} assessments`);
+        } else {
+            setError(`Failed to unapprove ${failCount} assessment(s)`);
+            setSuccess(`Unapproved ${successCount} of ${ids.length}`);
+            fetchAssessments();
+        }
     };
 
     const handleClassChange = (e) => setClassId(e.target.value);
@@ -799,6 +861,11 @@ const ApproveAssessments = () => {
                 <div className="aa-results-info">
                     <span className="aa-results-count">
                         Showing <strong>{assessments.length}</strong> assessment{assessments.length !== 1 ? 's' : ''}
+                        {totalResults > assessments.length && (
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 500, marginLeft: 4 }}>
+                                of {totalResults}
+                            </span>
+                        )}
                         {excludedIds.size > 0 && (
                             <span style={{ color: '#ef4444', fontWeight: 600, marginLeft: 8 }}>
                                 ({excludedIds.size} excluded)
