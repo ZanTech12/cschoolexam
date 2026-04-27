@@ -22,6 +22,10 @@ const ContinuousAssessment = () => {
     const [confirmSubmit, setConfirmSubmit] = useState(false);
     const fileInputRef = useRef(null);
 
+    // State for delete functionality
+    const [deletingId, setDeletingId] = useState(null);
+    const [confirmDelete, setConfirmDelete] = useState(null);
+
     useEffect(() => { fetchInitialData(); }, []);
 
     useEffect(() => {
@@ -130,7 +134,60 @@ const ContinuousAssessment = () => {
     const completionCount = students.filter(s => isComplete(s.studentId)).length;
     const draftCount = students.filter(s => !isApproved(s) && isComplete(s.studentId)).length;
 
-    /* ── CSV Helpers ── */
+    // ===================================================================
+    // DELETE CA ENTRY FUNCTION
+    // ===================================================================
+    const handleDeleteClick = (assessmentId, studentName, subjectName) => {
+        if (!assessmentId) {
+            setError('No CA entry exists to delete. Enter scores and save first.');
+            return;
+        }
+
+        let confirmMessage = 'Are you sure you want to delete this CA entry?';
+
+        if (studentName && subjectName) {
+            confirmMessage = `Delete CA entry for ${studentName} (${subjectName})?`;
+        }
+
+        setConfirmDelete({
+            id: assessmentId,
+            message: confirmMessage,
+            studentName,
+            subjectName
+        });
+    };
+
+    const confirmDeleteHandler = async () => {
+        if (!confirmDelete) return;
+
+        setDeletingId(confirmDelete.id);
+        setConfirmDelete(null);
+
+        try {
+            const response = await teacherCAAPI.deleteDraftCA(confirmDelete.id);
+
+            if (response.success) {
+                setSuccess(`CA deleted for ${confirmDelete.studentName || 'this student'} (${confirmDelete.subjectName || 'this subject'}).`);
+                fetchStudentsAndAssessments();
+            } else {
+                setError(response.message || 'Failed to delete CA entry');
+            }
+        } catch (error) {
+            console.error('Error deleting CA:', error);
+            setError(error.response?.data?.message || 'Failed to delete CA entry');
+        } finally {
+            setDeletingId(null);
+        }
+    };
+
+    const cancelDelete = () => {
+        setConfirmDelete(null);
+        setDeletingId(null);
+    };
+
+    // ===================================================================
+    // CSV Helpers
+    // ===================================================================
     const parseCSVLine = (line) => {
         const result = [];
         let current = '';
@@ -352,6 +409,61 @@ const ContinuousAssessment = () => {
                 )}
             </div>
 
+            {/* Delete Confirmation Dialog */}
+            {confirmDelete && (
+                <div className="ca-delete-modal-overlay">
+                    <div className="ca-delete-modal">
+                        <div className="ca-delete-modal-icon">
+                            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                <line x1="10" y1="11" x2="10" y2="17"/>
+                                <line x1="14" y1="11" x2="14" y2="17"/>
+                            </svg>
+                        </div>
+                        <h3 className="ca-delete-modal-title">Delete CA Entry</h3>
+                        <p className="ca-delete-modal-student">
+                            {confirmDelete.studentName && confirmDelete.subjectName ? (
+                                <>
+                                    <strong>{confirmDelete.studentName}</strong>
+                                    <br />
+                                    ({confirmDelete.subjectName})
+                                </>
+                            ) : (
+                                <strong>this CA entry</strong>
+                            )}
+                        </p>
+                        <div className="ca-delete-modal-actions">
+                            <button className="ca-btn-sm ca-btn-sm--ghost" onClick={cancelDelete}>
+                                Cancel
+                            </button>
+                            <button
+                                className="ca-btn-sm ca-btn-sm--danger"
+                                onClick={confirmDeleteHandler}
+                                disabled={deletingId === confirmDelete.id}
+                            >
+                                {deletingId === confirmDelete.id ? (
+                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                                        <div className="ca-btn-spinner" style={{ width: '14px', height: '14px' }} />
+                                        Deleting...
+                                    </span>
+                                ) : (
+                                    <>
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="3 6 5 6 21 6"/>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                        </svg>
+                                        Delete
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Header */}
             <header className="ca-header">
                 <div className="ca-header-content">
@@ -487,7 +599,7 @@ const ContinuousAssessment = () => {
             {confirmSubmit && (
                 <div className="ca-submit-confirm">
                     <div className="ca-submit-confirm-inner">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ca-submit-confirm-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="ca-submit-confirm-icon">
                             <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                             <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
                         </svg>
@@ -518,7 +630,6 @@ const ContinuousAssessment = () => {
                         <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>
                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                            <line x1="12" y1="3" x2="12" y2="21"/>
                         </svg>
                     </div>
                     <h3>No Assignments Found</h3>
@@ -604,7 +715,7 @@ const ContinuousAssessment = () => {
                                 <tr>
                                     <th className="ca-th-sn">#</th>
                                     <th className="ca-th-student">Student</th>
-                                    <th className="ca-th-adm">Adm No</th>
+                                    <th className="th-adm">Adm No</th>
                                     <th className="ca-th-input">
                                         <span className="ca-th-label">Test</span>
                                         <span className="ca-th-max">/20</span>
@@ -630,6 +741,7 @@ const ContinuousAssessment = () => {
                                         <span className="ca-th-max">/100</span>
                                     </th>
                                     <th className="ca-th-status">Status</th>
+                                    <th className="ca-th-action">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -639,9 +751,14 @@ const ContinuousAssessment = () => {
                                     const { totalCA, totalScore } = calculateTotals(sid);
                                     const approved = isApproved(student);
                                     const sm = getStatusMeta(student.existingCA);
+                                    const isDeleting = deletingId === scores.assessmentId;
 
                                     return (
-                                        <tr key={sid} className={`ca-row ${isComplete(sid) ? 'ca-row--filled' : ''} ${approved ? 'ca-row--approved' : ''}`} style={{ animationDelay: `${index * 0.025}s` }}>
+                                        <tr
+                                            key={sid}
+                                            className={`ca-row ${isComplete(sid) ? 'ca-row--filled' : ''} ${approved ? 'ca-row--approved' : ''} ${isDeleting ? 'ca-row--deleting' : ''}`}
+                                            style={{ animationDelay: `${index * 0.025}s`, opacity: isDeleting ? 0.5 : 1 }}
+                                        >
                                             <td className="ca-td-sn">{index + 1}</td>
                                             <td className="ca-td-student">
                                                 <span className="ca-student-name">{student.lastName} {student.firstName}</span>
@@ -655,7 +772,7 @@ const ContinuousAssessment = () => {
                                                     onChange={(e) => handleScoreChange(sid, 'testScore', e.target.value)}
                                                     placeholder="–"
                                                     className={`ca-score-input ${approved ? 'ca-score-input--locked' : ''}`}
-                                                    disabled={approved}
+                                                    disabled={approved || isDeleting}
                                                 />
                                             </td>
                                             <td className="ca-td-input">
@@ -666,7 +783,7 @@ const ContinuousAssessment = () => {
                                                     onChange={(e) => handleScoreChange(sid, 'noteTakingScore', e.target.value)}
                                                     placeholder="–"
                                                     className={`ca-score-input ${approved ? 'ca-score-input--locked' : ''}`}
-                                                    disabled={approved}
+                                                    disabled={approved || isDeleting}
                                                 />
                                             </td>
                                             <td className="ca-td-input">
@@ -677,7 +794,7 @@ const ContinuousAssessment = () => {
                                                     onChange={(e) => handleScoreChange(sid, 'assignmentScore', e.target.value)}
                                                     placeholder="–"
                                                     className={`ca-score-input ${approved ? 'ca-score-input--locked' : ''}`}
-                                                    disabled={approved}
+                                                    disabled={approved || isDeleting}
                                                 />
                                             </td>
                                             <td className="ca-td-ca">
@@ -691,7 +808,7 @@ const ContinuousAssessment = () => {
                                                     onChange={(e) => handleScoreChange(sid, 'examScore', e.target.value)}
                                                     placeholder="–"
                                                     className={`ca-score-input ${approved ? 'ca-score-input--locked' : ''}`}
-                                                    disabled={approved}
+                                                    disabled={approved || isDeleting}
                                                 />
                                             </td>
                                             <td className="ca-td-total">
@@ -708,6 +825,33 @@ const ContinuousAssessment = () => {
                                                     {sm.label}
                                                 </span>
                                             </td>
+                                            <td className="ca-td-action">
+                                                {isDeleting ? (
+                                                    <button
+                                                        className="ca-delete-btn ca-delete-btn--loading"
+                                                        disabled
+                                                    >
+                                                        <div className="ca-delete-spinner" style={{ width: '14px', height: '14px' }} />
+                                                    </button>
+                                                ) : !approved && scores.assessmentId ? (
+                                                    <button
+                                                        className="ca-delete-btn"
+                                                        onClick={() => handleDeleteClick(
+                                                            scores.assessmentId,
+                                                            `${student.lastName} ${student.firstName}`,
+                                                            selectedSubjectLabel?.subjectName || null
+                                                        )}
+                                                        title="Delete this CA entry"
+                                                    >
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <polyline points="3 6 5 6 21 6"/>
+                                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                            <line x1="10" y1="11" x2="10" y2="17"/>
+                                                            <line x1="14" y1="11" x2="14" y2="17"/>
+                                                        </svg>
+                                                    </button>
+                                                ) : null}
+                                            </td>
                                         </tr>
                                     );
                                 })}
@@ -723,9 +867,14 @@ const ContinuousAssessment = () => {
                             const { totalCA, totalScore } = calculateTotals(sid);
                             const approved = isApproved(student);
                             const sm = getStatusMeta(student.existingCA);
+                            const isDeleting = deletingId === scores.assessmentId;
 
                             return (
-                                <div key={sid} className={`ca-card ${isComplete(sid) ? 'ca-card--filled' : ''} ${approved ? 'ca-card--approved' : ''}`} style={{ animationDelay: `${index * 0.04}s` }}>
+                                <div
+                                    key={sid}
+                                    className={`ca-card ${isComplete(sid) ? 'ca-card--filled' : ''} ${approved ? 'ca-card--approved' : ''} ${isDeleting ? 'ca-card--deleting' : ''}`}
+                                    style={{ animationDelay: `${index * 0.04}s`, opacity: isDeleting ? 0.5 : 1 }}
+                                >
                                     <div className="ca-card-top">
                                         <div className="ca-card-student">
                                             <span className="ca-card-sn">#{index + 1}</span>
@@ -734,15 +883,39 @@ const ContinuousAssessment = () => {
                                                 <span className="ca-student-id">{student.admissionNumber}</span>
                                             </div>
                                         </div>
-                                        <span className="ca-status-badge" style={{ color: sm.color, backgroundColor: sm.bg }}>
-                                            <span className="ca-status-dot" style={{ backgroundColor: sm.dot }} />
-                                            {approved && (
-                                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={sm.dot} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}>
-                                                    <polyline points="20 6 9 17 4 12"/>
-                                                </svg>
-                                            )}
-                                            {sm.label}
-                                        </span>
+                                        <div className="ca-card-top-right">
+                                            <span className="ca-status-badge" style={{ color: sm.color, backgroundColor: sm.bg }}>
+                                                <span className="ca-status-dot" style={{ backgroundColor: sm.dot }} />
+                                                {approved && (
+                                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={sm.dot} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}>
+                                                        <polyline points="20 6 9 17 4 12"/>
+                                                    </svg>
+                                                )}
+                                                {sm.label}
+                                            </span>
+                                            {isDeleting ? (
+                                                <button className="ca-delete-btn ca-delete-btn--loading" disabled>
+                                                    <div className="ca-delete-spinner" style={{ width: '14px', height: '14px' }} />
+                                                </button>
+                                            ) : !approved && scores.assessmentId ? (
+                                                <button
+                                                    className="ca-delete-btn"
+                                                    onClick={() => handleDeleteClick(
+                                                        scores.assessmentId,
+                                                        `${student.lastName} ${student.firstName}`,
+                                                        selectedSubjectLabel?.subjectName || null
+                                                    )}
+                                                    title="Delete this CA entry"
+                                                >
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="3 6 5 6 21 6"/>
+                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                                        <line x1="10" y1="11" x2="10" y2="17"/>
+                                                        <line x1="14" y1="11" x2="14" y2="17"/>
+                                                    </svg>
+                                                </button>
+                                            ) : null}
+                                        </div>
                                     </div>
 
                                     <div className="ca-card-scores-row">
@@ -754,7 +927,7 @@ const ContinuousAssessment = () => {
                                                 onChange={(e) => handleScoreChange(sid, 'testScore', e.target.value)}
                                                 placeholder="–"
                                                 className={`ca-score-input ca-score-input--mini ${approved ? 'ca-score-input--locked' : ''}`}
-                                                disabled={approved}
+                                                disabled={approved || isDeleting}
                                             />
                                         </div>
                                         <div className="ca-card-mini-field">
@@ -765,7 +938,7 @@ const ContinuousAssessment = () => {
                                                 onChange={(e) => handleScoreChange(sid, 'noteTakingScore', e.target.value)}
                                                 placeholder="–"
                                                 className={`ca-score-input ca-score-input--mini ${approved ? 'ca-score-input--locked' : ''}`}
-                                                disabled={approved}
+                                                disabled={approved || isDeleting}
                                             />
                                         </div>
                                         <div className="ca-card-mini-field">
@@ -776,13 +949,8 @@ const ContinuousAssessment = () => {
                                                 onChange={(e) => handleScoreChange(sid, 'assignmentScore', e.target.value)}
                                                 placeholder="–"
                                                 className={`ca-score-input ca-score-input--mini ${approved ? 'ca-score-input--locked' : ''}`}
-                                                disabled={approved}
+                                                disabled={approved || isDeleting}
                                             />
-                                        </div>
-                                        <div className="ca-card-mini-sep" />
-                                        <div className="ca-card-mini-field ca-card-mini-field--ca">
-                                            <span className="ca-card-mini-label">CA</span>
-                                            <span className={`ca-card-mini-computed ${totalCA > 0 ? 'ca-card-mini-computed--has' : ''}`}>{totalCA}</span>
                                         </div>
                                         <div className="ca-card-mini-field">
                                             <span className="ca-card-mini-label">Exam<span className="ca-card-mini-max">/60</span></span>
@@ -792,8 +960,13 @@ const ContinuousAssessment = () => {
                                                 onChange={(e) => handleScoreChange(sid, 'examScore', e.target.value)}
                                                 placeholder="–"
                                                 className={`ca-score-input ca-score-input--mini ${approved ? 'ca-score-input--locked' : ''}`}
-                                                disabled={approved}
+                                                disabled={approved || isDeleting}
                                             />
+                                        </div>
+                                        <div className="ca-card-mini-sep" />
+                                        <div className="ca-card-mini-field ca-card-mini-field--ca">
+                                            <span className="ca-card-mini-label">CA</span>
+                                            <span className={`ca-card-mini-computed ${totalCA > 0 ? 'ca-card-mini-computed--has' : ''}`}>{totalCA}</span>
                                         </div>
                                         <div className="ca-card-mini-sep" />
                                         <div className="ca-card-mini-field ca-card-mini-field--total">
@@ -801,15 +974,6 @@ const ContinuousAssessment = () => {
                                             <span className={`ca-card-mini-total ${totalScore >= 50 ? 'ca-card-mini-total--pass' : totalScore > 0 ? 'ca-card-mini-total--fail' : ''}`}>{totalScore}</span>
                                         </div>
                                     </div>
-
-                                    {approved && (
-                                        <div className="ca-card-locked-notice">
-                                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                                            </svg>
-                                            <span>Approved by admin – scores are locked</span>
-                                        </div>
-                                    )}
                                 </div>
                             );
                         })}
@@ -826,7 +990,7 @@ const ContinuousAssessment = () => {
                             ) : (
                                 <>
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 0 2-2z"/>
                                         <polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
                                     </svg>
                                     Save All Scores

@@ -1,1040 +1,1169 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import {
-    dashboardAPI,
-    classesAPI,
-    teacherBroadsheetAPI,
-    termsAPI,
-    sessionsAPI,
-    getAuthData,
-} from '../../api';
+// ============================================
+// CLASS TEACHER BROADSHEET PAGE
+// Nigerian Secondary School System
+// Bootstrap + Custom Creative Design
+// ============================================
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { teacherBroadsheetAPI, termsAPI, sessionsAPI } from '../../api';
 
-// =============================================
-// NIGERIAN GRADING SYSTEM
-// =============================================
-const GRADING = [
-    { min: 70, max: 100, grade: 'A', remark: 'Excellent', color: '#15803d', bg: '#DCFCE7' },
-    { min: 60, max: 69,  grade: 'B', remark: 'Very Good', color: '#2563eb', bg: '#DBEAFE' },
-    { min: 50, max: 59,  grade: 'C', remark: 'Good',      color: '#D97706', bg: '#FEF3C7' },
-    { min: 45, max: 49,  grade: 'D', remark: 'Fair',      color: '#EA580C', bg: '#FFEDD5' },
-    { min: 40, max: 44,  grade: 'E', remark: 'Poor',      color: '#DC2626', bg: '#FEE2E2' },
-    { min: 0,  max: 39,  grade: 'F', remark: 'Fail',      color: '#991B1B', bg: '#FECACA' },
+// ============================================
+// SVG ICON COMPONENTS
+// ============================================
+const Icons = {
+    ArrowLeft: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+    ),
+    Printer: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect width="12" height="8" x="6" y="14"/></svg>
+    ),
+    Loader: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`${p.className || ''} ${p.spin ? 'spinner-border spinner-border-sm' : ''}`}><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+    ),
+    AlertCircle: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+    ),
+    Users: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    ),
+    BookOpen: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    ),
+    BarChart: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><line x1="12" x2="12" y1="20" y2="10"/><line x1="18" x2="18" y1="20" y2="4"/><line x1="6" x2="6" y1="20" y2="16"/></svg>
+    ),
+    TrendingUp: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+    ),
+    Award: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+    ),
+    ChevronDown: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m6 9 6 6 6-6"/></svg>
+    ),
+    ChevronRight: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m9 18 6-6-6-6"/></svg>
+    ),
+    ChevronLeft: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m15 18-6-6 6-6"/></svg>
+    ),
+    Filter: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+    ),
+    FileText: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>
+    ),
+    ClipboardCheck: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+    ),
+    MessageSquare: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    ),
+    Search: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+    ),
+    X: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+    ),
+    Maximize2: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
+    ),
+    Minimize2: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" x2="21" y1="10" y2="3"/><line x1="3" x2="10" y1="21" y2="14"/></svg>
+    ),
+    ArrowUp: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+    ),
+    ArrowDown: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m5 12 7 7 7-7"/><path d="M12 5v14"/></svg>
+    ),
+    Eye: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+    ),
+    AlertTriangle: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+    ),
+    Star: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+    ),
+    Zap: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/></svg>
+    ),
+    Target: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+    ),
+    Layers: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22.54 12.43-1.14.51"/><path d="m22.54 12.43-8.58 3.91a2 2 0 0 1-1.66 0l-8.58-3.9"/><path d="m22.54 16.43-1.14.51"/><path d="m22.54 16.43-8.58 3.91a2 2 0 0 1-1.66 0l-8.58-3.9"/></svg>
+    ),
+    GraduationCap: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
+    ),
+    DoubleArrow: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m18 8 4 4-4 4"/><path d="m18 4 4 4-4 4"/><path d="m6 8-4 4 4 4"/><path d="m6 4-4 4 4 4"/></svg>
+    ),
+};
+
+// ============================================
+// CONSTANTS & CONFIGURATION
+// ============================================
+const SCHOOL_INFO = {
+    name: 'DATFORTE INTERBATIONAL SCHOOL LIMITED',
+    address: 'Ahmadiyyah Lagos state',
+    motto: 'Discipline & Excellence',
+};
+
+const GRADING_KEY = [
+    { grade: 'A', range: '70 – 100', color: '#059669' },
+    { grade: 'B', range: '60 – 69', color: '#2563eb' },
+    { grade: 'C', range: '50 – 59', color: '#d97706' },
+    { grade: 'D', range: '45 – 49', color: '#ea580c' },
+    { grade: 'E', range: '40 – 44', color: '#dc2626' },
+    { grade: 'F', range: '0 – 39', color: '#991b1b' },
 ];
 
-function getGrade(score) {
-    if (score === null || score === undefined || score === '-') {
-        return { grade: '-', remark: '-', color: '#6B7280', bg: '#F3F4F6' };
+const VIEW_MODES = { DETAILED: 'detailed', COMPACT: 'compact', GRADE_ONLY: 'grade_only' };
+
+const STICKY_COLS = {
+    sn: { width: 42, left: 0 },
+    admNo: { width: 80, left: 42 },
+    name: { width: 170, left: 122 },
+    gender: { width: 40, left: 292 },
+};
+const STICKY_TOTAL_W = 332;
+
+const SUB_COLS_DETAILED = [
+    { key: 'testScore', label: 'T', width: 36 },
+    { key: 'noteTakingScore', label: 'NT', width: 36 },
+    { key: 'assignmentScore', label: 'AS', width: 36 },
+    { key: 'totalCA', label: 'CA', width: 38 },
+    { key: 'examScore', label: 'EX', width: 38 },
+    { key: 'totalScore', label: 'Tot', width: 40 },
+    { key: 'grade', label: 'G', width: 34 },
+    { key: 'remark', label: 'R', width: 42 },
+];
+const SUB_COLS_COMPACT = [
+    { key: 'totalScore', label: 'Total', width: 48 },
+    { key: 'grade', label: 'G', width: 34 },
+];
+const SUB_COLS_GRADE_ONLY = [{ key: 'grade', label: 'G', width: 34 }];
+
+const PAL = {
+    green: '#008751',
+    greenLight: '#34d399',
+    greenDark: '#065f46',
+    greenGhost: 'rgba(0,135,81,0.08)',
+    greenGhostMed: 'rgba(0,135,81,0.15)',
+    hdrPrimary: '#7c2d12',
+    hdrSecondary: '#9a3412',
+    hdrDeep: '#431407',
+    hdrAccent: '#ea580c',
+    hdrGlow: 'rgba(234,88,12,0.35)',
+    hdrGold: '#fbbf24',
+    hdrGoldGlow: 'rgba(251,191,36,0.25)',
+    hdrText: '#fef3c7',
+    hdrMuted: '#d4a574',
+    dark: '#0c0f1a',
+    darkCard: '#141829',
+    darkSurface: '#1a1f35',
+    darkMuted: '#6b7294',
+    darkText: '#c8cde0',
+    accentGlow: 'rgba(0,135,81,0.3)',
+};
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+function getGradeColor(grade) {
+    const g = (grade || '').toUpperCase();
+    const map = { 'A': { text: 'text-success', bg: 'bg-success-subtle', dot: '#059669' }, 'B': { text: 'text-primary', bg: 'bg-primary-subtle', dot: '#2563eb' }, 'C': { text: 'text-warning', bg: 'bg-warning-subtle', dot: '#d97706' }, 'D': { text: 'text-orange', bg: 'bg-orange-subtle', dot: '#ea580c' }, 'E': { text: 'text-danger', bg: 'bg-danger-subtle', dot: '#dc2626' }, 'F': { text: 'text-dark', bg: 'bg-dark-subtle', dot: '#991b1b' } };
+    return map[g] || { text: 'text-secondary', bg: 'bg-body-tertiary', dot: '#6c757d' };
+}
+function getScoreColor(key, value) {
+    if (key === 'grade') return null;
+    if (key === 'remark') return 'text-secondary';
+    const num = Number(value);
+    if (isNaN(num) || num === 0) return 'text-body-tertiary';
+    if (key === 'totalScore' || key === 'totalCA' || key === 'examScore') {
+        if (num >= 70) return 'text-success fw-semibold';
+        if (num >= 50) return 'text-dark';
+        if (num >= 40) return 'text-orange';
+        return 'text-danger fw-semibold';
     }
-    const s = Number(score);
-    if (isNaN(s)) return { grade: '-', remark: '-', color: '#6B7280', bg: '#F3F4F6' };
-    return GRADING.find(g => s >= g.min && s <= g.max) || GRADING[GRADING.length - 1];
+    const maxExpected = key === 'testScore' ? 20 : key === 'examScore' ? 60 : 10;
+    const pct = (num / maxExpected) * 100;
+    if (pct >= 70) return 'text-success';
+    if (pct >= 50) return 'text-dark';
+    return 'text-orange';
+}
+function getPositionStyle(position) {
+    if (position === 1) return { bg: 'linear-gradient(135deg, #fbbf24, #f59e0b)', text: '#78350f', border: '#d97706' };
+    if (position === 2) return { bg: 'linear-gradient(135deg, #e5e7eb, #d1d5db)', text: '#374151', border: '#9ca3af' };
+    if (position === 3) return { bg: 'linear-gradient(135deg, #fdba74, #fb923c)', text: '#7c2d12', border: '#ea580c' };
+    if (position <= 10) return { bg: '#ecfdf5', text: '#065f46', border: '#a7f3d0' };
+    return { bg: '#f8f9fa', text: '#6b7280', border: '#dee2e6' };
+}
+function getPositionSuffix(pos) {
+    if (!pos) return '';
+    const s = ['th', 'st', 'nd', 'rd'];
+    const v = pos % 100;
+    return pos + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+function fmt(n, d = 0) { return (n === null || n === undefined || isNaN(n)) ? '—' : Number(n).toFixed(d); }
+function fmtPct(n) { return (n === null || n === undefined || isNaN(n)) ? '—' : `${Math.round(n)}%`; }
+function getStudentRowBg(student, subjects) {
+    if (student.subjectsWithoutScores > 0 && student.subjectsWithoutScores === subjects.length) return '#fde2e2';
+    if (student.subjectsWithoutScores > subjects.length / 2) return '#fff3cd';
+    return null;
 }
 
-// =============================================
-// HELPER FUNCTION: Get score from API response
-// =============================================
-function getScore(scores, studentId, subjectId) {
-    const subjectScores = scores?.[subjectId];
-    if (!subjectScores || !studentId) return null;
-    return subjectScores[studentId] || null;
+// ============================================
+// CUSTOM HOOKS
+// ============================================
+function useClassList(filters) {
+    const [classes, setClasses] = useState([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const [meta, setMeta] = useState(null);
+    const load = useCallback(async () => {
+        setLoading(true); setError(null);
+        try {
+            const r = await teacherBroadsheetAPI.getClassTeacherClasses({ termId: filters.termId, sessionId: filters.sessionId });
+            if (r.success) { setClasses(r.data || []); setMeta(r.meta || null); } else setError(r.message || 'Failed');
+        } catch (e) { setError(e.response?.data?.message || e.message || 'Network error'); }
+        finally { setLoading(false); }
+    }, [filters.termId, filters.sessionId]);
+    useEffect(() => { load(); }, [load]);
+    return { classes, loading, error, meta, refetch: load };
+}
+function useBroadsheet(classId, filters) {
+    const [data, setData] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
+    const load = useCallback(async () => {
+        if (!classId) return;
+        setLoading(true); setError(null);
+        try {
+            const r = await teacherBroadsheetAPI.getClassTeacherBroadsheet(classId, { termId: filters.termId, sessionId: filters.sessionId, includeSubjectTeachers: 'true' });
+            if (r.success) setData(r.data); else setError(r.message || 'Failed');
+        } catch (e) { setError(e.response?.data?.message || e.message || 'Network error'); }
+        finally { setLoading(false); }
+    }, [classId, filters.termId, filters.sessionId]);
+    useEffect(() => { load(); }, [load]);
+    return { data, loading, error, refetch: load };
 }
 
-// =============================================
-// SUB-COMPONENTS
-// =============================================
+// ============================================
+// VERTICAL SCROLL CONTROL BAR (Below Table)
+// ============================================
+function VerticalScrollBar({ scrollRef }) {
+    const [scrollTop, setScrollTop] = useState(0);
+    const [maxScroll, setMaxScroll] = useState(0);
+    const raf = useRef(null);
+    const holdRef = useRef(null);
 
-function GradeBadge({ score }) {
-    const g = getGrade(score);
-    if (g.grade === '-') return <span className="text-slate-400 text-xs">—</span>;
+    useEffect(() => {
+        const c = scrollRef?.current; if (!c) return;
+        const u = () => {
+            if (raf.current) cancelAnimationFrame(raf.current);
+            raf.current = requestAnimationFrame(() => {
+                setScrollTop(c.scrollTop);
+                setMaxScroll(c.scrollHeight - c.clientHeight);
+            });
+        };
+        c.addEventListener('scroll', u, { passive: true });
+        u();
+        const ro = new ResizeObserver(u);
+        ro.observe(c);
+        return () => {
+            c.removeEventListener('scroll', u);
+            if (raf.current) cancelAnimationFrame(raf.current);
+            ro.disconnect();
+            if (holdRef.current) cancelAnimationFrame(holdRef.current);
+        };
+    }, [scrollRef]);
+
+    const startHold = useCallback((dir) => {
+        const step = () => { const c = scrollRef?.current; if (c) c.scrollBy({ top: dir * 8, behavior: 'auto' }); holdRef.current = requestAnimationFrame(step); };
+        holdRef.current = requestAnimationFrame(step);
+    }, [scrollRef]);
+    const stopHold = useCallback(() => { if (holdRef.current) { cancelAnimationFrame(holdRef.current); holdRef.current = null; } }, []);
+    const jump = useCallback((pos) => { const c = scrollRef?.current; if (c) c.scrollTo({ top: pos === 'start' ? 0 : maxScroll, behavior: 'smooth' }); }, [scrollRef, maxScroll]);
+    const pct = maxScroll > 0 ? Math.round((scrollTop / maxScroll) * 100) : 0;
+
+    if (maxScroll <= 20) return null;
+
+    const btnStyle = (isEnd) => ({
+        fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.04em',
+        background: `linear-gradient(135deg, ${isEnd ? PAL.greenDark : PAL.green}, ${PAL.greenLight})`,
+        color: 'white', border: `1px solid ${PAL.green}40`,
+        boxShadow: `0 2px 10px ${PAL.accentGlow}, inset 0 1px 0 rgba(255,255,255,0.08)`,
+        padding: '4px 10px',
+    });
+    const arrowStyle = {
+        width: 34, height: 34,
+        background: `linear-gradient(135deg, ${PAL.green}, ${PAL.greenLight})`,
+        color: 'white', border: `1px solid ${PAL.green}50`,
+        boxShadow: `0 3px 14px ${PAL.accentGlow}, inset 0 1px 0 rgba(255,255,255,0.1)`,
+    };
+
     return (
-        <span
-            className="grade-badge inline-flex items-center justify-center w-7 h-6 rounded text-xs font-bold"
-            style={{ color: g.color, backgroundColor: g.bg }}
-        >
-            {g.grade}
-        </span>
-    );
-}
-
-function StatsCard({ icon, label, value, sub, color, delay = 0 }) {
-    return (
-        <div
-            className="bs-stats-card"
-            style={{ animationDelay: `${delay}ms` }}
-        >
-            <div className="bs-stats-icon" style={{ backgroundColor: color + '18', color }}>
-                <i className={icon} />
+        <div className="no-print mt-1 mb-1 px-1 px-md-0">
+            <div className="d-flex align-items-center gap-2 mb-1.5 d-none d-md-flex">
+                <div className="flex-grow-1" style={{ height: 1, background: `linear-gradient(90deg, transparent, ${PAL.green}20, transparent)` }} />
+                <span className="d-flex align-items-center gap-1" style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: PAL.greenDark }}>
+                    <Icons.ArrowUp size={10} /><Icons.ArrowDown size={10} /> Scroll Up / Down
+                </span>
+                <div className="flex-grow-1" style={{ height: 1, background: `linear-gradient(90deg, transparent, ${PAL.green}20, transparent)` }} />
             </div>
-            <div>
-                <div className="bs-stats-value">{value}</div>
-                <div className="bs-stats-label">{label}</div>
-                {sub && <div className="bs-stats-sub">{sub}</div>}
+            <div className="d-flex align-items-center gap-1 gap-md-2">
+                <button onClick={() => jump('start')} className="btn btn-sm d-none d-md-flex align-items-center gap-1 rounded-pill" style={btnStyle(true)}>
+                    <Icons.ArrowUp size={11} /> Top
+                </button>
+                <button onMouseDown={() => startHold(-1)} onMouseUp={stopHold} onMouseLeave={stopHold} onTouchStart={() => startHold(-1)} onTouchEnd={stopHold}
+                    className="btn d-flex align-items-center justify-content-center rounded-pill" style={arrowStyle}>
+                    <Icons.ArrowUp size={16} />
+                </button>
+                <div className="flex-grow-1 position-relative rounded-pill" style={{ height: 8, background: 'rgba(0,135,81,0.06)', overflow: 'hidden' }}>
+                    <div className="position-absolute top-0 start-0 h-100 rounded-pill" style={{ width: `${Math.max(3, pct)}%`, background: `linear-gradient(90deg, ${PAL.green}, ${PAL.greenLight})`, boxShadow: `0 0 10px ${PAL.accentGlow}`, transition: 'width 0.15s' }} />
+                    <div className="position-absolute top-50 rounded-circle" style={{ left: `${pct}%`, width: 14, height: 14, transform: 'translate(-50%,-50%)', background: `linear-gradient(135deg, ${PAL.greenLight}, ${PAL.green})`, boxShadow: `0 0 8px ${PAL.accentGlow}, 0 2px 6px rgba(0,0,0,0.15)`, border: '2px solid white', transition: 'left 0.15s' }} />
+                </div>
+                <span className="font-monospace fw-bold d-none d-md-block" style={{ fontSize: '0.65rem', color: PAL.greenDark, minWidth: 34, textAlign: 'center' }}>{pct}%</span>
+                <button onMouseDown={() => startHold(1)} onMouseUp={stopHold} onMouseLeave={stopHold} onTouchStart={() => startHold(1)} onTouchEnd={stopHold}
+                    className="btn d-flex align-items-center justify-content-center rounded-pill" style={arrowStyle}>
+                    <Icons.ArrowDown size={16} />
+                </button>
+                <button onClick={() => jump('end')} className="btn btn-sm d-none d-md-flex align-items-center gap-1 rounded-pill" style={btnStyle(false)}>
+                    Bottom <Icons.ArrowDown size={11} />
+                </button>
             </div>
         </div>
     );
 }
 
-function GradeDistribution({ grades }) {
-    const maxCount = Math.max(...Object.values(grades), 1);
+// ============================================
+// HORIZONTAL SCROLL CONTROL BAR
+// ============================================
+function HorizontalScrollBar({ scrollRef }) {
+    const [sLeft, setSLeft] = useState(0);
+    const [maxS, setMaxS] = useState(0);
+    const raf = useRef(null);
+    const holdRef = useRef(null);
+
+    useEffect(() => {
+        const c = scrollRef?.current; if (!c) return;
+        const u = () => { if (raf.current) cancelAnimationFrame(raf.current); raf.current = requestAnimationFrame(() => { setSLeft(c.scrollLeft); setMaxS(c.scrollWidth - c.clientWidth); }); };
+        c.addEventListener('scroll', u, { passive: true }); u();
+        const ro = new ResizeObserver(u); ro.observe(c);
+        return () => { c.removeEventListener('scroll', u); if (raf.current) cancelAnimationFrame(raf.current); ro.disconnect(); if (holdRef.current) cancelAnimationFrame(holdRef.current); };
+    }, [scrollRef]);
+
+    const startHold = useCallback((dir) => {
+        const step = () => { const c = scrollRef?.current; if (c) c.scrollBy({ left: dir * 8, behavior: 'auto' }); holdRef.current = requestAnimationFrame(step); };
+        holdRef.current = requestAnimationFrame(step);
+    }, [scrollRef]);
+    const stopHold = useCallback(() => { if (holdRef.current) { cancelAnimationFrame(holdRef.current); holdRef.current = null; } }, []);
+    const jump = useCallback((pos) => { const c = scrollRef?.current; if (c) c.scrollTo({ left: pos === 'start' ? 0 : maxS, behavior: 'smooth' }); }, [scrollRef, maxS]);
+    const pct = maxS > 0 ? Math.round((sLeft / maxS) * 100) : 0;
+
+    if (maxS <= 20) return null;
+
+    const btnStyle = (isEnd) => ({
+        fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.04em',
+        background: `linear-gradient(135deg, ${isEnd ? PAL.hdrDeep : PAL.hdrPrimary}, ${PAL.hdrSecondary})`,
+        color: PAL.hdrGold, border: `1px solid ${PAL.hdrAccent}40`,
+        boxShadow: `0 2px 10px ${PAL.hdrGlow}, inset 0 1px 0 rgba(255,255,255,0.08)`,
+        padding: '4px 10px',
+    });
+    const arrowStyle = {
+        width: 34, height: 34,
+        background: `linear-gradient(135deg, ${PAL.hdrPrimary}, ${PAL.hdrSecondary})`,
+        color: 'white', border: `1px solid ${PAL.hdrAccent}50`,
+        boxShadow: `0 3px 14px ${PAL.hdrGlow}, inset 0 1px 0 rgba(255,255,255,0.1)`,
+    };
+
     return (
-        <div className="bs-grade-dist">
-            {GRADING.map((g, idx) => {
-                const count = grades[g.grade] || 0;
-                const pct = (count / maxCount) * 100;
-                return (
-                    <div key={g.grade} className="bs-grade-bar-wrap">
-                        <span className="bs-grade-count">{count}</span>
-                        <div
-                            className="bs-grade-bar"
-                            style={{
-                                height: `${Math.max(pct, 4)}%`,
-                                backgroundColor: g.color,
-                                animationDelay: `${idx * 80}ms`,
-                            }}
-                        />
-                        <span className="bs-grade-label" style={{ color: g.color }}>{g.grade}</span>
+        <div className="no-print mt-1 mb-1 px-1 px-md-0">
+            <div className="d-flex align-items-center gap-2 mb-1.5 d-none d-md-flex">
+                <div className="flex-grow-1" style={{ height: 1, background: `linear-gradient(90deg, transparent, ${PAL.hdrAccent}25, transparent)` }} />
+                <span className="d-flex align-items-center gap-1" style={{ fontSize: '0.58rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: PAL.hdrSecondary }}>
+                    <Icons.DoubleArrow size={11} style={{ color: PAL.hdrAccent }} /> Scroll Left / Right
+                </span>
+                <div className="flex-grow-1" style={{ height: 1, background: `linear-gradient(90deg, transparent, ${PAL.hdrAccent}25, transparent)` }} />
+            </div>
+            <div className="d-flex align-items-center gap-1 gap-md-2">
+                <button onClick={() => jump('start')} className="btn btn-sm d-none d-md-flex align-items-center gap-1 rounded-pill" style={btnStyle(true)}>
+                    <Icons.ChevronLeft size={11} /> Start
+                </button>
+                <button onMouseDown={() => startHold(-1)} onMouseUp={stopHold} onMouseLeave={stopHold} onTouchStart={() => startHold(-1)} onTouchEnd={stopHold}
+                    className="btn d-flex align-items-center justify-content-center rounded-pill" style={arrowStyle}>
+                    <Icons.ChevronLeft size={16} />
+                </button>
+                <div className="flex-grow-1 position-relative rounded-pill" style={{ height: 8, background: 'rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+                    <div className="position-absolute top-0 start-0 h-100 rounded-pill" style={{ width: `${Math.max(3, pct)}%`, background: `linear-gradient(90deg, ${PAL.hdrAccent}, ${PAL.hdrGold})`, boxShadow: `0 0 10px ${PAL.hdrGlow}`, transition: 'width 0.15s' }} />
+                    <div className="position-absolute top-50 rounded-circle" style={{ left: `${pct}%`, width: 12, height: 12, transform: 'translate(-50%,-50%)', background: `linear-gradient(135deg, ${PAL.hdrGold}, ${PAL.hdrAccent})`, boxShadow: `0 0 8px ${PAL.hdrGoldGlow}, 0 2px 6px rgba(0,0,0,0.15)`, border: '2px solid white', transition: 'left 0.15s' }} />
+                </div>
+                <span className="font-monospace fw-bold d-none d-md-block" style={{ fontSize: '0.65rem', color: PAL.hdrSecondary, minWidth: 34, textAlign: 'center' }}>{pct}%</span>
+                <button onMouseDown={() => startHold(1)} onMouseUp={stopHold} onMouseLeave={stopHold} onTouchStart={() => startHold(1)} onTouchEnd={stopHold}
+                    className="btn d-flex align-items-center justify-content-center rounded-pill" style={arrowStyle}>
+                    <Icons.ChevronRight size={16} />
+                </button>
+                <button onClick={() => jump('end')} className="btn btn-sm d-none d-md-flex align-items-center gap-1 rounded-pill" style={btnStyle(false)}>
+                    End <Icons.ChevronRight size={11} />
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// ============================================
+// HERO SCHOOL HEADER
+// ============================================
+function HeroSchoolHeader({ data }) {
+    return (
+        <div className="position-relative overflow-hidden rounded-3 rounded-md-4 mb-2 mb-md-3" style={{
+            background: `linear-gradient(135deg, ${PAL.hdrDeep} 0%, ${PAL.hdrPrimary} 35%, ${PAL.hdrSecondary} 70%, ${PAL.hdrDeep} 100%)`,
+            boxShadow: `0 8px 40px ${PAL.hdrGlow}, 0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.06)`,
+        }}>
+            <div className="position-absolute top-0 start-0 end-0 bottom-0 overflow-hidden pointer-events-none">
+                <div className="w-100 h-100" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px)`, backgroundSize: '36px 36px' }} />
+                <div className="position-absolute rounded-circle" style={{ top: -60, right: -40, width: 220, height: 220, background: `radial-gradient(circle, ${PAL.hdrGlow} 0%, transparent 70%)`, filter: 'blur(50px)' }} />
+                <div className="position-absolute top-0 start-0 end-0" style={{ height: 4, background: `linear-gradient(90deg, #008751 0%, #008751 33%, white 33%, white 66%, #008751 66%, #008751 100%)` }} />
+                <div className="position-absolute bottom-0 start-0 end-0" style={{ height: 3, background: `linear-gradient(90deg, transparent 5%, ${PAL.hdrGold} 30%, ${PAL.hdrGold} 70%, transparent 95%)`, opacity: 0.6 }} />
+            </div>
+            <div className="position-relative z-1 text-center px-2 px-sm-3 px-md-4 py-2 py-sm-3 py-md-4">
+                <div className="d-flex justify-content-center mb-1.5 mb-md-3">
+                    <div className="position-relative">
+                        <div className="d-flex align-items-center justify-content-center rounded-3" style={{ width: 40, height: 40, background: `linear-gradient(145deg, rgba(251,191,36,0.15), rgba(234,88,12,0.08))`, border: `1.5px solid ${PAL.hdrGold}50`, boxShadow: `0 0 40px ${PAL.hdrGoldGlow}` }}>
+                            <Icons.GraduationCap size={18} style={{ color: PAL.hdrGold }} />
+                        </div>
                     </div>
-                );
-            })}
+                </div>
+                <h1 className="fw-black text-uppercase mb-0.5 mb-md-1" style={{ fontFamily: 'Georgia, "Times New Roman", serif', letterSpacing: '0.15em', color: PAL.hdrGold, textShadow: `0 2px 24px ${PAL.hdrGoldGlow}`, fontSize: 'clamp(0.72rem, 3.2vw, 1.3rem)', lineHeight: 1.2 }}>{SCHOOL_INFO.name}</h1>
+                <p className="text-uppercase mb-1 d-none d-md-block" style={{ fontSize: '0.68rem', letterSpacing: '0.16em', color: PAL.hdrMuted }}>{SCHOOL_INFO.address}</p>
+                <div className="d-inline-flex align-items-center gap-2 px-2.5 py-0.5 rounded-pill mb-1.5 mb-md-3" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)' }}>
+                    <span className="rounded-circle d-block" style={{ width: 4, height: 4, background: PAL.hdrGold, boxShadow: `0 0 8px ${PAL.hdrGoldGlow}` }} />
+                    <p className="fst-italic fw-medium mb-0" style={{ fontSize: 'clamp(0.5rem, 1.5vw, 0.6rem)', color: PAL.hdrGold }}>"{SCHOOL_INFO.motto}"</p>
+                    <span className="rounded-circle d-block" style={{ width: 4, height: 4, background: PAL.hdrGold, boxShadow: `0 0 8px ${PAL.hdrGoldGlow}` }} />
+                </div>
+                <div className="d-inline-block px-3 px-md-4 py-1 py-md-1.5 rounded-3 text-uppercase mb-1.5 mb-md-3" style={{ fontSize: 'clamp(0.55rem, 1.6vw, 0.65rem)', fontWeight: 900, letterSpacing: '0.3em', background: `linear-gradient(135deg, ${PAL.hdrGold}, #f59e0b)`, color: PAL.hdrDeep, boxShadow: `0 6px 24px ${PAL.hdrGoldGlow}` }}>Class Broadsheet</div>
+                {data && (
+                    <div className="d-flex flex-wrap justify-content-center gap-1.5 gap-md-3 mt-1 mt-md-2">
+                        {[['Class', data.classInfo?.classFullName], ['Teacher', data.classInfo?.classTeacher?.name], ['Term', data.termInfo?.name], ['Session', data.sessionInfo?.name]].map(([label, value]) => (
+                            <div key={label} className="d-flex align-items-center gap-1">
+                                <span className="rounded-circle d-block" style={{ width: 3, height: 3, background: PAL.hdrGold }} />
+                                <span style={{ fontSize: 'clamp(0.48rem, 1.4vw, 0.6rem)', color: PAL.hdrMuted }}>{label}</span>
+                                <span className="fw-semibold" style={{ fontSize: 'clamp(0.52rem, 1.5vw, 0.65rem)', color: PAL.hdrText, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || '—'}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
 
-function EmptyState({ icon, title, description }) {
+function GradingKeyBadge() {
     return (
-        <div className="empty-state">
-            <div className="empty-state-icon">{icon}</div>
-            <div className="empty-state-title">{title}</div>
-            <div className="empty-state-text">{description}</div>
+        <div className="no-print rounded-3 p-2 p-md-3 mb-2 mb-md-3" style={{ background: 'linear-gradient(135deg, rgba(0,135,81,0.04), rgba(0,135,81,0.01))', border: '1px solid rgba(0,135,81,0.1)' }}>
+            <div className="d-flex align-items-center gap-2 mb-1.5 mb-md-2">
+                <span className="badge bg-success-subtle text-success d-flex align-items-center justify-content-center" style={{ width: 20, height: 20, borderRadius: 6 }}><Icons.Award size={10} /></span>
+                <span className="text-uppercase fw-bold tracking-wider" style={{ fontSize: 'clamp(0.55rem, 1.5vw, 0.65rem)', color: '#495057' }}>Grading Key</span>
+            </div>
+            <div className="d-flex flex-wrap gap-1 gap-md-2">
+                {GRADING_KEY.map((g) => (
+                    <span key={g.grade} className="d-inline-flex align-items-center gap-0.5 px-1.5 px-md-2 py-0.5 py-md-1 rounded-pill" style={{ fontSize: 'clamp(0.55rem, 1.5vw, 0.65rem)', backgroundColor: g.color + '0d', border: `1px solid ${g.color}22` }}>
+                        <span className="rounded-circle d-block" style={{ width: 5, height: 5, backgroundColor: g.color, boxShadow: `0 0 6px ${g.color}40` }} />
+                        <span className="fw-black" style={{ color: g.color }}>{g.grade}</span>
+                        <span className="fw-medium d-none d-sm-inline" style={{ color: g.color + 'aa', fontSize: '0.6rem' }}>{g.range}</span>
+                    </span>
+                ))}
+            </div>
         </div>
     );
 }
 
-function SortIcon({ field, sortField, sortDir }) {
-    if (sortField !== field) return <i className="fas fa-sort" style={{ marginLeft: 4, fontSize: 10, color: '#94a3b8' }} />;
-    return <i className={`fas fa-sort-${sortDir === 'asc' ? 'up' : 'down'}`} style={{ marginLeft: 4, fontSize: 10, color: '#f59e0b' }} />;
+function ClassSelectionView({ classes, loading, error, meta, onSelectClass, onRefresh }) {
+    if (loading) return (<div className="d-flex align-items-center justify-content-center py-5"><div className="text-center"><div className="spinner-border text-success mb-2" role="status" style={{ width: 48, height: 48 }}><span className="visually-hidden">Loading...</span></div><p className="text-body-secondary small">Loading classes...</p></div></div>);
+    if (error) return (<div className="d-flex flex-column align-items-center justify-content-center py-5 px-3"><div className="bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center mb-3" style={{ width: 56, height: 56 }}><Icons.AlertCircle size={26} className="text-danger" /></div><h3 className="h6 fw-semibold mb-1">Error Loading Classes</h3><p className="text-body-secondary small text-center mb-3" style={{ maxWidth: 400 }}>{error}</p><button onClick={onRefresh} className="btn btn-success btn-sm rounded-3 px-4 shadow">Try Again</button></div>);
+    if (classes.length === 0) return (<div className="d-flex flex-column align-items-center justify-content-center py-5 px-3"><div className="rounded-circle d-flex align-items-center justify-content-center mb-3" style={{ width: 56, height: 56, background: PAL.greenGhostMed, border: `1px solid ${PAL.green}20` }}><Icons.Users size={26} style={{ color: PAL.green }} /></div><h3 className="h6 fw-semibold mb-1">No Classes Assigned</h3><p className="text-body-secondary small text-center">Contact the administrator for class teacher assignment.</p></div>);
+    return (
+        <div>
+            {meta && (<div className="alert d-flex align-items-center gap-2 py-2 px-3 rounded-3 mb-3 border-0" style={{ background: `linear-gradient(135deg, ${PAL.greenGhost}, rgba(0,135,81,0.03))`, border: `1px solid ${PAL.green}20 !important`, color: PAL.greenDark, fontSize: '0.78rem' }} role="alert"><Icons.BookOpen size={14} style={{ color: PAL.green }} /><span className="fw-medium">{classes.length} class{classes.length !== 1 ? 'es' : ''} &bull; <strong>{meta.termName}</strong> &bull; <strong>{meta.sessionName}</strong></span></div>)}
+            <div className="row g-2 g-md-3">
+                {classes.map((cls) => (
+                    <div key={cls.classId} className="col-12 col-sm-6 col-lg-4">
+                        <button onClick={() => onSelectClass(cls.classId)} className="btn w-100 text-start p-2.5 p-md-3 rounded-3 rounded-md-4 border border-opacity-10 transition-all" style={{ background: 'white', borderColor: '#dee2e6', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor = `${PAL.green}40`; e.currentTarget.style.boxShadow = `0 8px 30px ${PAL.accentGlow}`; }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#dee2e6'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}>
+                            <div className="d-flex align-items-start justify-content-between mb-2">
+                                <div><h3 className="h6 fw-bold mb-0" style={{ fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>{cls.className}</h3><p className="text-body-tertiary mb-0" style={{ fontSize: '0.7rem' }}>{cls.classLevel}</p></div>
+                                <span className="text-body-tertiary d-flex align-items-center justify-content-center rounded-2" style={{ width: 32, height: 32 }}><Icons.ChevronRight size={14} /></span>
+                            </div>
+                            <div className="row g-2 mb-2">
+                                <div className="col-6"><div className="rounded-3 p-2" style={{ background: PAL.greenGhost, border: `1px solid ${PAL.green}15` }}><p className="text-uppercase fw-bold mb-0" style={{ fontSize: '0.58rem', letterSpacing: '0.1em', color: PAL.green }}>Students</p><p className="fs-5 fw-black mb-0" style={{ color: PAL.greenDark }}>{cls.studentCount}</p></div></div>
+                                <div className="col-6"><div className="rounded-3 p-2 bg-primary-subtle border border-primary border-opacity-10"><p className="text-uppercase fw-bold mb-0 text-primary" style={{ fontSize: '0.58rem', letterSpacing: '0.1em' }}>Subjects</p><p className="fs-5 fw-black text-primary mb-0">{cls.subjectCount}</p></div></div>
+                            </div>
+                            <div className="d-flex align-items-center gap-2 flex-wrap" style={{ fontSize: '0.68rem' }}>
+                                <span className={`badge d-inline-flex align-items-center gap-1 ${cls.hasBroadsheetData ? 'bg-success-subtle text-success border border-success border-opacity-25' : 'bg-body-tertiary text-body-tertiary border border-opacity-10'}`} style={{ fontWeight: 600 }}><Icons.BarChart size={9} />{cls.assessmentCount} CAs</span>
+                                {cls.completionPercentage > 0 && (<div className="d-flex align-items-center gap-1 flex-grow-1"><div className="progress flex-grow-1" style={{ height: 6 }}><div className={`progress-bar ${cls.completionPercentage === 100 ? 'bg-success' : cls.completionPercentage >= 50 ? 'bg-warning' : 'bg-danger'}`} style={{ width: `${cls.completionPercentage}%` }} /></div><span className="text-body-tertiary" style={{ fontSize: '0.6rem' }}>{cls.completionPercentage}%</span></div>)}
+                            </div>
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </div>
+    );
 }
 
-function TableSkeleton({ rows = 8, cols = 9 }) {
+function CompactStatsBar({ statistics, attendance }) {
+    if (!statistics) return null;
+    const stats = [
+        { icon: <Icons.Users size={14} style={{ color: PAL.green }} />, label: 'Students', value: statistics.totalStudents, sub: `${statistics.assessedStudents} assessed` },
+        { icon: <Icons.TrendingUp size={14} className="text-success" />, label: 'Average', value: fmt(statistics.classAverage, 1) },
+        { icon: <Icons.BarChart size={14} className="text-primary" />, label: 'High / Low', value: `${statistics.highestTotal}`, sub: `${statistics.lowestTotal}` },
+        { icon: <Icons.Award size={14} className={statistics.passRate >= 70 ? 'text-success' : statistics.passRate >= 50 ? 'text-warning' : 'text-danger'} />, label: 'Pass Rate', value: fmtPct(statistics.passRate) },
+    ];
+    if (attendance?.schoolOpenDays > 0) stats.push({ icon: <Icons.ClipboardCheck size={14} className="text-info" />, label: 'Days', value: attendance.schoolOpenDays });
     return (
-        <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
-            {Array.from({ length: rows + 1 }).map((_, ri) => (
-                <div key={ri} style={{ display: 'flex', borderTop: ri > 0 ? '1px solid #f1f5f9' : 'none' }}>
-                    {Array.from({ length: cols }).map((_, ci) => (
-                        <div key={ci} className="shimmer" style={{ flex: 1, minWidth: 60, height: ri === 0 ? 40 : 48, borderRight: '1px solid #f1f5f9' }} />
-                    ))}
+        <div className="no-print row g-1.5 g-md-2 mb-2 mb-md-3">
+            {stats.map((s, i) => (
+                <div key={i} className={`col-6 ${stats.length >= 5 ? 'col-sm' : 'col-sm'} col-lg`}>
+                    <div className="card border border-opacity-10 h-100" style={{ borderColor: '#dee2e6', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', borderTop: `3px solid ${PAL.hdrAccent}` }}>
+                        <div className="card-body p-1.5 p-md-2">
+                            <div className="d-flex align-items-center gap-1 mb-0.5">{s.icon}<span className="text-uppercase fw-medium tracking-wider d-none d-sm-inline" style={{ fontSize: '0.58rem', color: '#868e96' }}>{s.label}</span><span className="text-uppercase fw-medium tracking-wider d-sm-none" style={{ fontSize: '0.5rem', color: '#868e96' }}>{s.label}</span></div>
+                            <p className="fw-black mb-0" style={{ fontSize: 'clamp(0.85rem, 2.2vw, 1.3rem)' }}>{s.value}</p>
+                            {s.sub && <p className="text-success fw-medium mb-0 d-none d-md-block" style={{ fontSize: '0.62rem' }}>{s.sub}</p>}
+                        </div>
+                    </div>
                 </div>
             ))}
         </div>
     );
 }
 
-// =============================================
-// MAIN COMPONENT
-// =============================================
-export default function Broadsheet() {
-    const { user } = getAuthData();
+function MissingScoresAlert({ statistics }) {
+    if (!statistics || statistics.notAssessedStudents === 0) return null;
+    return (<div className="no-print alert alert-warning d-flex align-items-center gap-2 py-2 px-3 rounded-3 mb-2 border-0" style={{ fontSize: '0.75rem' }} role="alert"><Icons.AlertTriangle size={14} className="text-warning flex-shrink-0" /><span className="fw-medium"><strong>{statistics.notAssessedStudents}</strong> student{statistics.notAssessedStudents !== 1 ? 's' : ''} have no approved scores</span></div>);
+}
 
-    // --- State ---
-    const [assignments, setAssignments] = useState([]);
-    const [allClasses, setAllClasses] = useState([]);
-    const [terms, setTerms] = useState([]);
-    const [sessions, setSessions] = useState([]);
-    const [selectedTerm, setSelectedTerm] = useState('');
-    const [selectedSession, setSelectedSession] = useState('');
-    const [selectedClassId, setSelectedClassId] = useState(null);
-    const [selectedSubjectId, setSelectedSubjectId] = useState('all');
-    const [initialLoading, setInitialLoading] = useState(true);
-    const [broadsheetLoading, setBroadsheetLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [sortField, setSortField] = useState('last_name');
-    const [sortDir, setSortDir] = useState('asc');
+function StudentSearchBar({ count, onSearch, searchTerm }) {
+    return (
+        <div className="position-relative no-print">
+            <Icons.Search size={14} className="position-absolute top-50 translate-middle-y text-body-tertiary" style={{ left: 12 }} />
+            <input type="text" placeholder={`Search ${count}...`} value={searchTerm} onChange={(e) => onSearch(e.target.value)} className="form-control form-control-sm rounded-3 ps-5 pe-5 py-2" style={{ fontSize: '0.75rem', border: '1px solid #dee2e6' }} />
+            {searchTerm && (<button onClick={() => onSearch('')} className="position-absolute top-50 translate-middle-y btn btn-sm p-0 text-body-tertiary rounded-2" style={{ right: 8 }}><Icons.X size={11} /></button>)}
+        </div>
+    );
+}
 
-    // The broadsheet data from the new API
-    const [broadsheetData, setBroadsheetData] = useState(null);
+// ============================================
+// WELL-STRUCTURED BROADSHEET TABLE
+// ============================================
+function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchTerm, onSearchChange, isFullscreen, scrollRef }) {
+    const [scrollState, setScrollState] = useState({ left: 0, maxLeft: 0, top: 0, maxTop: 0 });
 
-    // ===================================================
-    // STEP 1: Load assignments, classes, terms, sessions
-    // ===================================================
-    useEffect(() => {
-        let cancelled = false;
+    const subCols = useMemo(() => {
+        if (viewMode === VIEW_MODES.GRADE_ONLY) return SUB_COLS_GRADE_ONLY;
+        if (viewMode === VIEW_MODES.COMPACT) return SUB_COLS_COMPACT;
+        return SUB_COLS_DETAILED;
+    }, [viewMode]);
 
-        async function loadInitialData() {
-            setInitialLoading(true);
-            setError(null);
-            try {
-                const [assignRes, classesRes, termsRes, sessRes] = await Promise.all([
-                    dashboardAPI.getAssignmentsByTeacher(user?._id),
-                    classesAPI.getAll(),
-                    termsAPI.getAll({ limit: 100 }),
-                    sessionsAPI.getAll(),
-                ]);
-
-                if (cancelled) return;
-
-                setAssignments(assignRes?.data || assignRes || []);
-                setAllClasses(classesRes?.data || classesRes || []);
-                setTerms(termsRes?.data || termsRes || []);
-                setSessions(sessRes?.data || sessRes || []);
-
-                const activeTerm = (termsRes?.data || termsRes || []).find(t => t.status === 'active');
-                setSelectedTerm(activeTerm?._id || (termsRes?.data?.[0]?._id) || '');
-                setSelectedSession((sessRes?.data?.[0]?._id) || '');
-            } catch (err) {
-                if (!cancelled) {
-                    console.error('[Broadsheet] Initial load error:', err);
-                    setError(err?.response?.data?.message || 'Failed to load assignments.');
-                }
-            } finally {
-                if (!cancelled) setInitialLoading(false);
-            }
-        }
-
-        loadInitialData();
-        return () => { cancelled = true; };
-    }, [user?._id]);
-
-    // ===================================================
-    // STEP 2: Build unique classes from assignments
-    // ===================================================
-    const uniqueClasses = useMemo(() => {
-        const classMap = new Map();
-
-        assignments.forEach(assignment => {
-            const classId = assignment.class_id?._id || assignment.class_id;
-            if (!classId) return;
-
-            const subjectData = assignment.subject_id?._id
-                ? assignment.subject_id
-                : assignment.subject?.id
-                    ? assignment.subject
-                    : null;
-
-            if (!classMap.has(classId)) {
-                const classInfo = allClasses.find(c => c._id === classId);
-                classMap.set(classId, {
-                    _id: classId,
-                    name: classInfo?.name || assignment.class_id?.name || 'Unknown Class',
-                    section: classInfo?.section || assignment.class_id?.section || '',
-                    level: classInfo?.level || assignment.class_id?.level || '',
-                    subjects: subjectData ? [subjectData] : [],
-                });
-            } else {
-                const existingClass = classMap.get(classId);
-                if (subjectData) {
-                    const subjectId = subjectData._id || subjectData.id;
-                    const alreadyAdded = existingClass.subjects.some(
-                        s => (s._id || s.id) === subjectId
-                    );
-                    if (!alreadyAdded) existingClass.subjects.push(subjectData);
-                }
-            }
-        });
-
-        return Array.from(classMap.values());
-    }, [assignments, allClasses]);
-
-    // ===================================================
-    // STEP 3: Derived — subjects for selected class
-    // ===================================================
-    const mySubjectsForClass = useMemo(() => {
-        const cls = uniqueClasses.find(c => c._id === selectedClassId);
-        return cls ? cls.subjects : [];
-    }, [selectedClassId, uniqueClasses]);
-
-    // ===================================================
-    // STEP 4: Fetch broadsheet data when class + term + session are selected
-    // ===================================================
-    useEffect(() => {
-        if (!selectedClassId || !selectedTerm || !selectedSession || mySubjectsForClass.length === 0) return;
-        let cancelled = false;
-
-        async function loadBroadsheet() {
-            setBroadsheetLoading(true);
-            setError(null);
-            setBroadsheetData(null);
-
-            try {
-                const params = {};
-                if (selectedTerm) params.termId = selectedTerm;
-                if (selectedSession) params.sessionId = selectedSession;
-                if (selectedSubjectId !== 'all') params.subjectFilter = 'assigned';
-
-                const response = await teacherBroadsheetAPI.getBroadsheet(selectedClassId, params);
-
-                if (!cancelled) {
-                    setBroadsheetData(response?.data || null);
-                }
-            } catch (err) {
-                if (!cancelled) {
-                    console.error('[Broadsheet] API error:', err);
-                    setError(err?.response?.data?.message || 'Failed to load broadsheet data.');
-                }
-            } finally {
-                if (!cancelled) setBroadsheetLoading(false);
-            }
-        }
-
-        const timer = setTimeout(loadBroadsheet, 150);
-        return () => { cancelled = true; clearTimeout(timer); };
-    }, [selectedClassId, selectedTerm, selectedSession, selectedSubjectId, mySubjectsForClass]);
-
-    // ===================================================
-    // STEP 5: Extract data from broadsheet response
-    // ===================================================
-    const {
-        classInfo,
-        termInfo,
-        sessionInfo,
-        subjects,
-        subjectStats,
-        students: broadsheetStudents,
-        statistics,
-    } = broadsheetData || {
-        classInfo: null,
-        termInfo: null,
-        sessionInfo: null,
-        subjects: [],
-        subjectStats: [],
-        students: [],
-        statistics: {
-            totalStudents: 0,
-            assessedStudents: 0,
-            notAssessedStudents: 0,
-            highestTotal: 0,
-            lowestTotal: 0,
-            classAverage: 0,
-            subjectsTotal: 0,
-            subjectsWithScores: 0,
-        },
-    };
-
-    // ===================================================
-    // STEP 6: Derived values
-    // ===================================================
-
-    // Displayed subjects based on filter
-    const displayedSubjects = useMemo(() => {
-        if (selectedSubjectId === 'all') return subjects;
-        return subjects.filter(s => s.subjectId === selectedSubjectId);
-    }, [selectedSubjectId, subjects]);
-
-    // Determine if we should show detailed view (single subject) or summary view (multi-subject)
-    const isSingleSubjectView = displayedSubjects.length === 1;
-
-    // Filtered + sorted students
-    const getStudentName = useCallback((s) => {
-        return `${s.lastName || ''} ${s.firstName || ''}`.trim();
-    }, []);
-
-    const getAdmNo = useCallback((s) => {
-        return s.admissionNumber || '';
-    }, []);
+    const statRows = useMemo(() => [
+        { label: 'AVERAGE', key: 'averageScore', fmt: v => fmt(v, 1) },
+        { label: 'HIGHEST', key: 'highestScore', fmt: v => fmt(v) },
+        { label: 'LOWEST', key: 'lowestScore', fmt: v => fmt(v) },
+        { label: 'PASSED', key: 'passCount', fmt: v => v },
+        { label: 'FAILED', key: 'failCount', fmt: v => v },
+        { label: '% PASS', key: 'passRate', fmt: v => fmtPct(v) },
+    ], []);
 
     const filteredStudents = useMemo(() => {
-        if (!broadsheetStudents || broadsheetStudents.length === 0) return [];
+        if (!searchTerm) return data?.students || [];
+        const t = searchTerm.toLowerCase();
+        return (data?.students || []).filter(s => s.studentName?.toLowerCase().includes(t) || s.admissionNumber?.toLowerCase().includes(t) || s.firstName?.toLowerCase().includes(t) || s.lastName?.toLowerCase().includes(t));
+    }, [data?.students, searchTerm]);
 
-        let result = [...broadsheetStudents];
-        if (searchQuery.trim()) {
-            const q = searchQuery.toLowerCase();
-            result = result.filter(s => {
-                const name = getStudentName(s).toLowerCase();
-                const adm = getAdmNo(s).toLowerCase();
-                return name.includes(q) || adm.includes(q);
+    useEffect(() => {
+        const c = scrollRef?.current; if (!c) return;
+        let rafId;
+        const update = () => {
+            cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                setScrollState({
+                    left: c.scrollLeft,
+                    maxLeft: c.scrollWidth - c.clientWidth,
+                    top: c.scrollTop,
+                    maxTop: c.scrollHeight - c.clientHeight,
+                });
             });
-        }
-        result.sort((a, b) => {
-            if (sortField === '_index') return 0;
-            const f = sortField === 'last_name' ? 'lastName' : sortField === 'admission_number' ? 'admissionNumber' : sortField;
-            let va = a[f] || '', vb = b[f] || '';
-            if (typeof va === 'string') va = va.toLowerCase();
-            if (typeof vb === 'string') vb = vb.toLowerCase();
-            if (va < vb) return sortDir === 'asc' ? -1 : 1;
-            if (va > vb) return sortDir === 'asc' ? 1 : -1;
-            return 0;
-        });
-        return result;
-    }, [broadsheetStudents, searchQuery, sortField, sortDir, getStudentName, getAdmNo]);
+        };
+        c.addEventListener('scroll', update, { passive: true });
+        const ro = new ResizeObserver(update);
+        ro.observe(c);
+        update();
+        return () => {
+            c.removeEventListener('scroll', update);
+            cancelAnimationFrame(rafId);
+            ro.disconnect();
+        };
+    }, [scrollRef]);
 
-    // Build grade distribution from API data
-    const gradeDistribution = useMemo(() => {
-        const dist = {};
-        if (subjectStats && subjectStats.length > 0) {
-            subjectStats.forEach(sub => {
-                if (sub.gradeDistribution) {
-                    Object.entries(sub.gradeDistribution).forEach(([grade, count]) => {
-                        dist[grade] = (dist[grade] || 0) + count;
-                    });
-                }
-            });
-        } else if (statistics?.gradeDistribution) {
-            Object.entries(statistics.gradeDistribution).forEach(([grade, count]) => {
-                dist[grade] = count;
-            });
-        }
-        return dist;
-    }, [subjectStats, statistics]);
+    if (!data) return null;
+    const { subjects, subjectStats, statistics, attendance } = data;
+    const students = filteredStudents;
+    const colSpan = subCols.length;
 
-    // Handlers
-    const handleClassSelect = useCallback((classId) => {
-        if (classId === selectedClassId) return;
-        setSelectedClassId(classId);
-        setSelectedSubjectId('all');
-        setSearchQuery('');
-        setBroadsheetData(null);
-    }, [selectedClassId]);
+    const extraCols = [];
+    if (showAttendance && attendance) extraCols.push({ key: 'attendance', label: 'Att', width: 44 });
+    if (showComments) extraCols.push({ key: 'comment', label: 'CT Comment', width: 140 });
+    const extraW = extraCols.reduce((s, c) => s + c.width, 0);
 
-    const handleSort = useCallback((field) => {
-        if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-        else { setSortField(field); setSortDir('asc'); }
-    }, [sortField]);
+    const getScore = (student, subjectId, key) => student.scores?.[subjectId]?.[key] || null;
 
-    const handlePrint = useCallback(() => window.print(), []);
+    const subGroupW = subCols.reduce((s, c) => s + c.width, 0);
+    const summaryColsW = 52 + 44 + 52;
+    const totalMinW = STICKY_TOTAL_W + subjects.length * subGroupW + extraW + summaryColsW;
 
-    // ===================================================
-    // RENDER
-    // ===================================================
-    if (initialLoading) {
-        return (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
-                <div style={{ textAlign: 'center' }}>
-                    <div className="spinner" style={{ margin: '0 auto 16px' }} />
-                    <p style={{ color: '#64748b', fontSize: 14 }}>Loading your assignments...</p>
-                </div>
-            </div>
-        );
-    }
+    // Responsive max-height: smaller on mobile, larger on laptop/desktop
+    const maxH = isFullscreen
+        ? 'calc(100vh - 180px)'
+        : 'clamp(280px, calc(100vh - 340px), 720px)';
 
-    if (error) {
-        return (
-            <div className="error-state">
-                <div className="error-state-icon">⚠️</div>
-                <div className="error-state-title">Error Loading Assignments</div>
-                <div className="error-state-text">{error}</div>
-            </div>
-        );
-    }
+    const H1 = '#7c2d12', H2 = '#9a3412', SH1 = '#6b2510', SH2 = '#5c1f0d';
+    const GOLD = PAL.hdrGold, ACCENT = PAL.hdrAccent;
 
-    const selectedClass = uniqueClasses.find(c => c._id === selectedClassId);
-    const selectedTermData = terms.find(t => t._id === selectedTerm);
-    const selectedSessionData = sessions.find(s => s._id === selectedSession);
+    const cellPad = '5px 4px';
+    const hdrPad = '6px 4px';
+    const subPad = '4px 2px';
+
+    const totalCols = 4 + subjects.length * colSpan + extraCols.length + 3;
+
+    const showLeftShadow = scrollState.left > 5;
+    const showRightShadow = scrollState.left < scrollState.maxLeft - 5;
 
     return (
-        <div className="broadsheet-container">
-            {/* Print-only school header */}
-            <div className="print-only" style={{ textAlign: 'center', marginBottom: 16 }}>
-                <h1 style={{ fontSize: 22, fontWeight: 'bold' }}>Diamondville International School</h1>
-                <p style={{ fontSize: 13, color: '#666' }}>Motto: "Knowledge, Integrity, Excellence"</p>
-                <div style={{ marginTop: 10, borderTop: '2px solid #000', borderBottom: '2px solid #000', padding: '6px 0' }}>
-                    <h2 style={{ fontSize: 16, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2 }}>Broadsheet</h2>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginTop: 8 }}>
-                    <span><strong>Class:</strong> {classInfo?.className || '—'}</span>
-                    <span><strong>Term:</strong> {termInfo?.name || '—'}</span>
-                    <span><strong>Session:</strong> {sessionInfo?.name || '—'}</span>
-                </div>
-                {selectedSubjectId !== 'all' && displayedSubjects[0] && (
-                    <div style={{ fontSize: 13, marginTop: 4 }}><strong>Subject:</strong> {displayedSubjects[0].subjectName}</div>
-                )}
-                <div style={{ fontSize: 11, color: '#999', marginTop: 6 }}>
-                    Printed: {new Date().toLocaleDateString('en-NG', { dateStyle: 'full' })}
+        <div className="card border overflow-hidden rounded-3 rounded-md-4" style={{ borderColor: '#dee2e6', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+            {/* Search bar */}
+            <div className="card-body p-2 p-md-3 pb-2 border-bottom" style={{ borderColor: '#f1f5f9' }}>
+                <div className="d-flex align-items-center gap-2">
+                    <div className="flex-grow-1"><StudentSearchBar count={data.students?.length || 0} onSearch={onSearchChange} searchTerm={searchTerm} /></div>
+                    {searchTerm && <span className="badge bg-body-tertiary text-body-secondary flex-shrink-0" style={{ fontSize: '0.65rem' }}><span className="fw-bold text-dark">{students.length}</span>/{data.students?.length}</span>}
                 </div>
             </div>
 
-            {/* Page title */}
-            <div className="no-print" style={{ marginBottom: 20 }}>
-                <h1 className="page-title" style={{ marginBottom: 4 }}>Broadsheet</h1>
-                <p className="page-subtitle">View scores for your assigned classes and subjects</p>
-            </div>
+            {/* ===== DUAL SCROLL CONTAINER ===== */}
+            <div className="position-relative">
+                {/* Left Edge Fade Shadow */}
+                <div className="position-absolute top-0 bottom-0 z-2 no-print" style={{ left: 0, width: 18, background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)', pointerEvents: 'none', opacity: showLeftShadow ? 1 : 0, transition: 'opacity 0.3s' }} />
+                {/* Right Edge Fade Shadow */}
+                <div className="position-absolute top-0 bottom-0 z-2 no-print" style={{ right: 0, width: 18, background: 'linear-gradient(to left, rgba(0,0,0,0.08), transparent)', pointerEvents: 'none', opacity: showRightShadow ? 1 : 0, transition: 'opacity 0.3s' }} />
 
-            {/* Term / Session selects */}
-            <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
-                <select
-                    value={selectedTerm}
-                    onChange={e => setSelectedTerm(e.target.value)}
-                    className="form-select"
-                    style={{ minWidth: 180 }}
-                >
-                    <option value="">Select Term</option>
-                    {terms.map(t => (
-                        <option key={t._id} value={t._id}>
-                            {t.name} {t.status === 'active' ? '(Active)' : ''}
-                        </option>
-                    ))}
-                </select>
-                <select
-                    value={selectedSession}
-                    onChange={e => setSelectedSession(e.target.value)}
-                    className="form-select"
-                    style={{ minWidth: 180 }}
-                >
-                    <option value="">Select Session</option>
-                    {sessions.map(s => (
-                        <option key={s._id} value={s._id}>{s.name}</option>
-                    ))}
-                </select>
-                {selectedClassId && (
-                    <button onClick={handlePrint} className="btn btn-primary" style={{ marginLeft: 'auto' }}>
-                        <i className="fas fa-print" style={{ marginRight: 6 }} />Print
-                    </button>
-                )}
-            </div>
+                <div ref={scrollRef} className="broadsheet-scroll overflow-auto" style={{ maxHeight: maxH, WebkitOverflowScrolling: 'touch' }}>
+                    <table className="broadsheet-table table table-sm table-bordered mb-0" style={{ width: totalMinW, tableLayout: 'fixed', fontSize: '0.72rem', borderCollapse: 'separate', borderSpacing: 0 }}>
+                        <colgroup>
+                            <col style={{ width: STICKY_COLS.sn.width }} />
+                            <col style={{ width: STICKY_COLS.admNo.width }} />
+                            <col style={{ width: STICKY_COLS.name.width }} />
+                            <col style={{ width: STICKY_COLS.gender.width }} />
+                            {subjects.map((_, i) => subCols.map((c) => <col key={`cg-${i}-${c.key}`} style={{ width: c.width }} />))}
+                            {extraCols.map(c => <col key={`cg-${c.key}`} style={{ width: c.width }} />)}
+                            <col style={{ width: 52 }} />
+                            <col style={{ width: 44 }} />
+                            <col style={{ width: 52 }} />
+                        </colgroup>
 
-            {/* Class tabs */}
-            <div className="no-print" style={{ display: 'flex', gap: 8, marginBottom: 20, overflowX: 'auto', paddingBottom: 4 }}>
-                {uniqueClasses.map(cls => {
-                    const isActive = selectedClassId === cls._id;
-                    return (
-                        <button
-                            key={cls._id}
-                            onClick={() => handleClassSelect(cls._id)}
-                            className={`bs-class-tab ${isActive ? 'bs-class-tab-active' : ''}`}
-                        >
-                            <i className="fas fa-chalkboard" style={{ fontSize: 12, marginRight: 8, color: isActive ? '#f59e0b' : '#64748b' }} />
-                            {cls.name}
-                            <span className={`bs-class-tab-badge ${isActive ? 'active' : ''}`}>
-                                {cls.subjects.length}
-                            </span>
-                        </button>
-                    );
-                })}
-            </div>
+                        <thead>
+                            {/* Row 1: Subject names */}
+                            <tr>
+                                <th rowSpan="2" className="sticky-col text-center fw-bold text-uppercase align-middle" style={{ left: STICKY_COLS.sn.left, backgroundColor: '#5c1f0d', color: GOLD, fontSize: '0.58rem', padding: hdrPad, borderRight: `2px solid ${ACCENT}50`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>S/N</th>
+                                <th rowSpan="2" className="sticky-col text-center fw-bold text-uppercase align-middle" style={{ left: STICKY_COLS.admNo.left, backgroundColor: '#4a1a0b', color: GOLD, fontSize: '0.55rem', padding: hdrPad, borderRight: `1px solid ${ACCENT}40`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Adm No</th>
+                                <th rowSpan="2" className="sticky-col text-start fw-bold text-uppercase align-middle" style={{ left: STICKY_COLS.name.left, backgroundColor: '#5c1f0d', color: GOLD, fontSize: '0.58rem', padding: hdrPad, borderRight: `1px solid ${ACCENT}40`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Student Name</th>
+                                <th rowSpan="2" className="sticky-col text-center fw-bold text-uppercase align-middle" style={{ left: STICKY_COLS.gender.left, backgroundColor: '#3b1508', color: GOLD, fontSize: '0.58rem', padding: hdrPad, borderRight: `3px solid ${ACCENT}`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>M/F</th>
 
-            {/* No class selected */}
-            {!selectedClassId && (
-                <EmptyState
-                    icon="🏫"
-                    title="Select a Class"
-                    description="Choose one of your assigned classes above to view the broadsheet."
-                />
-            )}
+                                {subjects.map((subject, idx) => (
+                                    <th key={subject.subjectId} colSpan={colSpan} className="text-center fw-semibold text-white align-middle" style={{
+                                        backgroundColor: idx % 2 === 0 ? H1 : H2,
+                                        padding: hdrPad,
+                                        borderRight: '1px solid rgba(255,255,255,0.08)',
+                                        borderBottom: `2px solid ${ACCENT}60`,
+                                        whiteSpace: 'nowrap',
+                                        fontSize: '0.65rem',
+                                        textShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                    }} title={subject.subjectName}>
+                                        {subject.subjectName}
+                                    </th>
+                                ))}
 
-            {/* Loading skeleton */}
-            {selectedClassId && broadsheetLoading && (
-                <TableSkeleton
-                    rows={10}
-                    cols={isSingleSubjectView ? 11 : 3 + displayedSubjects.length + 5}
-                />
-            )}
+                                {extraCols.map(col => (
+                                    <th key={`th-${col.key}`} rowSpan="2" className="text-center fw-semibold text-uppercase align-middle" style={{ backgroundColor: '#4a1a0b', color: GOLD, fontSize: '0.55rem', padding: hdrPad, borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>{col.label}</th>
+                                ))}
+                                <th rowSpan="2" className="text-center fw-black text-uppercase align-middle" style={{ backgroundColor: '#5c1f0d', color: 'white', fontSize: '0.58rem', padding: hdrPad, borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Total</th>
+                                <th rowSpan="2" className="text-center fw-bold text-uppercase align-middle" style={{ backgroundColor: '#4a1a0b', color: GOLD, fontSize: '0.55rem', padding: hdrPad, borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Avg</th>
+                                <th rowSpan="2" className="text-center fw-black text-uppercase align-middle" style={{ backgroundColor: '#5c1f0d', color: GOLD, fontSize: '0.58rem', padding: hdrPad, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Pos</th>
+                            </tr>
 
-            {/* Class content */}
-            {selectedClassId && !broadsheetLoading && broadsheetData && broadsheetStudents && broadsheetStudents.length > 0 && (
-                <div>
-                    {/* Subject pills */}
-                    <div className="no-print" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16, alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, color: '#64748b', marginRight: 4 }}>Subjects:</span>
-                        <button
-                            onClick={() => setSelectedSubjectId('all')}
-                            className={`bs-subject-pill ${selectedSubjectId === 'all' ? 'active' : ''}`}
-                        >
-                            All My Subjects
-                        </button>
-                        {mySubjectsForClass.map(sub => {
-                            const subId = sub._id || sub.id;
-                            const hasData = subjectStats.some(s => s.subjectId === subId && s.assessedStudents > 0);
-                            const isActive = selectedSubjectId === subId;
-                            return (
-                                <button
-                                    key={subId}
-                                    onClick={() => setSelectedSubjectId(subId)}
-                                    className={`bs-subject-pill ${isActive ? 'active' : ''}`}
-                                >
-                                    <span style={{ fontWeight: 700 }}>{sub.code || ''}</span>
-                                    <span className="bs-subject-pill-name">{sub.name}</span>
-                                    {!hasData && <span className="bs-no-data-dot" title="No scores entered" />}
-                                </button>
-                            );
-                        })}
-                    </div>
+                            {/* Row 2: Sub-column labels */}
+                            <tr>
+                                {subjects.map((_, sIdx) => subCols.map((col) => (
+                                    <th key={`sh-${sIdx}-${col.key}`} className="text-center fw-medium text-uppercase" style={{
+                                        width: col.width,
+                                        backgroundColor: sIdx % 2 === 0 ? SH1 : SH2,
+                                        color: 'rgba(255,255,255,0.5)',
+                                        fontSize: '0.5rem',
+                                        padding: subPad,
+                                        borderRight: '1px solid rgba(255,255,255,0.05)',
+                                        borderBottom: `2px solid ${ACCENT}`,
+                                        letterSpacing: '0.06em',
+                                    }}>{col.label}</th>
+                                )))}
+                            </tr>
+                        </thead>
 
-                    {/* Search */}
-                    <div className="no-print" style={{ marginBottom: 16 }}>
-                        <div style={{ position: 'relative', maxWidth: 280 }}>
-                            <i className="fas fa-search" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', fontSize: 12 }} />
-                            <input
-                                type="text"
-                                placeholder="Search student name or adm. no..."
-                                value={searchQuery}
-                                onChange={e => setSearchQuery(e.target.value)}
-                                className="form-control"
-                                style={{ paddingLeft: 34 }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Stats row */}
-                    <div className="no-print bs-stats-grid">
-                        <StatsCard icon="fas fa-users" label="Students with Scores" value={statistics.assessedStudents || 0} sub={`of ${statistics.totalStudents}`} color="#3b82f6" delay={0} />
-                        <StatsCard icon="fas fa-chart-line" label="Class Average" value={statistics.classAverage || '—'} sub="out of 100" color="#eab308" delay={50} />
-                        <StatsCard icon="fas fa-arrow-up" label="Highest" value={statistics.highestTotal || '—'} color="#22c55e" delay={100} />
-                        <StatsCard icon="fas fa-arrow-down" label="Lowest" value={statistics.lowestTotal || '—'} color="#ef4444" delay={150} />
-                        <StatsCard icon="fas fa-check-double" label="Pass Rate (40+)" value={statistics.passRate ? `${statistics.passRate}%` : '—'} sub={isSingleSubjectView ? '' : 'by average'} color="#8b5cf6" delay={200} />
-                    </div>
-
-                    {/* Grade distribution */}
-                    {Object.keys(gradeDistribution).length > 0 && statistics.assessedStudents > 0 && (
-                        <div className="no-print bs-grade-dist-card">
-                            <h4 style={{ fontSize: 11, fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 12 }}>Grade Distribution</h4>
-                            <GradeDistribution grades={gradeDistribution} />
-                        </div>
-                    )}
-
-                    {/* ====== THE BROADSHEET TABLE ====== */}
-                    {filteredStudents.length === 0 ? (
-                        <EmptyState
-                            icon="🔍"
-                            title="No Students Found"
-                            description={searchQuery ? `No match for "${searchQuery}"` : 'No students in this class.'}
-                        />
-                    ) : (
-                        <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
-                            <div style={{ overflowX: 'auto' }}>
-                                <table className="broadsheet-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                                    <thead>
-                                        {isSingleSubjectView ? (
-                                            <>
-                                                {/* SINGLE SUBJECT VIEW - Detailed breakdown */}
-                                                <tr style={{ background: '#1B4332', color: '#fff' }}>
-                                                    <th className="bs-th-sticky-0" onClick={() => handleSort('_index')} style={{ cursor: 'pointer', width: 40 }}>
-                                                        S/N <SortIcon field="_index" sortField={sortField} sortDir={sortDir} />
-                                                    </th>
-                                                    <th className="bs-th-sticky-1" onClick={() => handleSort('last_name')} style={{ cursor: 'pointer', minWidth: 140, textAlign: 'left' }}>
-                                                        Student Name <SortIcon field="last_name" sortField={sortField} sortDir={sortDir} />
-                                                    </th>
-                                                    <th className="bs-th-sticky-2" onClick={() => handleSort('admission_number')} style={{ cursor: 'pointer', minWidth: 100, textAlign: 'left' }}>
-                                                        Adm. No <SortIcon field="admission_number" sortField={sortField} sortDir={sortDir} />
-                                                    </th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: '8px 6px', background: '#2D6A4F', borderRight: '1px solid #40916C' }}>
-                                                        Test<br /><span style={{ color: '#6ee7b7', fontSize: 9 }}>/20</span>
-                                                    </th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: '8px 6px', background: '#2D6A4F', borderRight: '1px solid #40916C' }}>
-                                                        Notes<br /><span style={{ color: '#6ee7b7', fontSize: 9 }}>/10</span>
-                                                    </th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: '8px 6px', background: '#2D6A4F', borderRight: '1px solid #40916C' }}>
-                                                        Assign<br /><span style={{ color: '#6ee7b7', fontSize: 9 }}>/10</span>
-                                                    </th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: '8px 6px', background: '#2D6A4F', borderRight: '1px solid #40916C' }}>
-                                                        CA<br /><span style={{ color: '#6ee7b7', fontSize: 9 }}>/40</span>
-                                                    </th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: '8px 6px', background: '#2D6A4F', borderRight: '1px solid #40916C' }}>
-                                                        Exam<br /><span style={{ color: '#6ee7b7', fontSize: 9 }}>/60</span>
-                                                    </th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: '8px 6px', background: '#2D6A4F', borderRight: '1px solid #40916C' }}>
-                                                        Total<br /><span style={{ color: '#6ee7b7', fontSize: 9 }}>/100</span>
-                                                    </th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, padding: '8px 6px', background: '#2D6A4F' }}>Grade</th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, padding: '8px 6px', background: '#2D6A4F' }}>Remark</th>
-                                                </tr>
-                                            </>
-                                        ) : (
-                                            <>
-                                                {/* MULTI-SUBJECT VIEW - Summary view */}
-                                                <tr style={{ background: '#1B4332', color: '#fff' }}>
-                                                    <th className="bs-th-sticky-0" onClick={() => handleSort('_index')} style={{ cursor: 'pointer', width: 40 }}>
-                                                        S/N <SortIcon field="_index" sortField={sortField} sortDir={sortDir} />
-                                                    </th>
-                                                    <th className="bs-th-sticky-1" onClick={() => handleSort('lastName')} style={{ cursor: 'pointer', minWidth: 140, textAlign: 'left' }}>
-                                                        Student Name <SortIcon field="lastName" sortField={sortField} sortDir={sortDir} />
-                                                    </th>
-                                                    <th className="bs-th-sticky-2" onClick={() => handleSort('admission_number')} style={{ cursor: 'pointer', minWidth: 100, textAlign: 'left' }}>
-                                                        Adm. No <SortIcon field="admission_number" sortField={sortField} sortDir={sortDir} />
-                                                    </th>
-                                                    {displayedSubjects.map(sub => (
-                                                        <th
-                                                            key={sub.subjectId}
-                                                            style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: '8px 6px', background: '#2D6A4F', borderRight: '1px solid #40916C' }}
-                                                        >
-                                                            {sub.code || ''}
-                                                            <br />
-                                                            <span style={{ fontSize: 9, fontWeight: 400, color: '#a7f3d0' }}>{sub.subjectName}</span>
-                                                        </th>
-                                                    ))}
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: '8px 6px', minWidth: 60, borderRight: '1px solid #40916C' }}>Total</th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, padding: '8px 6px', minWidth: 50, borderRight: '1px solid #40916C' }}>Avg</th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, padding: '8px 6px', minWidth: 40, borderRight: '1px solid #40916C' }}>Pos</th>
-                                                    <th style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, padding: '8px 6px', minWidth: 44 }}>Grade</th>
-                                                </tr>
-                                            </>
-                                        )}
-                                    </thead>
-
-                                    <tbody>
-                                        {filteredStudents.map((student, idx) => {
-                                            const rowBg = idx % 2 === 0 ? '#fff' : '#f8fafc';
-                                            
-                                            const renderSingleSubjectCell = (sub, studentId) => {
-                                                const sc = getScore(student.scores, studentId, sub.subjectId);
-                                                const g = getGrade(sc?.totalScore);
-
-                                                return (
-                                                    <React.Fragment key={sub.subjectId}>
-                                                        <td style={{ textAlign: 'center', fontSize: 12, padding: '8px 6px', borderRight: '1px solid #f1f5f9' }}>
-                                                            {sc?.testScore != null ? sc.testScore : '—'}
-                                                        </td>
-                                                        <td style={{ textAlign: 'center', fontSize: 12, padding: '8px 6px', borderRight: '1px solid #f1f5f9' }}>
-                                                            {sc?.noteTakingScore != null ? sc.noteTakingScore : '—'}
-                                                        </td>
-                                                        <td style={{ textAlign: 'center', fontSize: 12, padding: '8px 6px', borderRight: '1px solid #f1f5f9' }}>
-                                                            {sc?.assignmentScore != null ? sc.assignmentScore : '—'}
-                                                        </td>
-                                                        <td style={{ textAlign: 'center', fontSize: 12, padding: '8px 6px', borderRight: '1px solid #f1f5f9' }}>
-                                                            {sc?.totalCA != null ? sc.totalCA : '—'}
-                                                        </td>
-                                                        <td style={{ textAlign: 'center', fontSize: 12, padding: '8px 6px', borderRight: '1px solid #f1f5f9' }}>
-                                                            {sc?.examScore != null ? sc.examScore : '—'}
-                                                        </td>
-                                                        <td style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, padding: '8px 6px', borderRight: '1px solid #f1f5f9', color: g.color }}>
-                                                            {sc?.totalScore != null ? sc.totalScore : '—'}
-                                                        </td>
-                                                        <td style={{ textAlign: 'center', padding: '8px 6px', borderRight: '1px solid #f1f5f9' }}>
-                                                            <GradeBadge score={sc?.totalScore} />
-                                                        </td>
-                                                        <td style={{ textAlign: 'center', fontSize: 10, padding: '8px 6px', color: g.remark }}>
-                                                            {g.remark !== '-' ? g.remark : '—'}
-                                                        </td>
-                                                    </React.Fragment>
-                                                );
-                                            };
-
-                                            const renderMultiSubjectCell = (sub, studentId) => {
-                                                const sc = getScore(student.scores, studentId, sub.subjectId);
-                                                const g = getGrade(sc?.totalScore);
-
-                                                return (
-                                                    <td
-                                                        key={sub.subjectId}
-                                                        style={{ textAlign: 'center', fontSize: 12, fontWeight: sc ? 600 : 400, padding: '8px 6px', borderRight: '1px solid #f1f5f9', color: sc ? g.color : '#94a3b8' }}
-                                                    >
-                                                        {sc?.totalScore != null ? sc.totalScore : '—'}
-                                                    </td>
-                                                );
-                                            };
-
-                                            return (
-                                                <tr key={student.studentId} className="broadsheet-row" style={{ background: rowBg }}>
-                                                    <td className="bs-td-sticky-0" style={{ textAlign: 'center', fontSize: 12, color: '#64748b', padding: '8px 6px', borderRight: '1px solid #f1f5f9', background: rowBg }}>{idx + 1}</td>
-                                                    <td className="bs-td-sticky-1" style={{ textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#1e293b', padding: '8px 10px', borderRight: '1px solid #f1f5f9', background: rowBg, whiteSpace: 'nowrap' }}>
-                                                        {getStudentName(student)}
-                                                    </td>
-                                                    <td className="bs-td-sticky-2" style={{ textAlign: 'left', fontSize: 11, color: '#64748b', fontFamily: 'monospace', padding: '8px 10px', borderRight: '1px solid #f1f5f9', background: rowBg, whiteSpace: 'nowrap' }}>
-                                                        {getAdmNo(student)}
-                                                    </td>
-
-                                                    {/* Score columns */}
-                                                    {displayedSubjects.map(sub => isSingleSubjectView ? renderSingleSubjectCell(sub, student.studentId) : renderMultiSubjectCell(sub, student.studentId))}
-
-                                                    {/* Summary columns (multi-subject only) */}
-                                                    {!isSingleSubjectView && (
-                                                        <>
-                                                            <td style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#1e293b', padding: '8px 6px', borderRight: '1px solid #f1f5f9' }}>
-                                                                {student.totalScore != null ? student.totalScore : '—'}
-                                                            </td>
-                                                            <td style={{ textAlign: 'center', fontSize: 12, fontWeight: 600, color: '#d97706', padding: '8px 6px', borderRight: '1px solid #f1f5f9' }}>
-                                                                {student.averageScore != null ? student.averageScore : '—'}
-                                                            </td>
-                                                            <td style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, padding: '8px 6px', borderRight: '1px solid #f1f5f9' }}>
-                                                                {student.position ? (
-                                                                    <span style={{
-                                                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                                                        width: 24, height: 24, borderRadius: '50%', fontSize: 10, fontWeight: 700,
-                                                                        background: student.position <= 3 ? '#1B4332' : '#f1f5f9',
-                                                                        color: student.position <= 3 ? '#f59e0b' : '#64748b',
-                                                                    }}>{student.position}</span>
-                                                                ) : '—'}
-                                                            </td>
-                                                            <td style={{ textAlign: 'center', padding: '8px 6px' }}>
-                                                                <GradeBadge score={student.averageScore != null ? Math.round(Number(student.averageScore)) : null} />
-                                                            </td>
-                                                        </>
-                                                    )}
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-
-                                    {/* Footer summary */}
-                                    {filteredStudents.length > 0 && (
-                                        <tfoot>
-                                            <tr style={{ background: '#f1f5f9', borderTop: '2px solid #cbd5e1' }}>
-                                                <td colSpan={3} style={{ textAlign: 'right', fontSize: 11, fontWeight: 700, color: '#475569', padding: '8px 10px', borderRight: '1px solid #e2e8f0' }}>
-                                                    CLASS SUMMARY
-                                                </td>
-                                                {isSingleSubjectView && subjectStats && subjectStats.length > 0 ? (
-                                                    <>
-                                                        {subjectStats.map((sum, idx) => {
-                                                            const sub = displayedSubjects[0];
-                                                            return (
-                                                                <React.Fragment key={`foot-${sub?._id || idx}`}>
-                                                                    <td style={{ textAlign: 'center', fontSize: 10, color: '#94a3b8', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}>—</td>
-                                                                    <td style={{ textAlign: 'center', fontSize: 10, color: '#94a3b8', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}>—</td>
-                                                                    <td style={{ textAlign: 'center', fontSize: 10, color: '#94a3b8', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}>—</td>
-                                                                    <td style={{ textAlign: 'center', fontSize: 10, color: '#94a3b8', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}>—</td>
-                                                                    <td style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#475569', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}>Avg: {sum?.avg || '—'}</td>
-                                                                    <td style={{ textAlign: 'center', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}><span style={{ fontSize: 10, color: '#94a3b8' }}>—</span></td>
-                                                                    <td style={{ textAlign: 'center', padding: '6px 6px' }}><span style={{ fontSize: 10, color: '#94a3b8' }}>—</span></td>
-                                                                </React.Fragment>
-                                                            );
-                                                        })}
-                                                    </>
-                                                ) : !isSingleSubjectView && subjectStats && subjectStats.length > 0 ? (
-                                                    <>
-                                                        {subjectStats.map((sum, idx) => (
-                                                            <td key={`foot-${sum.subjectId || idx}`} style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#475569', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}>
-                                                                {sum.avg || '—'}
-                                                            </td>
-                                                        ))}
-                                                        <td style={{ textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#475569', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}>—</td>
-                                                        <td style={{ textAlign: 'center', fontSize: 11, fontWeight: 600, color: '#d97706', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}>—</td>
-                                                        <td style={{ textAlign: 'center', padding: '6px 6px', borderRight: '1px solid #e2e8f0' }}>—</td>
-                                                        <td style={{ textAlign: 'center', padding: '6px 6px' }}>—</td>
-                                                    </>
-                                                ) : null}
-                                            </tr>
-                                            {/* Sub-footer for single subject */}
-                                            {isSingleSubjectView && subjectStats[0] && (
-                                                <tr style={{ background: '#f8fafc' }}>
-                                                    <td colSpan={3} style={{ textAlign: 'right', fontSize: 10, fontWeight: 600, color: '#64748b', padding: '4px 10px', borderRight: '1px solid #e2e8f0' }}>
-                                                        H: {subjectStats[0]?.high ?? '—'} &nbsp;|&nbsp; L: {subjectStats[0]?.low ?? '—'} &nbsp;|&nbsp; Entered: {subjectStats[0]?.count ?? 0}/{filteredStudents.length}
-                                                    </td>
-                                                    <td colSpan={8} />
-                                                </tr>
-                                            )}
-                                        </tfoot>
-                                    )}
-                                </table>
-                            </div>
-
-                            {/* Per-subject breakdown cards (multi-subject only) - OUTSIDE TABLE */}
-                            {!isSingleSubjectView && subjectStats && subjectStats.length > 0 && (
-                                <div className="no-print" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12, marginTop: 20, padding: '0 16px 16px' }}>
-                                    {subjectStats.map((sum, idx) => (
-                                        <div key={sum.subjectId || idx} className="card" style={{ padding: 16 }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                                                    <span style={{ fontSize: 11, fontWeight: 700, color: '#d97706', background: '#fef3c7', padding: '2px 8px', borderRadius: 4 }}>
-                                                        {sum.code || ''}
-                                                    </span>
-                                                    <span style={{ fontSize: 13, fontWeight: 600, color: '#334155' }}>{sum.subjectName}</span>
-                                                </div>
-                                                {(!sum.count || sum.count === 0) && (
-                                                    <span style={{ fontSize: 10, color: '#ef4444', background: '#fef2f2', padding: '2px 8px', borderRadius: 12 }}>No data</span>
-                                                )}
-                                            </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <div style={{ fontSize: 20, fontWeight: 700, color: '#1e293b' }}>{sum.avg === '—' ? '—' : sum.avg}</div>
-                                                    <div style={{ fontSize: 10, color: '#94a3b8' }}>Average</div>
-                                                </div>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <div style={{ fontSize: 20, fontWeight: 700, color: '#16a34a' }}>{sum.high === '—' ? '—' : sum.high}</div>
-                                                    <div style={{ fontSize: 10, color: '#94a3b8' }}>Highest</div>
-                                                </div>
-                                                <div style={{ textAlign: 'center' }}>
-                                                    <div style={{ fontSize: 20, fontWeight: 700, color: '#dc2626' }}>{sum.low === '—' ? '—' : sum.low}</div>
-                                                    <div style={{ fontSize: 10, color: '#94a3b8' }}>Lowest</div>
-                                                </div>
-                                            </div>
-                                            <div style={{ marginTop: 8, fontSize: 10, color: '#94a3b8', textAlign: 'center' }}>
-                                                {sum.count || 0}/{filteredStudents.length} scores entered
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                        <tbody>
+                            {students.length === 0 && searchTerm && (
+                                <tr><td colSpan={totalCols} className="text-center py-5"><div className="text-body-tertiary mb-2"><Icons.Search size={24} className="mx-auto d-block" /></div><p className="text-body-tertiary small">No students match "{searchTerm}"</p></td></tr>
                             )}
-                        </div>
-                    )}
+
+                            {students.map((student, sIdx) => {
+                                const isEven = sIdx % 2 === 0;
+                                const missingBg = getStudentRowBg(student, subjects);
+                                const rowBg = missingBg || (isEven ? '#ffffff' : '#f8f9fb');
+                                return (
+                                    <tr key={student.studentId} style={{ backgroundColor: rowBg }}
+                                        onMouseEnter={e => { if (!missingBg) e.currentTarget.style.backgroundColor = '#fef3c730'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = rowBg; }}>
+
+                                        <td className="sticky-col text-center text-body-tertiary font-monospace" style={{ left: STICKY_COLS.sn.left, backgroundColor: rowBg, fontSize: '0.63rem', padding: cellPad, borderRight: `1px solid ${ACCENT}12` }}>{sIdx + 1}</td>
+                                        <td className="sticky-col text-center text-body-secondary font-monospace" style={{ left: STICKY_COLS.admNo.left, backgroundColor: rowBg, fontSize: '0.58rem', padding: cellPad, borderRight: `1px solid ${ACCENT}12` }}>{student.admissionNumber}</td>
+                                        <td className="sticky-col text-start fw-medium text-dark text-nowrap" style={{ left: STICKY_COLS.name.left, backgroundColor: rowBg, fontSize: '0.68rem', padding: cellPad, borderRight: `1px solid ${ACCENT}12`, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                            <span className="d-flex align-items-center gap-1.5">
+                                                {student.subjectsWithoutScores > 0 && <span className="rounded-circle d-block flex-shrink-0" style={{ width: 6, height: 6, backgroundColor: student.subjectsWithoutScores === subjects.length ? '#ef4444' : '#f59e0b' }} />}
+                                                <span title={student.studentName}>{student.studentName}</span>
+                                            </span>
+                                        </td>
+                                        <td className="sticky-col text-center fw-bold" style={{ left: STICKY_COLS.gender.left, backgroundColor: isEven ? '#f3f4f6' : '#ebedf0', fontSize: '0.63rem', padding: cellPad, borderRight: `3px solid ${ACCENT}25`, color: student.gender === 'Male' ? '#2563eb' : '#db2777' }}>{student.gender === 'Male' ? 'M' : 'F'}</td>
+
+                                        {subjects.map((subject) => subCols.map((col) => {
+                                            const val = getScore(student, subject.subjectId, col.key);
+                                            const isGrade = col.key === 'grade';
+                                            const isRemark = col.key === 'remark';
+                                            const borderR = col === subCols[subCols.length - 1] ? `1px solid #e9ecef` : '1px solid #f1f3f5';
+
+                                            if (val === null || val === undefined || (val === 0 && !isGrade))
+                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center text-body-tertiary" style={{ fontSize: '0.63rem', padding: cellPad, borderRight: borderR }}>–</td>;
+                                            if (isGrade) {
+                                                const gc = getGradeColor(val);
+                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center" style={{ fontSize: '0.63rem', padding: cellPad, borderRight: borderR }}><span className={`badge ${gc.bg} ${gc.text} rounded-2 d-inline-flex align-items-center justify-content-center`} style={{ width: 22, height: 22, fontSize: '0.55rem', fontWeight: 900, padding: 0 }}>{val}</span></td>;
+                                            }
+                                            if (isRemark)
+                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center text-secondary fst-italic" style={{ fontSize: '0.52rem', padding: cellPad, borderRight: borderR }} title={val}>{val ? val.substring(0, 3) : ''}</td>;
+                                            const sc = getScoreColor(col.key, val);
+                                            return <td key={`td-${subject.subjectId}-${col.key}`} className={`text-center ${sc || ''}`} style={{ fontSize: '0.63rem', padding: cellPad, borderRight: borderR }}>{fmt(val)}</td>;
+                                        }))}
+
+                                        {showAttendance && attendance && (
+                                            <td className="text-center" style={{ fontSize: '0.63rem', padding: cellPad, backgroundColor: '#fffdf5', borderRight: '1px solid #e9ecef' }}>
+                                                {student.attendance ? <span className={`fw-semibold ${student.attendance.percentage >= 75 ? 'text-success' : student.attendance.percentage >= 50 ? 'text-warning' : 'text-danger'}`}>{fmtPct(student.attendance.percentage)}</span> : <span className="text-body-tertiary">—</span>}
+                                            </td>
+                                        )}
+                                        {showComments && (
+                                            <td className="text-start text-secondary text-truncate" style={{ fontSize: '0.54rem', padding: cellPad, maxWidth: 140, backgroundColor: '#fffdf5', borderRight: '1px solid #e9ecef' }} title={student.classTeacherComment || 'No comment'}>{student.classTeacherComment || <span className="text-body-tertiary fst-italic">—</span>}</td>
+                                        )}
+
+                                        <td className="text-center fw-black text-dark" style={{ fontSize: '0.73rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.totalScore > 0 ? student.totalScore : <span className="text-body-tertiary">—</span>}</td>
+                                        <td className="text-center fw-semibold" style={{ fontSize: '0.63rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.averageScore > 0 ? fmt(student.averageScore, 1) : <span className="text-body-tertiary">—</span>}</td>
+                                        <td className="text-center" style={{ padding: cellPad, backgroundColor: `${ACCENT}08`, borderTop: '1px solid #f1f3f5' }}>
+                                            {student.position ? (() => { const ps = getPositionStyle(student.position); return <span className="badge rounded-pill d-inline-flex align-items-center justify-content-center" style={{ background: ps.bg, color: ps.text, border: `1px solid ${ps.border}`, fontSize: '0.55rem', fontWeight: 700, minWidth: 30, padding: '2px 5px' }}>{getPositionSuffix(student.position)}</span>; })() : <span className="text-body-tertiary" style={{ fontSize: '0.63rem' }}>—</span>}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+
+                            {/* Statistics rows */}
+                            {subjectStats && statRows.map((stat, srIdx) => {
+                                const isLight = srIdx % 2 === 0;
+                                const sBg = isLight ? '#fdf2e9' : '#fcebd4';
+                                const isLast = stat.key === 'passRate';
+                                return (
+                                    <tr key={`stat-${stat.key}`} style={{ backgroundColor: sBg }}>
+                                        <td colSpan="4" className="sticky-col text-start text-uppercase fw-black" style={{ left: 0, minWidth: STICKY_TOTAL_W, backgroundColor: sBg, fontSize: '0.53rem', letterSpacing: '0.1em', color: PAL.hdrSecondary, padding: cellPad, borderRight: `3px solid ${ACCENT}35`, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{stat.label}</td>
+                                        {subjects.map((subject) => {
+                                            const sStat = subjectStats.find((s) => s.subjectId === subject.subjectId);
+                                            const val = sStat?.[stat.key];
+                                            return subCols.map((col) => {
+                                                const show = col.key === stat.key || (col.key === 'totalScore' && stat.key === 'averageScore');
+                                                return <td key={`stat-${subject.subjectId}-${stat.key}-${col.key}`} className={`text-center ${show ? 'text-dark fw-bold' : ''}`} style={{ fontSize: '0.53rem', backgroundColor: sBg, padding: cellPad, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{show && val !== undefined && val !== null ? stat.fmt(val) : ''}</td>;
+                                            });
+                                        })}
+                                        {showAttendance && attendance && <td style={{ backgroundColor: sBg, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }} />}
+                                        {showComments && <td style={{ backgroundColor: sBg, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }} />}
+                                        <td className="text-center text-dark fw-bold" style={{ fontSize: '0.53rem', backgroundColor: `${ACCENT}08`, padding: cellPad, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{stat.key === 'averageScore' ? fmt(statistics?.classAverage, 1) : stat.key === 'highestScore' ? statistics?.highestTotal : stat.key === 'lowestScore' ? statistics?.lowestTotal : ''}</td>
+                                        <td className="text-center text-dark fw-bold" style={{ fontSize: '0.53rem', backgroundColor: `${ACCENT}08`, padding: cellPad, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{stat.key === 'averageScore' ? fmt(statistics?.classAverage, 1) : ''}</td>
+                                        <td style={{ backgroundColor: `${ACCENT}08`, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }} />
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            {/* Print grading legend */}
+            <div className="print-only border-top border-2 border-dark px-3 py-2">
+                <div className="d-flex flex-wrap gap-3 justify-content-center" style={{ fontSize: '0.55rem', color: '#495057' }}>
+                    <span className="fw-bold text-uppercase">Grading:</span>
+                    {GRADING_KEY.map((g) => (<span key={g.grade}><strong>{g.grade}</strong>({g.range})</span>))}
+                    <span className="text-body-tertiary">|</span>
+                    <span><strong>T</strong>=Test <strong>NT</strong>=Notes <strong>AS</strong>=Assign <strong>CA</strong>=Total CA <strong>EX</strong>=Exam <strong>Tot</strong>=Total <strong>G</strong>=Grade <strong>R</strong>=Remark</span>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================
+// SUBJECT STATISTICS (Below Table)
+// ============================================
+function SubjectStatisticsTable({ subjectStats }) {
+    const [isExpanded, setIsExpanded] = useState(false);
+    if (!subjectStats || subjectStats.length === 0) return null;
+    return (
+        <div className="no-print mt-3 mt-md-4">
+            <div className="d-flex align-items-center gap-3 mb-3">
+                <div className="flex-grow-1" style={{ height: 1, background: `linear-gradient(90deg, transparent, ${PAL.hdrAccent}25, transparent)` }} />
+                <span className="d-flex align-items-center gap-1 px-3 py-1 rounded-pill" style={{ background: `linear-gradient(135deg, ${PAL.hdrDeep}10, ${PAL.hdrAccent}08)`, border: `1px solid ${PAL.hdrAccent}20`, fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.14em', textTransform: 'uppercase', color: PAL.hdrSecondary }}>
+                    <Icons.Layers size={11} style={{ color: PAL.hdrAccent }} /> Subject Analysis
+                </span>
+                <div className="flex-grow-1" style={{ height: 1, background: `linear-gradient(90deg, transparent, ${PAL.hdrAccent}25, transparent)` }} />
+            </div>
+            <button onClick={() => setIsExpanded(!isExpanded)} className="btn w-100 text-start px-3 px-md-4 py-2.5 py-md-3 d-flex align-items-center justify-content-between rounded-3 mb-3 transition-all" style={{ background: `linear-gradient(135deg, ${PAL.hdrDeep}08, ${PAL.hdrAccent}04)`, border: `1.5px solid ${PAL.hdrAccent}18` }}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = `${PAL.hdrAccent}35`; }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = `${PAL.hdrAccent}18`; }}>
+                <h3 className="h6 mb-0 fw-bold d-flex align-items-center gap-2" style={{ fontSize: '0.72rem', color: PAL.hdrSecondary }}>
+                    <span className="d-flex align-items-center justify-content-center rounded-2" style={{ width: 24, height: 24, background: `linear-gradient(135deg, ${PAL.hdrAccent}15, ${PAL.hdrGold}10)`, color: PAL.hdrAccent }}><Icons.BarChart size={12} /></span>
+                    Detailed Analysis
+                    <span className="badge rounded-pill" style={{ fontSize: '0.56rem', fontWeight: 700, background: `${PAL.hdrAccent}12`, color: PAL.hdrSecondary }}>{subjectStats.length}</span>
+                </h3>
+                <div className="d-flex align-items-center justify-content-center rounded-circle" style={{ width: 26, height: 26, background: `${PAL.hdrAccent}10`, color: PAL.hdrSecondary, transition: 'transform 0.3s ease', transform: isExpanded ? 'rotate(180deg)' : '' }}>
+                    <Icons.ChevronDown size={13} />
+                </div>
+            </button>
+            {isExpanded && (
+                <div className="row g-2">
+                    {subjectStats.map((stat) => {
+                        const passColor = stat.assessedStudents > 0 ? (stat.passRate >= 80 ? '#059669' : stat.passRate >= 60 ? '#2563eb' : stat.passRate >= 50 ? '#d97706' : '#dc2626') : '#94a3b8';
+                        const passBg = stat.assessedStudents > 0 ? (stat.passRate >= 80 ? 'rgba(5,150,105,0.06)' : stat.passRate >= 60 ? 'rgba(37,99,235,0.06)' : stat.passRate >= 50 ? 'rgba(217,119,6,0.06)' : 'rgba(220,38,38,0.06)') : '#f8f9fa';
+                        return (
+                            <div key={stat.subjectId} className="col-12 col-sm-6 col-lg-4 col-xl-3">
+                                <div className="rounded-3 p-2.5 p-md-3 h-100 transition-all" style={{ background: `linear-gradient(160deg, white, ${passBg})`, border: `1.5px solid ${passColor}18`, position: 'relative', overflow: 'hidden' }}
+                                    onMouseEnter={e => { e.currentTarget.style.borderColor = `${passColor}35`; e.currentTarget.style.boxShadow = `0 6px 24px rgba(0,0,0,0.06)`; }}
+                                    onMouseLeave={e => { e.currentTarget.style.borderColor = `${passColor}18`; e.currentTarget.style.boxShadow = 'none'; }}>
+                                    <div className="position-absolute top-0 start-0" style={{ width: 3, height: '100%', background: `linear-gradient(180deg, ${passColor}, ${passColor}60)` }} />
+                                    <div className="d-flex align-items-center justify-content-between mb-2 ps-1">
+                                        <h4 className="fw-bold mb-0 text-dark" style={{ fontSize: '0.68rem', lineHeight: 1.2 }}>{stat.subjectName}</h4>
+                                        {stat.assessedStudents > 0 && <span className="badge rounded-pill fw-bold" style={{ fontSize: '0.52rem', background: `${passColor}12`, color: passColor }}>{fmtPct(stat.passRate)}</span>}
+                                    </div>
+                                    {stat.assessedStudents > 0 ? (
+                                        <div className="ps-1">
+                                            <div className="d-grid gap-1" style={{ gridTemplateColumns: '1fr 1fr', fontSize: '0.6rem' }}>
+                                                <div className="rounded-2 px-2 py-1" style={{ background: 'rgba(0,0,0,0.02)' }}><span className="text-body-tertiary d-block" style={{ fontSize: '0.5rem', textTransform: 'uppercase', fontWeight: 600 }}>Average</span><span className="fw-black text-dark" style={{ fontSize: '0.75rem' }}>{fmt(stat.averageScore, 1)}</span></div>
+                                                <div className="rounded-2 px-2 py-1" style={{ background: 'rgba(0,0,0,0.02)' }}><span className="text-body-tertiary d-block" style={{ fontSize: '0.5rem', textTransform: 'uppercase', fontWeight: 600 }}>Assessed</span><span className={`fw-bold ${stat.assessedStudents === stat.totalStudents ? 'text-success' : 'text-warning'}`} style={{ fontSize: '0.75rem' }}>{stat.assessedStudents}<span className="text-body-tertiary" style={{ fontSize: '0.58rem' }}>/{stat.totalStudents}</span></span></div>
+                                                <div className="rounded-2 px-2 py-1" style={{ background: 'rgba(5,150,105,0.04)' }}><span className="text-body-tertiary d-block" style={{ fontSize: '0.5rem', textTransform: 'uppercase', fontWeight: 600 }}>Highest</span><span className="fw-black text-success" style={{ fontSize: '0.75rem' }}>{fmt(stat.highestScore)}</span></div>
+                                                <div className="rounded-2 px-2 py-1" style={{ background: 'rgba(220,38,38,0.04)' }}><span className="text-body-tertiary d-block" style={{ fontSize: '0.5rem', textTransform: 'uppercase', fontWeight: 600 }}>Lowest</span><span className="fw-black text-danger" style={{ fontSize: '0.75rem' }}>{fmt(stat.lowestScore)}</span></div>
+                                            </div>
+                                            <div className="d-flex gap-1 mt-1.5 flex-wrap">{GRADING_KEY.map((g) => { const c = stat.gradeDistribution?.[g.grade] || 0; if (c === 0) return null; return <span key={g.grade} className="d-flex align-items-center gap-0.5 px-1.5 py-0.5 rounded-1" style={{ fontSize: '0.52rem', background: `${g.color}10`, border: `1px solid ${g.color}15` }}><span className="fw-black" style={{ color: g.color }}>{g.grade}</span><span className="fw-semibold" style={{ color: g.color + 'bb' }}>{c}</span></span>; })}</div>
+                                            <div className="mt-1.5"><div className="d-flex justify-content-between mb-0.5" style={{ fontSize: '0.48rem' }}><span className="text-success fw-semibold">{stat.passCount || 0} passed</span><span className="text-danger fw-semibold">{stat.failCount || 0} failed</span></div><div className="progress" style={{ height: 4, background: 'rgba(220,38,38,0.15)', borderRadius: 999 }}><div className="progress-bar bg-success" style={{ width: `${stat.passRate || 0}%`, borderRadius: 999 }} /></div></div>
+                                        </div>
+                                    ) : (<div className="ps-1 text-center py-2"><span className="text-body-tertiary" style={{ fontSize: '0.6rem' }}>No scores entered</span></div>)}
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
             )}
+        </div>
+    );
+}
 
-            {/* No students in class */}
-            {selectedClassId && !broadsheetLoading && broadsheetData && (!broadsheetData.students || broadsheetData.students.length === 0) && (
-                <EmptyState
-                    icon="👨‍🎓"
-                    title="No Students Found"
-                    description="This class has no students assigned yet, or no scores have been entered."
-                />
-            )}
+function PerformanceInsightsBanner({ data }) {
+    if (!data?.statistics || !data?.subjectStats) return null;
+    const { subjectStats } = data;
+    const topSubject = [...subjectStats].sort((a, b) => (b.averageScore || 0) - (a.averageScore || 0))[0];
+    const weakSubject = [...subjectStats].filter(s => s.assessedStudents > 0).sort((a, b) => (a.averageScore || 0) - (b.averageScore || 0))[0];
+    const bestPass = [...subjectStats].filter(s => s.assessedStudents > 0).sort((a, b) => (b.passRate || 0) - (a.passRate || 0))[0];
+    const insights = [
+        { icon: <Icons.Zap size={16} />, label: 'Strongest', value: topSubject?.subjectName || '—', sub: topSubject ? `Avg: ${fmt(topSubject.averageScore, 1)}` : '', color: '#059669', bg: 'rgba(5,150,105,0.06)', border: 'rgba(5,150,105,0.12)' },
+        { icon: <Icons.AlertTriangle size={16} />, label: 'Needs Attention', value: weakSubject?.subjectName || '—', sub: weakSubject ? `Avg: ${fmt(weakSubject.averageScore, 1)}` : '', color: '#dc2626', bg: 'rgba(220,38,38,0.04)', border: 'rgba(220,38,38,0.1)' },
+        { icon: <Icons.Target size={16} />, label: 'Best Pass Rate', value: bestPass?.subjectName || '—', sub: bestPass ? fmtPct(bestPass.passRate) : '', color: '#2563eb', bg: 'rgba(37,99,235,0.04)', border: 'rgba(37,99,235,0.1)' },
+    ];
+    return (
+        <div className="no-print mt-3 mt-md-4 mb-2 mb-md-3">
+            <div className="d-flex align-items-center gap-3 mb-3 d-none d-md-flex"><div className="flex-grow-1" style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,135,81,0.2), transparent)' }} /><span className="badge d-flex align-items-center gap-1 px-3 py-1 rounded-pill" style={{ background: 'rgba(0,135,81,0.06)', border: '1px solid rgba(0,135,81,0.1)', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: PAL.greenDark }}><Icons.Star size={10} style={{ color: PAL.green }} /> Performance Insights</span><div className="flex-grow-1" style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,135,81,0.2), transparent)' }} /></div>
+            <div className="row g-2">{insights.map((ins, i) => (<div key={i} className="col-12 col-sm-4"><div className="rounded-3 p-2.5 p-md-3 h-100" style={{ background: ins.bg, border: `1px solid ${ins.border}` }}><div className="d-flex align-items-center gap-2 mb-1.5"><div className="d-flex align-items-center justify-content-center rounded-2" style={{ width: 24, height: 24, color: ins.color }}>{ins.icon}</div><span className="text-uppercase fw-semibold tracking-wider d-none d-sm-inline" style={{ fontSize: '0.56rem', color: ins.color + 'aa' }}>{ins.label}</span></div><p className="fs-5 fw-black mb-1" style={{ fontSize: 'clamp(0.85rem, 2vw, 1.2rem)' }}>{ins.value}</p>{ins.sub && <p className="fw-medium mb-0" style={{ fontSize: '0.65rem', color: ins.color }}>{ins.sub}</p>}</div></div>))}</div>
+        </div>
+    );
+}
 
-            {/* Styles */}
+function GradingLegendStrip() {
+    return (
+        <div className="no-print mt-2 mb-2 px-1 px-md-0">
+            <div className="d-flex align-items-center gap-3 mb-2 d-none d-md-flex"><div className="flex-grow-1" style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent)' }} /><span className="text-uppercase fw-bold" style={{ fontSize: '0.6rem', letterSpacing: '0.12em', color: '#868e96' }}>Grading Legend</span><div className="flex-grow-1" style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.06), transparent)' }} /></div>
+            <div className="d-flex flex-wrap gap-2 gap-md-3" style={{ fontSize: '0.65rem', color: '#6c757d' }}>
+                {GRADING_KEY.map((g) => (<span key={g.grade} className="d-flex align-items-center gap-1"><span className="rounded-circle d-block" style={{ width: 7, height: 7, backgroundColor: g.color }} /><span className="fw-black" style={{ color: g.color }}>{g.grade}</span><span className="d-none d-sm-inline">({g.range})</span></span>))}
+                <span className="text-body-tertiary d-none d-md-inline">|</span>
+                <span className="text-body-secondary d-none d-lg-inline"><strong>T</strong>=Test <strong>NT</strong>=Notes <strong>AS</strong>=Assign <strong>CA</strong>=Total CA <strong>EX</strong>=Exam <strong>Tot</strong>=Total <strong>G</strong>=Grade <strong>R</strong>=Remark</span>
+            </div>
+        </div>
+    );
+}
+
+function SignatureBlock({ classTeacher }) {
+    return (<div className="print-only mt-5 d-flex justify-content-between px-4"><div className="text-center"><div className="border-top border-2 border-dark pt-1 mt-5" style={{ width: 180 }}><p className="fw-bold mb-0" style={{ fontSize: '0.65rem' }}>{classTeacher || 'Class Teacher'}</p><p className="text-body-secondary mb-0" style={{ fontSize: '0.55rem' }}>Class Teacher</p><p className="text-body-tertiary mt-1 mb-0" style={{ fontSize: '0.55rem' }}>Date: _____________</p></div></div><div className="text-center"><div className="border-top border-2 border-dark pt-1 mt-5" style={{ width: 180 }}><p className="fw-bold mb-0" style={{ fontSize: '0.65rem' }}>_________________</p><p className="text-body-secondary mb-0" style={{ fontSize: '0.55rem' }}>Principal</p><p className="text-body-tertiary mt-1 mb-0" style={{ fontSize: '0.55rem' }}>Date: _____________</p></div></div></div>);
+}
+
+function EmptyState({ title, message, Icon }) {
+    return (<div className="d-flex flex-column align-items-center justify-content-center py-5 px-3"><div className="rounded-circle d-flex align-items-center justify-content-center mb-3" style={{ width: 56, height: 56, background: PAL.greenGhostMed, border: `1px solid ${PAL.green}20` }}><Icon size={24} style={{ color: PAL.green }} /></div><h3 className="h6 fw-bold mb-1">{title}</h3><p className="text-body-secondary small text-center" style={{ maxWidth: 350 }}>{message}</p></div>);
+}
+
+function PrintHeader({ data }) {
+    if (!data) return null;
+    const { classInfo, termInfo, sessionInfo, attendance } = data;
+    return (<div className="print-only text-center mb-3"><div className="mb-2" style={{ height: 8, background: `linear-gradient(90deg, #008751 0%, #008751 33%, white 33%, white 66%, #008751 66%, #008751 100%)` }} /><h1 className="fw-bold text-uppercase" style={{ fontFamily: 'Georgia, serif', fontSize: '0.85rem', letterSpacing: '0.25em' }}>{SCHOOL_INFO.name}</h1><p className="text-body-secondary" style={{ fontSize: '0.6rem' }}>{SCHOOL_INFO.address}</p><p className="fst-italic text-body-tertiary" style={{ fontSize: '0.5rem' }}>"{SCHOOL_INFO.motto}"</p><div className="border-top border-bottom border-2 border-dark mt-2 pt-2 pb-2"><h2 className="text-uppercase text-white d-inline-block px-4 py-1 fw-bold" style={{ fontSize: '0.65rem', letterSpacing: '0.3em', backgroundColor: PAL.hdrPrimary }}>Class Broadsheet</h2><div className="d-flex justify-content-between mt-2 px-4" style={{ fontSize: '0.55rem' }}><div className="text-start"><p className="mb-0"><span className="fw-bold">Class:</span> {classInfo?.classFullName}</p><p className="mb-0"><span className="fw-bold">CT:</span> {classInfo?.classTeacher?.name || '—'}</p>{attendance && attendance.schoolOpenDays > 0 && <p className="mb-0"><span className="fw-bold">Days:</span> {attendance.schoolOpenDays}</p>}</div><div className="text-end"><p className="mb-0"><span className="fw-bold">Term:</span> {termInfo?.name}</p><p className="mb-0"><span className="fw-bold">Session:</span> {sessionInfo?.name}</p><p className="mb-0"><span className="fw-bold">Date:</span> {new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' })}</p></div></div></div></div>);
+}
+
+function PageHeader({ classInfo, termInfo, sessionInfo, onBack, onToggleFullscreen, isFullscreen }) {
+    return (
+        <div className="d-flex align-items-center justify-content-between mb-2 mb-md-3">
+            <div className="d-flex align-items-center gap-2">
+                <button onClick={onBack} className="btn btn-outline-secondary btn-sm rounded-3 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}><Icons.ArrowLeft size={15} /></button>
+                <div>
+                    <div className="d-flex align-items-center gap-2">
+                        <h1 className="h6 fw-black mb-0" style={{ fontSize: 'clamp(0.9rem, 2.5vw, 1.1rem)' }}>Broadsheet</h1>
+                        <span className="badge text-white d-flex align-items-center justify-content-center" style={{ fontSize: '0.52rem', fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase', backgroundColor: PAL.hdrPrimary, boxShadow: `0 2px 8px ${PAL.hdrGlow}`, borderRadius: 6, padding: '2px 7px' }}>CT</span>
+                    </div>
+                    <p className="text-body-tertiary mb-0 d-none d-sm-block" style={{ fontSize: '0.7rem' }}>{classInfo?.classFullName || '—'} &middot; {termInfo?.name || '—'} &middot; {sessionInfo?.name || '—'}</p>
+                </div>
+            </div>
+            <button onClick={onToggleFullscreen} className="btn btn-outline-secondary btn-sm rounded-3 d-flex align-items-center justify-content-center d-none d-md-flex" style={{ width: 36, height: 36 }} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+                {isFullscreen ? <Icons.Minimize2 size={15} /> : <Icons.Maximize2 size={15} />}
+            </button>
+        </div>
+    );
+}
+
+function MobileViewToggle({ viewMode, setViewMode }) {
+    const modes = [
+        { mode: VIEW_MODES.DETAILED, label: 'Full', icon: <Icons.Eye size={11} /> },
+        { mode: VIEW_MODES.COMPACT, label: 'Compact', icon: <Icons.FileText size={11} /> },
+        { mode: VIEW_MODES.GRADE_ONLY, label: 'Grades', icon: <Icons.Award size={11} /> },
+    ];
+    return (
+        <div className="d-inline-flex align-items-center gap-1 p-1 rounded-3" style={{ background: '#f1f5f9', border: '1px solid #dee2e6' }}>
+            {modes.map((opt) => (
+                <button key={opt.mode} onClick={() => setViewMode(opt.mode)} className={`btn btn-sm d-flex align-items-center gap-1 rounded-3 ${viewMode === opt.mode ? 'shadow-sm' : ''}`} style={{ fontSize: '0.65rem', fontWeight: 600, padding: '3px 8px', background: viewMode === opt.mode ? 'white' : 'transparent', color: viewMode === opt.mode ? PAL.hdrSecondary : '#94a3b8', border: 'none', boxShadow: viewMode === opt.mode ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
+                    {opt.icon}<span className="d-none d-sm-inline">{opt.label}</span>
+                </button>
+            ))}
+        </div>
+    );
+}
+
+function ScrollHintBanner({ visible }) {
+    if (!visible) return null;
+    return (<div className="no-print d-flex align-items-center gap-2 px-3 py-2 rounded-3 mb-2 border-0" style={{ background: `linear-gradient(135deg, ${PAL.hdrDeep}08, ${PAL.hdrAccent}04)`, border: `1px solid ${PAL.hdrAccent}15 !important`, color: PAL.hdrSecondary, fontSize: '0.65rem' }} role="alert"><Icons.DoubleArrow size={13} style={{ color: PAL.hdrAccent }} className="flex-shrink-0" /><span className="fw-medium">Scroll ↔ for subjects &bull; ↕ for students</span></div>);
+}
+
+function Toolbar({ viewMode, setViewMode, showAttendance, setShowAttendance, showComments, setShowComments, showFilters, setShowFilters, loading, onRefresh, onPrint, data }) {
+    return (
+        <div className="no-print d-flex align-items-center gap-1.5 gap-md-2 flex-wrap mb-2 mb-md-3">
+            <MobileViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+            <div className="flex-grow-1" />
+            <div className="d-flex align-items-center gap-1">
+                {data?.attendance && data.attendance.schoolOpenDays > 0 && (<button onClick={() => setShowAttendance(!showAttendance)} className={`btn btn-sm rounded-3 d-flex align-items-center gap-1 ${showAttendance ? 'bg-success-subtle text-success' : 'btn-outline-secondary'}`} style={{ fontSize: '0.65rem', fontWeight: 600, padding: '3px 8px', border: showAttendance ? '1px solid #99f6e4' : '' }}><Icons.ClipboardCheck size={10} /><span className="d-none d-sm-inline">Att</span></button>)}
+                <button onClick={() => setShowComments(!showComments)} className={`btn btn-sm rounded-3 d-flex align-items-center gap-1 ${showComments ? 'bg-primary-subtle text-primary' : 'btn-outline-secondary'}`} style={{ fontSize: '0.65rem', fontWeight: 600, padding: '3px 8px', border: showComments ? '1px solid #bfdbfe' : '' }}><Icons.MessageSquare size={10} /><span className="d-none d-sm-inline">Cmt</span></button>
+                <button onClick={() => setShowFilters(!showFilters)} className={`btn btn-sm rounded-3 d-flex align-items-center gap-1 ${showFilters ? 'bg-success-subtle text-success-emphasis' : 'btn-outline-secondary'}`} style={{ fontSize: '0.65rem', fontWeight: 600, padding: '3px 8px', border: showFilters ? `1px solid ${PAL.green}30` : '' }}><Icons.Filter size={10} /></button>
+                <button onClick={() => onRefresh()} disabled={loading} className="btn btn-sm btn-outline-secondary rounded-3 d-flex align-items-center gap-1" style={{ fontSize: '0.65rem', padding: '3px 8px' }}>{loading ? <Icons.Loader size={10} spin /> : <Icons.FileText size={10} />}</button>
+                <button onClick={onPrint} className="btn btn-sm rounded-3 d-flex align-items-center gap-1 fw-bold text-white" style={{ fontSize: '0.65rem', padding: '3px 10px', backgroundColor: PAL.hdrPrimary, boxShadow: `0 2px 12px ${PAL.hdrGlow}` }}><Icons.Printer size={10} /><span className="d-none d-sm-inline">Print</span></button>
+            </div>
+        </div>
+    );
+}
+
+// ============================================
+// MAIN PAGE COMPONENT
+// ============================================
+export default function BroadsheetPage() {
+    const { classId } = useParams();
+    const navigate = useNavigate();
+    const [filters, setFilters] = useState({ termId: '', sessionId: '' });
+    const [viewMode, setViewMode] = useState(VIEW_MODES.DETAILED);
+    const [showAttendance, setShowAttendance] = useState(true);
+    const [showComments, setShowComments] = useState(false);
+    const [terms, setTerms] = useState([]);
+    const [sessions, setSessions] = useState([]);
+    const [showFilters, setShowFilters] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isFullscreen, setIsFullscreen] = useState(false);
+    const [showScrollHint, setShowScrollHint] = useState(true);
+    const scrollRef = useRef(null);
+
+    const { classes, loading: classesLoading, error: classesError, meta, refetch: refetchClasses } = useClassList(filters);
+    const { data, loading, error, refetch } = useBroadsheet(classId, filters);
+
+    useEffect(() => {
+        const c = scrollRef?.current; if (!c) return;
+        const h = () => { setShowScrollHint(false); c.removeEventListener('scroll', h); };
+        c.addEventListener('scroll', h, { once: true });
+        const t = setTimeout(() => setShowScrollHint(false), 8000);
+        return () => { c.removeEventListener('scroll', h); clearTimeout(t); };
+    }, [data]);
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const [tR, sR] = await Promise.allSettled([termsAPI.getAll(), sessionsAPI.getAll()]);
+                if (tR.status === 'fulfilled' && tR.value?.data) setTerms(tR.value.data);
+                if (sR.status === 'fulfilled' && sR.value?.data) setSessions(sR.value.data);
+            } catch (e) {}
+        })();
+    }, []);
+
+    const handleSelectClass = useCallback((id) => { navigate(`/teacher/broadsheet/${id}`); }, [navigate]);
+    const handleBack = useCallback(() => { if (classId) navigate('/teacher/broadsheet'); else navigate(-1); }, [classId, navigate]);
+    const handlePrint = useCallback(() => { setSearchTerm(''); setTimeout(() => window.print(), 100); }, []);
+    const handleToggleFullscreen = useCallback(() => setIsFullscreen(p => !p), []);
+
+    if (!classId) {
+        return (
+            <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
+                <div className="container-xl p-2 p-md-4">
+                    <div className="position-relative overflow-hidden rounded-3 rounded-md-4 mb-3 mb-md-4 px-4 py-3 py-md-4 text-center" style={{ background: `linear-gradient(135deg, ${PAL.hdrDeep} 0%, ${PAL.hdrPrimary} 35%, ${PAL.hdrSecondary} 70%, ${PAL.hdrDeep} 100%)`, boxShadow: `0 8px 40px ${PAL.hdrGlow}` }}>
+                        <div className="position-absolute top-0 start-0 end-0 bottom-0 pointer-events-none">
+                            <div className="w-100 h-100" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)`, backgroundSize: '40px 40px' }} />
+                            <div className="position-absolute top-0 start-0 end-0" style={{ height: 4, background: `linear-gradient(90deg, #008751 0%, #008751 33%, white 33%, white 66%, #008751 66%, #008751 100%)` }} />
+                        </div>
+                        <div className="position-relative z-1">
+                            <div className="d-flex justify-content-center mb-2 mb-md-3"><div className="d-flex align-items-center justify-content-center rounded-3" style={{ width: 48, height: 48, background: `linear-gradient(145deg, rgba(251,191,36,0.15), rgba(234,88,12,0.08))`, border: `1.5px solid ${PAL.hdrGold}50`, boxShadow: `0 0 30px ${PAL.hdrGoldGlow}` }}><Icons.GraduationCap size={22} style={{ color: PAL.hdrGold }} /></div></div>
+                            <h1 className="fw-black text-uppercase mb-1" style={{ fontFamily: 'Georgia, serif', letterSpacing: '0.18em', fontSize: 'clamp(0.85rem, 3vw, 1.15rem)', color: PAL.hdrGold, textShadow: `0 2px 20px ${PAL.hdrGoldGlow}` }}>{SCHOOL_INFO.name}</h1>
+                            <p className="text-uppercase mb-2 d-none d-md-block" style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: PAL.hdrMuted }}>{SCHOOL_INFO.address}</p>
+                            <div className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)' }}><span className="rounded-circle d-block" style={{ width: 5, height: 5, background: PAL.hdrGold, boxShadow: `0 0 6px ${PAL.hdrGoldGlow}` }} /><p className="fst-italic fw-medium mb-0" style={{ fontSize: '0.58rem', color: PAL.hdrGold }}>"{SCHOOL_INFO.motto}"</p><span className="rounded-circle d-block" style={{ width: 5, height: 5, background: PAL.hdrGold, boxShadow: `0 0 6px ${PAL.hdrGoldGlow}` }} /></div>
+                        </div>
+                    </div>
+                    <div className="d-flex align-items-center gap-2 mb-2 mb-md-3"><button onClick={handleBack} className="btn btn-outline-secondary btn-sm rounded-3 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}><Icons.ArrowLeft size={15} /></button><div><h2 className="h6 fw-black mb-0">Class Teacher Broadsheet</h2><p className="text-body-tertiary mb-0 d-none d-sm-block" style={{ fontSize: '0.7rem' }}>Select a class to view results</p></div></div>
+                    <div className="d-flex align-items-center gap-2 mb-2 mb-md-3"><button onClick={() => setShowFilters(!showFilters)} className={`btn btn-sm rounded-3 d-flex align-items-center gap-1 ${showFilters ? 'bg-success-subtle text-success-emphasis' : 'btn-outline-secondary'}`} style={{ fontSize: '0.7rem', fontWeight: 600 }}><Icons.Filter size={11} /> Filters</button><button onClick={() => refetchClasses()} disabled={classesLoading} className="btn btn-sm btn-outline-secondary rounded-3 d-flex align-items-center gap-1" style={{ fontSize: '0.7rem' }}>{classesLoading ? <Icons.Loader size={11} spin /> : <Icons.FileText size={11} />} Refresh</button></div>
+                    {showFilters && (<div className="card border rounded-3 p-2 p-md-3 mb-3" style={{ borderColor: '#dee2e6' }}><div className="row g-2"><div className="col-sm-6"><label className="form-label text-uppercase fw-semibold" style={{ fontSize: '0.58rem', color: '#868e96', letterSpacing: '0.08em' }}>Term</label><select value={filters.termId} onChange={(e) => setFilters(f => ({ ...f, termId: e.target.value }))} className="form-select form-select-sm rounded-3" style={{ fontSize: '0.7rem' }}><option value="">Current/Active</option>{terms.map(t => <option key={t._id} value={t._id}>{t.name}{t.status === 'active' ? ' ✓' : ''}</option>)}</select></div><div className="col-sm-6"><label className="form-label text-uppercase fw-semibold" style={{ fontSize: '0.58rem', color: '#868e96', letterSpacing: '0.08em' }}>Session</label><select value={filters.sessionId} onChange={(e) => setFilters(f => ({ ...f, sessionId: e.target.value }))} className="form-select form-select-sm rounded-3" style={{ fontSize: '0.7rem' }}><option value="">Current/Active</option>{sessions.map(s => <option key={s._id} value={s._id}>{s.name}{s.isActive ? ' ✓' : ''}</option>)}</select></div></div></div>)}
+                    <ClassSelectionView classes={classes} loading={classesLoading} error={classesError} meta={meta} onSelectClass={handleSelectClass} onRefresh={refetchClasses} />
+                </div>
+            </div>
+        );
+    }
+
+    if (loading && !data) return (<div className="d-flex align-items-center justify-content-center" style={{ backgroundColor: '#f8fafc', minHeight: '60vh' }}><div className="text-center"><div className="spinner-border mb-2" role="status" style={{ width: 48, height: 48, color: PAL.hdrAccent }}><span className="visually-hidden">Loading...</span></div><p className="text-body-secondary small">Loading broadsheet...</p></div></div>);
+    if (error && !data) return (<div className="d-flex align-items-center justify-content-center p-3" style={{ backgroundColor: '#f8fafc', minHeight: '60vh' }}><div className="text-center" style={{ maxWidth: 400 }}><div className="bg-danger-subtle rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style={{ width: 56, height: 56 }}><Icons.AlertCircle size={26} className="text-danger" /></div><h2 className="h6 fw-bold mb-2">Could Not Load</h2><div className="alert alert-danger rounded-3 p-2 mb-3" style={{ fontSize: '0.7rem' }}>{error}</div><div className="d-flex gap-2 justify-content-center"><button onClick={() => refetch()} className="btn btn-sm text-white rounded-3 px-4 shadow" style={{ backgroundColor: PAL.hdrPrimary }}>Retry</button><button onClick={handleBack} className="btn btn-light btn-sm rounded-3 px-4">Back</button></div></div></div>);
+    if (data && data.students?.length === 0) return (<div style={{ backgroundColor: '#f8fafc' }} className="p-2 p-md-3"><PageHeader classInfo={data.classInfo} termInfo={data.termInfo} sessionInfo={data.sessionInfo} onBack={handleBack} onToggleFullscreen={handleToggleFullscreen} isFullscreen={isFullscreen} /><div className="card border rounded-3 rounded-md-4" style={{ borderColor: '#dee2e6' }}><div className="card-body"><EmptyState Icon={Icons.Users} title="No Students" message="No students assigned to this class." /></div></div></div>);
+    if (data && data.subjects?.length === 0) return (<div style={{ backgroundColor: '#f8fafc' }} className="p-2 p-md-3"><PageHeader classInfo={data.classInfo} termInfo={data.termInfo} sessionInfo={data.sessionInfo} onBack={handleBack} onToggleFullscreen={handleToggleFullscreen} isFullscreen={isFullscreen} /><div className="card border rounded-3 rounded-md-4" style={{ borderColor: '#dee2e6' }}><div className="card-body"><EmptyState Icon={Icons.BookOpen} title="No Subjects" message="No subjects assigned to this class." /></div></div></div>);
+
+    return (
+        <div className={`${isFullscreen ? 'position-fixed top-0 start-0 end-0 bottom-0 z-3' : ''}`} style={{ backgroundColor: isFullscreen ? '#f8f6f3' : '#f8fafc' }}>
             <style>{`
-                /* Stats cards */
-                .bs-stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-                    gap: 12px;
-                    margin-bottom: 16px;
-                }
-                .bs-stats-card {
-                    background: #0f172a;
-                    border: 1px solid #1e293b;
-                    border-radius: 12px;
-                    padding: 14px 16px;
-                    display: flex;
-                    align-items: center;
-                    gap: 14px;
-                    animation: bsFadeIn 0.4s ease-out forwards;
-                    opacity: 0;
-                }
-                .bs-stats-icon {
-                    width: 42px;
-                    height: 42px;
-                    border-radius: 10px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 16px;
-                    flex-shrink: 0;
-                }
-                .bs-stats-value { font-size: 22px; font-weight: 700; color: #f1f5f9; line-height: 1; }
-                .bs-stats-label { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-                .bs-stats-sub { font-size: 10px; color: #64748b; margin-top: 1px; }
-
-                /* Grade distribution */
-                .bs-grade-dist-card {
-                    background: #0f172a;
-                    border: 1px solid #1e293b;
-                    border-radius: 12px;
-                    padding: 16px;
-                    margin-bottom: 16px;
-                    animation: bsFadeIn 0.4s ease-out 0.25s forwards;
-                    opacity: 0;
-                }
-                .bs-grade-dist {
-                    display: flex;
-                    gap: 12px;
-                    align-items: flex-end;
-                    height: 72px;
-                }
-                .bs-grade-bar-wrap {
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                    gap: 3px;
-                    flex: 1;
-                }
-                .bs-grade-count { font-size: 10px; font-weight: 700; color: #94a3b8; }
-                .bs-grade-bar {
-                    width: 100%;
-                    max-width: 32px;
-                    border-radius: 3px 3px 0 0;
-                    animation: bsBarGrow 0.6s ease-out forwards;
-                }
-                .bs-grade-label { font-size: 12px; font-weight: 700; }
-
-                /* Class tabs */
-                .bs-class-tab {
-                    display: flex;
-                    align-items: center;
-                    padding: 10px 16px;
-                    border-radius: 12px;
-                    font-size: 13px;
-                    font-weight: 500;
-                    white-space: nowrap;
-                    border: 1px solid #e2e8f0;
-                    background: #fff;
-                    color: #64748b;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                .bs-class-tab:hover { border-color: #cbd5e1; color: #334155; }
-                .bs-class-tab-active {
-                    background: #1B4332 !important;
-                    border-color: #2D6A4F !important;
-                    color: #fff !important;
-                    box-shadow: 0 4px 12px rgba(27, 67, 50, 0.3);
-                }
-                .bs-class-tab-badge {
-                    font-size: 10px;
-                    padding: 1px 7px;
-                    border-radius: 10px;
-                    margin-left: 8px;
-                    background: #f1f5f9;
-                    color: #94a3b8;
-                }
-                .bs-class-tab-badge.active { background: #2D6A4F; color: #a7f3d0; }
-
-                /* Subject pills */
-                .bs-subject-pill {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 6px 12px;
-                    border-radius: 8px;
-                    font-size: 12px;
-                    font-weight: 500;
-                    border: 1px solid #e2e8f0;
-                    background: #fff;
-                    color: #64748b;
-                    cursor: pointer;
-                    transition: all 0.15s;
-                }
-                .bs-subject-pill:hover { border-color: #cbd5e1; color: #334155; }
-                .bs-subject-pill.active {
-                    background: #eab308 !important;
-                    border-color: #eab308 !important;
-                    color: #1e293b !important;
-                    font-weight: 600;
-                }
-                .bs-subject-pill-name { display: none; }
-                @media (min-width: 640px) { .bs-subject-pill-name { display: inline; } }
-                .bs-no-data-dot {
-                    width: 6px; height: 6px; border-radius: 50%; background: #ef4444; flex-shrink: 0;
-                }
-
-                /* Shimmer loading */
-                @keyframes shimmer {
-                    0% { background-position: -400px 0; }
-                    100% { background-position: 400px 0; }
-                }
-                .shimmer {
-                    background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
-                    background-size: 400px 100%;
-                    animation: shimmer 1.5s ease-in-out infinite;
-                }
-
-                /* Animations */
-                @keyframes bsFadeIn {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                @keyframes bsBarGrow { from { height: 0; } }
-
-                /* Table row hover */
-                .broadsheet-row { transition: background-color 0.12s; }
-                .broadsheet-row:hover { background-color: #f0fdf4 !important; }
-
-                /* Sticky columns */
-                .bs-th-sticky-0, .bs-td-sticky-0 { position: sticky; left: 0; z-index: 10; }
-                .bs-th-sticky-1, .bs-td-sticky-1 { position: sticky; left: 40px; z-index: 10; }
-                .bs-th-sticky-2, .bs-td-sticky-2 { position: sticky; left: 180px; z-index: 10; }
-                .broadsheet-table thead .bs-th-sticky-0,
-                .broadsheet-table thead .bs-th-sticky-1,
-                .broadsheet-table thead .bs-th-sticky-2 { z-index: 20; }
-                .broadsheet-table tbody .bs-td-sticky-0 { box-shadow: 3px 0 6px rgba(0,0,0,0.06); }
-                .broadsheet-row:hover .bs-td-sticky-0,
-                .broadsheet-row:hover .bs-td-sticky-1,
-                .broadsheet-row:hover .bs-td-sticky-2 { background-color: #f0fdf4 !important; }
-
-                /* Grade badge */
-                .grade-badge { border: 1px solid transparent; }
-
-                /* Print */
-                .print-only { display: none; }
                 @media print {
-                    body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    body { margin: 0; padding: 4mm; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                     .no-print { display: none !important; }
                     .print-only { display: block !important; }
-                    .broadsheet-table { font-size: 10px !important; }
-                    .broadsheet-table th, .broadsheet-table td { padding: 3px 5px !important; border: 1px solid #333 !important; }
-                    .broadsheet-row:hover { background-color: transparent !important; }
-                    .bs-td-sticky-0,
-                    .bs-td-sticky-1,
-                    .bs-td-sticky-2 { position: sticky; left: 0; z-index: 10; }
-                    .grade-badge { border: 1px solid #888 !important; }
-                    .bs-stats-card, .bs-grade-dist-card { display: none !important; }
-                    .shimmer { animation: none; background: #e5e7eb !important; }
+                    @page { size: A3 landscape; margin: 4mm; }
+                    .broadsheet-scroll { overflow: visible !important; max-height: none !important; }
+                    .broadsheet-table { font-size: 6pt !important; }
+                    .broadsheet-table th, .broadsheet-table td { padding: 1px 1px !important; }
+                    .broadsheet-table .sticky-col { position: relative !important; left: auto !important; z-index: auto !important; }
+                }
+                
+                /* Scrollbar styling */
+                .broadsheet-scroll { scrollbar-width: thin; scrollbar-color: #c9956a #f8f6f3; }
+                .broadsheet-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+                .broadsheet-scroll::-webkit-scrollbar-track { background: #f8f6f3; border-radius: 4px; }
+                .broadsheet-scroll::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #d4a574, #c9956a); border-radius: 4px; border: 1px solid #f8f6f3; }
+                .broadsheet-scroll::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, ${PAL.hdrAccent}, #d4a574); }
+                .broadsheet-scroll::-webkit-scrollbar-corner { background: #f1ede8; }
+
+                /* CRITICAL STICKY FIXES */
+                .broadsheet-scroll {
+                    -webkit-overflow-scrolling: touch;
+                  }
+                  
+                .broadsheet-table {
+                  border-collapse: separate;
+                  border-spacing: 0;
+                }
+
+                .sticky-col {
+                  position: sticky !important;
+                  z-index: 10 !important;
+                  background-clip: padding-box !important;
+                }
+
+                .broadsheet-table thead {
+                  position: sticky;
+                  top: 0;
+                  z-index: 20;
+                }
+
+                .broadsheet-table thead th {
+                  position: relative;
+                  z-index: 1;
+                }
+
+                .broadsheet-table thead .sticky-col {
+                  z-index: 30 !important;
+                }
+
+                tbody tr {
+                  position: relative;
+                }
+
+                .print-only { display: none; }
+
+                /* Mobile responsive */
+                @media (max-width: 575.98px) {
+                    .rounded-md-4 { border-radius: 0.75rem !important; }
+                }
+                @media (min-width: 576px) {
+                    .rounded-md-4 { border-radius: 1rem !important; }
                 }
             `}</style>
+
+            <div className={`${isFullscreen ? 'd-flex flex-column h-100 overflow-hidden' : ''}`} style={{ padding: isFullscreen ? 8 : undefined }}>
+                <div className="no-print"><PageHeader classInfo={data?.classInfo} termInfo={data?.termInfo} sessionInfo={data?.sessionInfo} onBack={handleBack} onToggleFullscreen={handleToggleFullscreen} isFullscreen={isFullscreen} /></div>
+                <HeroSchoolHeader data={data} />
+                <PrintHeader data={data} />
+                <Toolbar viewMode={viewMode} setViewMode={setViewMode} showAttendance={showAttendance} setShowAttendance={setShowAttendance} showComments={showComments} setShowComments={setShowComments} showFilters={showFilters} setShowFilters={setShowFilters} loading={loading} onRefresh={refetch} onPrint={handlePrint} data={data} />
+
+                {showFilters && (<div className="no-print card border rounded-3 p-2 mb-2" style={{ borderColor: '#dee2e6' }}><div className="row g-2"><div className="col-6"><select value={filters.termId} onChange={(e) => setFilters(f => ({ ...f, termId: e.target.value }))} className="form-select form-select-sm rounded-3" style={{ fontSize: '0.7rem' }}><option value="">Current Term</option>{terms.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}</select></div><div className="col-6"><select value={filters.sessionId} onChange={(e) => setFilters(f => ({ ...f, sessionId: e.target.value }))} className="form-select form-select-sm rounded-3" style={{ fontSize: '0.7rem' }}><option value="">Current Session</option>{sessions.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}</select></div></div></div>)}
+
+                {loading && data && (<div className="no-print position-fixed top-0 start-0 end-0 bottom-0 z-4 d-flex align-items-center justify-content-center" style={{ background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(4px)' }}><div className="card border shadow-lg px-4 py-2 d-flex align-items-center gap-2" style={{ borderColor: '#dee2e6' }}><Icons.Loader size={14} spin style={{ color: PAL.hdrAccent }} /><span className="small fw-medium text-body">Refreshing...</span></div></div>)}
+
+                <div className="no-print">
+                    <CompactStatsBar statistics={data?.statistics} attendance={data?.attendance} />
+                    <MissingScoresAlert statistics={data?.statistics} />
+                </div>
+                <GradingKeyBadge />
+                <ScrollHintBanner visible={showScrollHint} />
+
+                <div className={`${isFullscreen ? 'flex-grow-1 overflow-hidden' : ''}`}>
+                    <BroadsheetTable data={data} viewMode={viewMode} showAttendance={showAttendance} showComments={showComments} searchTerm={searchTerm} onSearchChange={setSearchTerm} isFullscreen={isFullscreen} scrollRef={scrollRef} />
+                </div>
+
+                {/* ===== SCROLL BARS BELOW TABLE ===== */}
+                <HorizontalScrollBar scrollRef={scrollRef} />
+                <VerticalScrollBar scrollRef={scrollRef} />
+
+                {/* ===== SUBJECT ANALYSIS BELOW TABLE & SCROLL BARS ===== */}
+                <PerformanceInsightsBanner data={data} />
+                <GradingLegendStrip />
+                <SubjectStatisticsTable subjectStats={data?.subjectStats} />
+                <SignatureBlock classTeacher={data?.classInfo?.classTeacher?.name} />
+            </div>
         </div>
     );
 }

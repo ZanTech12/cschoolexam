@@ -1,6 +1,3 @@
-import ReportCardsPrintView from '../../src/components/admin/ReportCardsPrintView';
-
-// src/layouts/AdminLayout.jsx
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDevice } from '../context/DeviceContext';
@@ -30,11 +27,17 @@ import PrincipalComments from '../components/admin/PrincipalComments';
 import ReportCards from '../components/admin/ReportCards';
 import ClassReportCards from '../components/admin/ClassReportCards';
 import StudentReportCard from '../components/admin/StudentReportCard';
+import ReportCardsPrintView from '../components/admin/ReportCardsPrintView';
 
 // ============================================
 // CA TEACHER PROGRESS IMPORT
 // ============================================
 import AdminCATeacherProgress from '../components/admin/AdminCATeacherProgress';
+
+// ============================================
+// STUDENTS CLASSES & SCORES IMPORT
+// ============================================
+import StudentsClassesScoresPage from '../components/admin/StudentsClassesScoresPage';
 
 import './adminlayout.css';
 
@@ -58,7 +61,9 @@ const adminMenuItems = [
   { path: '/admin/terms', label: 'Terms', icon: '📝' },
   { path: '/admin/grading-system', label: 'Grading System', icon: '📈' },
   { path: '/admin/approve-assessments', label: 'Approve CA', icon: '✅' },
-  { path: '/admin/ca-progress', label: 'CA Progress', icon: '📊' },
+  { path: '/admin/score-editor', label: 'Score Editor', icon: '✏️' },
+  { path: '/admin/students-classes-scores', label: 'Classes & Scores', icon: '📊' },
+  { path: '/admin/ca-progress', label: 'CA Progress', icon: '📈' },
   { path: '/admin/principal-comments', label: 'Comments', icon: '💬' },
   { path: '/admin/report-cards', label: 'Report Cards', icon: '📋' },
   
@@ -163,6 +168,7 @@ const AdminLayout = () => {
             <Route path="/terms" element={<TermsManager />} />
             <Route path="/grading-system" element={<GradingSystem />} />
             <Route path="/approve-assessments" element={<ApproveAssessments />} />
+            <Route path="/students-classes-scores" element={<StudentsClassesScoresPage />} />
             <Route path="/ca-progress" element={<AdminCATeacherProgress />} />
             <Route path="/principal-comments" element={<PrincipalComments />} />
             <Route path="/report-cards" element={<ReportCards />} />

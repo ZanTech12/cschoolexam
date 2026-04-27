@@ -126,7 +126,7 @@ const TeacherLayout = () => {
             
             {/* Grading Routes */}
             <Route path="/continuous-assessment" element={<ContinuousAssessment />} />
-            <Route path="/broadsheet" element={<Broadsheet />} />
+            <Route path="/broadsheet/:classId?" element={<Broadsheet />} />
             
             {/* Examination Routes */}
             <Route path="/question-sets" element={<QuestionSetManager />} />

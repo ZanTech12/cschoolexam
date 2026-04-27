@@ -102,7 +102,6 @@ export const dashboardAPI = {
     },
 
     // Get last teacher logins for teacher dashboard
-    // Returns: { success: true, data: [{ _id, name, firstName, lastName, email, lastLogin, device, ip }] }
     getLastTeacherLogins: async () => {
         const response = await api.get('/dashboard/teacher-logins');
         return response.data;
@@ -112,53 +111,43 @@ export const dashboardAPI = {
     // TEACHER ASSIGNMENTS (For AssignTeachers component)
     // ==========================================
 
-    // Get all teachers (for dropdown selection)
     getTeachers: async () => {
         const response = await api.get('/teachers');
         return response.data;
     },
 
-    // ✅ FIXED: Get ALL classes (for dropdown selection) - no pagination limit
     getClasses: async () => {
         const response = await api.get('/classes', {
-            params: {
-                limit: 1000 // Fetch all classes instead of default 10
-            }
+            params: { limit: 1000 }
         });
         return response.data;
     },
 
-    // Get all subjects (for dropdown selection)
     getSubjects: async () => {
         const response = await api.get('/subjects');
         return response.data;
     },
 
-    // Get all teacher assignments with joined data
     getTeacherAssignments: async () => {
         const response = await api.get('/teacher-assignments');
         return response.data;
     },
 
-    // Create a new teacher assignment
     createTeacherAssignment: async (assignmentData) => {
         const response = await api.post('/teacher-assignments', assignmentData);
         return response.data;
     },
 
-    // Update an existing teacher assignment
     updateTeacherAssignment: async (id, assignmentData) => {
         const response = await api.put(`/teacher-assignments/${id}`, assignmentData);
         return response.data;
     },
 
-    // Delete a teacher assignment
     deleteTeacherAssignment: async (id) => {
         const response = await api.delete(`/teacher-assignments/${id}`);
         return response.data;
     },
 
-    // Check if assignment already exists
     checkAssignmentExists: async (teacherId, classId, subjectId) => {
         const response = await api.get('/teacher-assignments/check', {
             params: { teacher_id: teacherId, class_id: classId, subject_id: subjectId }
@@ -166,19 +155,16 @@ export const dashboardAPI = {
         return response.data;
     },
 
-    // Get assignments by specific teacher
     getAssignmentsByTeacher: async (teacherId) => {
         const response = await api.get(`/teacher-assignments/teacher/${teacherId}`);
         return response.data;
     },
 
-    // Get assignments by specific class
     getAssignmentsByClass: async (classId) => {
         const response = await api.get(`/teacher-assignments/class/${classId}`);
         return response.data;
     },
 
-    // Get assignments by specific subject
     getAssignmentsBySubject: async (subjectId) => {
         const response = await api.get(`/teacher-assignments/subject/${subjectId}`);
         return response.data;
@@ -225,24 +211,17 @@ export const studentsAPI = {
     },
 
     create: async (studentData) => {
-        // Backend now auto-generates the admission number (e.g., DIS/2025/001)
-        // We explicitly remove it from the payload if the frontend form accidentally sends it
         const { admissionNumber, ...dataToSubmit } = studentData;
-        
         const response = await api.post('/students', dataToSubmit);
-        return response.data; // Response will contain the newly generated admission number
+        return response.data;
     },
 
     update: async (id, studentData) => {
-        // Backend prevents admission number from being changed after creation
-        // We strip it out to ensure no accidental overwrites happen
         const { admissionNumber, ...dataToSubmit } = studentData;
-        
         const response = await api.put(`/students/${id}`, dataToSubmit);
         return response.data;
     },
 
-    // SOFT DELETE: Moves student to Recycle Bin (hides them and all their data)
     delete: async (id) => {
         const response = await api.delete(`/students/${id}`);
         return response.data;
@@ -257,18 +236,11 @@ export const studentsAPI = {
     // FEES ACCESS MANAGEMENT
     // ==========================================
 
-    // Toggle fees access (grant/revoke) for a student
-    // Admin only - allows temporary login access for students owing fees
-    // Returns: { success: true, message: '...', data: { _id, firstName, lastName, admissionNumber, owingFees, feesAccessGranted } }
     toggleFeesAccess: async (studentId) => {
         const response = await api.patch(`/students/${studentId}/toggle-fees-access`);
         return response.data;
     },
 
-    // Toggle owing status for a student
-    // Admin only - marks student as owing or clears their fees
-    // Note: Clearing fees (marking as NOT owing) automatically revokes any granted access
-    // Returns: { success: true, message: '...', data: { _id, firstName, lastName, admissionNumber, owingFees, feesAccessGranted } }
     toggleOwing: async (studentId) => {
         const response = await api.patch(`/students/${studentId}/toggle-owing`);
         return response.data;
@@ -278,28 +250,16 @@ export const studentsAPI = {
     // RESULT ACCESS BLOCKING (NEW)
     // ==========================================
 
-    // Toggle individual student result access (block/unblock)
-    // Admin only - toggles the student's ability to view their results
-    // Returns: { success: true, message: '...', data: { _id, firstName, lastName, admissionNumber, resultAccessBlocked, resultBlockReason, resultBlockedAt } }
     toggleResultAccess: async (studentId) => {
         const response = await api.patch(`/students/${studentId}/toggle-result-access`);
         return response.data;
     },
 
-    // Set student result block with explicit reason
-    // Admin only - explicitly sets blocked status with a reason message
-    // Usage: await studentsAPI.blockResultAccess(studentId, { blocked: true, reason: 'Outstanding fees - contact bursar' })
-    // Returns: { success: true, message: '...', data: { _id, firstName, lastName, admissionNumber, resultAccessBlocked, resultBlockReason, resultBlockedAt } }
     blockResultAccess: async (studentId, data) => {
         const response = await api.patch(`/students/${studentId}/block-result-access`, data);
         return response.data;
     },
 
-    // Bulk block/unblock result access for students
-    // Admin only - can target by classId, studentIds array, or both
-    // Usage: await studentsAPI.bulkResultAccess({ classId: '...', blocked: true, reason: '...' })
-    //        OR await studentsAPI.bulkResultAccess({ studentIds: ['id1', 'id2'], blocked: false })
-    // Returns: { success: true, message: '...', data: { modified: number, matched: number } }
     bulkResultAccess: async (data) => {
         const response = await api.patch('/students/bulk-result-access', data);
         return response.data;
@@ -309,22 +269,16 @@ export const studentsAPI = {
     // RECYCLE BIN MANAGEMENT
     // ==========================================
 
-    // Get all soft-deleted students in the recycle bin
-    // Usage: const deletedStudents = await studentsAPI.getRecycleBin();
     getRecycleBin: async () => {
         const response = await api.get('/students/recycle-bin');
         return response.data;
     },
 
-    // Restore a student and all their hidden data from the recycle bin
-    // Usage: await studentsAPI.restoreFromRecycleBin(studentId);
     restoreFromRecycleBin: async (id) => {
         const response = await api.patch(`/students/recycle-bin/${id}/restore`);
         return response.data;
     },
 
-    // Permanently delete a student and wipe ALL their data from the database forever
-    // Usage: await studentsAPI.permanentlyDelete(studentId);
     permanentlyDelete: async (id) => {
         const response = await api.delete(`/students/recycle-bin/${id}/permanent`);
         return response.data;
@@ -365,18 +319,14 @@ export const subjectsAPI = {
 // CLASSES API (UPDATED WITH RESULT ACCESS BLOCKING)
 // ============================================
 export const classesAPI = {
-    // Get all classes with pagination and filtering
     getAll: async (params = {}) => {
         const response = await api.get('/classes', { params });
         return response.data;
     },
 
-    // ✅ FIXED: Get ALL classes without pagination (for dropdowns)
     getAllForDropdown: async () => {
         const response = await api.get('/classes', {
-            params: {
-                limit: 1000
-            }
+            params: { limit: 1000 }
         });
         return response.data;
     },
@@ -425,18 +375,11 @@ export const classesAPI = {
     // RESULT ACCESS BLOCKING (NEW)
     // ==========================================
 
-    // Toggle class result access (block/unblock)
-    // Admin only - toggles result access for ALL students in a class
-    // Returns: { success: true, message: '...', data: { _id, name, section, level, resultAccessBlocked, resultBlockReason, resultBlockedAt, affectedStudents } }
     toggleResultAccess: async (classId) => {
         const response = await api.patch(`/classes/${classId}/toggle-result-access`);
         return response.data;
     },
 
-    // Set class result block with explicit reason
-    // Admin only - explicitly sets blocked status with a reason message
-    // Usage: await classesAPI.blockResultAccess(classId, { blocked: true, reason: 'Results pending approval' })
-    // Returns: { success: true, message: '...', data: { _id, name, section, level, resultAccessBlocked, resultBlockReason, resultBlockedAt, affectedStudents } }
     blockResultAccess: async (classId, data) => {
         const response = await api.patch(`/classes/${classId}/block-result-access`, data);
         return response.data;
@@ -566,19 +509,6 @@ export const studentAPI = {
     // RESULT ACCESS STATUS (NEW)
     // ==========================================
 
-    // Get result access status for logged-in student (for dashboard display)
-    // Returns: {
-    //   success: true,
-    //   data: {
-    //     canAccess: boolean,
-    //     studentBlocked: boolean,
-    //     classBlocked: boolean,
-    //     scheduleActive: boolean,
-    //     scheduleStatus: 'active' | 'before_start' | 'deadline_passed' | null,
-    //     scheduleDetails: { resultStartTime, resultDeadline, message, timeRemaining } | null,
-    //     blockReason: string | null
-    //   }
-    // }
     getResultAccessStatus: async () => {
         const response = await api.get('/student/result-access-status');
         return response.data;
@@ -756,32 +686,26 @@ export const gradingSystemsAPI = {
 // ATTENDANCE API
 // ============================================
 export const attendanceAPI = {
-    // Get attendance records for a specific class
-    // Returns array of { student_id, timesPresent, term, session }
     getByClass: async (classId, params = {}) => {
         const response = await api.get(`/attendance/class/${classId}`, { params });
         return response.data;
     },
 
-    // Get attendance record for a specific student
     getByStudent: async (studentId, params = {}) => {
         const response = await api.get(`/attendance/student/${studentId}`, { params });
         return response.data;
     },
 
-    // Create or update (upsert) attendance for a student
     upsert: async (attendanceData) => {
         const response = await api.post('/attendance', attendanceData);
         return response.data;
     },
 
-    // Bulk upsert attendance for multiple students in a class
     bulkUpsert: async (bulkData) => {
         const response = await api.post('/attendance/bulk', bulkData);
         return response.data;
     },
 
-    // Get attendance summary for a class (optional aggregated view)
     getSummary: async (classId, params = {}) => {
         const response = await api.get(`/attendance/class/${classId}/summary`, { params });
         return response.data;
@@ -791,9 +715,6 @@ export const attendanceAPI = {
     // STUDENT ATTENDANCE COUNTS (NEW)
     // ==========================================
 
-    // Get attendance counts per student for a class, filtered by term/session
-    // Usage: await attendanceAPI.getStudentCountsByClass(classId, { term: 'First Term', session: '2024/2025' })
-    // Returns: { success: true, data: [{ student_id, times_present }, ...], schoolOpenDays: number | null }
     getStudentCountsByClass: async (classId, params = {}) => {
         const response = await api.get(`/attendance/class/${classId}/student-counts`, { params });
         return response.data;
@@ -803,34 +724,21 @@ export const attendanceAPI = {
     // SCHOOL OPENING DAYS
     // ==========================================
 
-    // Get the number of times school has opened for a term/session
-    // Usage: await attendanceAPI.getSchoolOpenDays({ term_id: '...', session_id: '...' })
-    // Returns: { success: true, data: { id, times_open: 45, term_id, session_id, ... } }
     getSchoolOpenDays: async (params = {}) => {
         const response = await api.get('/attendance/school-open-days', { params });
         return response.data;
     },
 
-    // Set or update the number of times school has opened (creates if not exists)
-    // Usage: await attendanceAPI.setSchoolOpenDays({ term_id: '...', session_id: '...', times_open: 45 })
-    // Returns: { success: true, message: '...', data: { id, times_open, ... } }
     setSchoolOpenDays: async (data) => {
         const response = await api.post('/attendance/school-open-days', data);
         return response.data;
     },
 
-    // Update school open days (supports increment by 1 OR set specific value)
-    // Usage (increment): await attendanceAPI.updateSchoolOpenDays({ term_id: '...', session_id: '...', increment: true })
-    // Usage (set value): await attendanceAPI.updateSchoolOpenDays({ term_id: '...', session_id: '...', times_open: 46 })
-    // Returns: { success: true, message: '...', data: { id, times_open, ... } }
     updateSchoolOpenDays: async (data) => {
         const response = await api.put('/attendance/school-open-days', data);
         return response.data;
     },
 
-    // Delete school open days record for a term/session
-    // Usage: await attendanceAPI.deleteSchoolOpenDays({ term_id: '...', session_id: '...' })
-    // Returns: { success: true, message: '...' }
     deleteSchoolOpenDays: async (params = {}) => {
         const response = await api.delete('/attendance/school-open-days', { params });
         return response.data;
@@ -839,7 +747,6 @@ export const attendanceAPI = {
 
 // ============================================
 // CONTINUOUS ASSESSMENTS API (Admin)
-// ✅ FIXED: getAll now accepts config parameter for AbortController support
 // ============================================
 export const continuousAssessmentsAPI = {
     getAll: async (params = {}, config = {}) => {
@@ -880,10 +787,50 @@ export const continuousAssessmentsAPI = {
         return response.data;
     },
 
-    // ✅ NEW: Bulk re-approve multiple assessments at once
-    // Usage: await continuousAssessmentsAPI.bulkReapprove(['id1', 'id2', 'id3']);
     bulkReapprove: async (ids) => {
         const response = await api.post('/continuous-assessments/bulk/reapprove', { ids });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // POST - Bulk approve assessments by filters
+    // Approves ALL matching "submitted" records on the server side
+    //
+    // Usage:
+    //   const result = await continuousAssessmentsAPI.bulkApproveByFilters({
+    //     termId: '...',
+    //     sessionId: '...',
+    //     classId: '...',
+    //     subjectId: '...',
+    //     excludedIds: ['id1', 'id2']  // optional: IDs to exclude from approval
+    //   });
+    //
+    // Returns: { success, message, data: { requested, found, modified, nowInApprovedStatus } }
+    // -------------------------------------------------
+    bulkApproveByFilters: async (filters) => {
+        const response = await api.post('/continuous-assessments/bulk/approve-by-filters', filters);
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // POST - Bulk unapprove assessments
+    // Can unapprove by IDs array OR by filters
+    //
+    // Usage with IDs:
+    //   const result = await continuousAssessmentsAPI.bulkUnapprove({ ids: ['id1', 'id2', 'id3'] });
+    //
+    // Usage with filters (unapproves ALL matching):
+    //   const result = await continuousAssessmentsAPI.bulkUnapprove({
+    //     classId: '...',
+    //     subjectId: '...',
+    //     termId: '...',
+    //     sessionId: '...'
+    //   });
+    //
+    // Returns: { success, message, data: { requested, found, modified, nowInSubmittedStatus } }
+    // -------------------------------------------------
+    bulkUnapprove: async (data) => {
+        const response = await api.post('/continuous-assessments/bulk/unapprove', data);
         return response.data;
     },
 
@@ -923,7 +870,7 @@ export const teacherCAAPI = {
     },
 
     getMySubmissions: async (params = {}) => {
-        const response = await api.get('/teacher/ca/submissions', { params });
+        const response = await api.get('/teacher-ca/submissions', { params });
         return response.data;
     },
 
@@ -937,34 +884,27 @@ export const teacherCAAPI = {
         return response.data;
     },
 
-    // Get count of subjects where the teacher has entered CA scores
-    // Backend returns: { success: true, data: { totalSubjects, completedSubjects, pendingSubjects } }
-    // We normalize it to also include: subjectsCount (for backward compatibility)
-    getCASubjectsCount: async () => {
-        const response = await api.get('/teacher/ca/subjects-count');
+    getCASubjectsCount: async (params = {}) => {
+        const response = await api.get('/teacher/ca/subjects-count', { params });
         const data = response.data;
 
         console.log('[getCASubjectsCount] Raw response:', data);
 
-        // Handle proper JSON format from backend
         if (data && typeof data === 'object' && data.success !== undefined) {
             const { totalSubjects, completedSubjects, pendingSubjects } = data.data || {};
             
             return {
                 success: true,
                 data: {
-                    // New field names (from backend)
                     totalSubjects: totalSubjects || 0,
                     completedSubjects: completedSubjects || 0,
                     pendingSubjects: pendingSubjects || 0,
-                    // Backward compatibility aliases
                     subjectsCount: completedSubjects || 0,
                     remainingSubjects: pendingSubjects || 0
                 }
             };
         }
 
-        // Handle plain text response from backend (legacy fallback)
         if (typeof data === 'string') {
             const completedMatch = data.match(/completed\s+(\d+)\s+of\s+(\d+)/i);
             const needMatch = data.match(/(\d+)\s+subjects?\s+still\s+need/i);
@@ -998,8 +938,37 @@ export const teacherCAAPI = {
             }
         }
 
-        // Fallback for unexpected formats
         return { success: false, data: null };
+    },
+
+    // -------------------------------------------------
+    // GET - Get submitted subjects summary for teacher
+    // Returns list of subjects teacher has submitted CA for
+    //
+    // Usage:
+    //   const result = await teacherCAAPI.getSubmittedSubjects();
+    //   const result = await teacherCAAPI.getSubmittedSubjects({ termId: '...', sessionId: '...' });
+    //   const result = await teacherCAAPI.getSubmittedSubjects({ termId: '...', sessionId: '...', classId: '...' });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     submittedSubjects: [{
+    //       assignmentId, classId, className, classLevel, classSection,
+    //       subjectId, subjectName, subjectCode, status, stats: {
+    //         totalStudents, draft, submitted, approved, latestUpdate
+    //       }
+    //     }, ...],
+    //     allAssignedSubjects: [{ ... }],  // includes subjects not yet started
+    //     summary: { totalAssigned, totalSubmitted, totalPending, totalApproved }
+    //   },
+    //   termInfo: { name, id },
+    //   sessionInfo: { name, id }
+    // }
+    // -------------------------------------------------
+    getSubmittedSubjects: async (params = {}) => {
+        const response = await api.get('/teacher-ca/submitted-subjects', { params });
+        return response.data;
     },
 };
 
@@ -1007,15 +976,19 @@ export const teacherCAAPI = {
 // TEACHER BROADSHEET API
 // ============================================
 export const teacherBroadsheetAPI = {
-    // Get broadsheet for a class (teacher's assigned class)
-    // Access: Class teacher sees ALL subjects, Subject teacher sees only assigned subjects by default
-    // 
-    // Usage: await teacherBroadsheetAPI.getBroadsheet(classId, { termId, sessionId, subjectFilter })
-    // 
-    // Params:
-    //   - termId: string (optional) - Specific term ID, defaults to active term
-    //   - sessionId: string (optional) - Specific session ID, defaults to term's session
-    //   - subjectFilter: 'all' | 'assigned' (optional) - 'all' shows all class subjects, 'assigned' shows only teacher's subjects
+    // -------------------------------------------------
+    // GET - Get broadsheet for assigned subjects only
+    // URL: /teacher/broadsheet/:classId
+    // Params: termId, sessionId, subjectFilter ('all' | 'assigned')
+    //
+    // Usage:
+    //   // View ALL subjects (default)
+    //   const result = await teacherBroadsheetAPI.getBroadsheet(classId);
+    //
+    //   // View only ASSIGNED subjects
+    //   const result = await teacherBroadsheetAPI.getBroadsheet(classId, {
+    //     subjectFilter: 'assigned'
+    //   });
     //
     // Returns: {
     //   success: true,
@@ -1024,17 +997,143 @@ export const teacherBroadsheetAPI = {
     //     termInfo: { id, name, status },
     //     sessionInfo: { id, name },
     //     subjects: [{ subjectId, subjectName, subjectCode }],
-    //     subjectStats: [{ subjectId, subjectName, averageScore, highestScore, lowestScore, passRate, gradeDistribution }],
-    //     students: [{
-    //       studentId, studentName, firstName, lastName, admissionNumber, gender, position,
-    //       scores: { [subjectId]: { testScore, noteTakingScore, assignmentScore, totalCA, examScore, totalScore, grade, remark } | null },
-    //       totalScore, averageScore, subjectsWithScores, totalSubjects
-    //     }],
-    //     statistics: { totalStudents, assessedStudents, notAssessedStudents, highestTotal, lowestTotal, classAverage, subjectsTotal, subjectsWithScores }
+    //     subjectStats: [{ subjectId, subjectName, totalStudents, assessedStudents, averageScore, ...gradeDistribution }],
+    //     students: [{ studentId, studentName, firstName, lastName, admissionNumber, gender, scores: {...}, totalScore, averageScore, position }, ...],
+    //     statistics: { totalStudents, assessedStudents, highestTotal, lowestTotal, classAverage, passRate }
     //   }
     // }
+    // -------------------------------------------------
     getBroadsheet: async (classId, params = {}) => {
         const response = await api.get(`/teacher/broadsheet/${classId}`, { params });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // GET - Get all classes where teacher is the ASSIGNED class teacher
+    // URL: /class-teacher/broadsheet
+    // Params: termId, sessionId
+    //
+    // This endpoint returns a LIST of all classes where this teacher
+    // is the assigned class teacher (Class.teacherId === req.user.id).
+    // Use this to show a selection list before viewing a specific class broadsheet.
+    //
+    // Authorization:
+    //   - Must be a teacher with role === 'teacher'
+    //   - Only returns classes where teacher is the class teacher
+    //
+    // Usage:
+    //   const result = await teacherBroadsheetAPI.getClassTeacherClasses();
+    //   const result = await teacherBroadsheetAPI.getClassTeacherClasses({
+    //     termId: '...',
+    //     sessionId: '...'
+    //   });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: [{
+    //     classId: '...',
+    //     className: 'JSS 1A',
+    //     classLevel: 'JSS 1',
+    //     classSession: '...',
+    //     studentCount: 45,
+    //     subjectCount: 12,
+    //     assessmentCount: 150,      // Number of approved CAs for this class
+    //     commentCount: 40,          // Number of class teacher comments
+    //     hasBroadsheetData: true,   // assessmentCount > 0
+    //     hasComments: true,         // commentCount > 0
+    //     completionPercentage: 89   // (commentCount / studentCount) * 100
+    //   }, ...],
+    //   meta: {
+    //     termId: '...',
+    //     termName: 'First Term',
+    //     sessionId: '...',
+    //     sessionName: '2024/2025',
+    //     totalClasses: 3
+    //   }
+    // }
+    //
+    // Empty case (no classes assigned):
+    //   {
+    //     success: true,
+    //     data: [],
+    //     message: 'You are not assigned as a class teacher to any class. Contact admin for assignment.'
+    //   }
+    // -------------------------------------------------
+    getClassTeacherClasses: async (params = {}) => {
+        const response = await api.get('/class-teacher/broadsheet', { params });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // GET - Class Teacher Broadadsheet (COMPLETE VIEW)
+    // URL: /class-teacher/broadsheet/:classId
+    // Params: termId, sessionId, includeSubjectTeachers
+    //
+    // IMPORTANT: This endpoint is ONLY accessible to the assigned class teacher.
+    // It shows ALL subjects for the class, not just the teacher's assigned subjects.
+    //
+    // This allows the class teacher to see the FULL broadsheet with scores from
+    // ALL subject teachers in the class, enabling them to:
+    // - See the complete academic performance of every student
+    // - Identify students with missing scores
+    // - Compare performance across all subjects
+    // - Have a holistic view for class teacher comments and principal comments
+    //
+    // Authorization:
+    //   - Must be a teacher with role === 'teacher'
+    //   - Must be the class teacher (Class.teacherId === req.user.id)
+    //   - Regular teacher assignments are NOT sufficient
+    //
+    // Usage:
+    //   // Get all subjects (default)
+    //   const result = await teacherBroadsheetAPI.getClassTeacherBroadsheet(classId);
+    //
+    //   // Include subject teacher assignments in response
+    //   const result = await teacherBroadsheetAPI.getClassTeacherBroadsheet(classId, {
+    //     includeSubjectTeachers: 'true'
+    //   });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     classInfo: {
+    //       classId, className, classLevel, classSection, classSession, classFullName,
+    //       classTeacher: { id, name, email } | null,
+    //       totalSubjects, totalStudents
+    //     },
+    //     termInfo: { id, name, status },
+    //     sessionInfo: { id, name },
+    //     subjects: [{ subjectId, subjectName, subjectCode }],
+    //     subjectStats: [{
+    //       subjectId, subjectName, subjectCode,
+    //       totalStudents, assessedStudents, notAssessedStudents,
+    //       averageScore, highestScore, lowestScore, passCount, failCount, passRate,
+    //       gradeDistribution: { A: 5, B: 10, C: 8, ... },
+    //       teacherAssignment: { teacherId, teacherName } or null
+    //     }, ...],
+    //     students: [{
+    //       studentId, studentName, firstName, lastName, admissionNumber, gender,
+    //       scores: { [subjectId]: { testScore, noteTakingScore, assignmentScore, totalCA, examScore, totalScore, grade, remark } | null },
+    //       totalScore, averageScore, position,
+    //       subjectsWithScores, subjectsWithoutScores, totalSubjects,
+    //       attendance: { timesPresent, timesOpen, percentage },
+    //       classTeacherComment: '...'
+    //     }, ...],
+    //     attendance: { schoolOpenDays, totalPresent },
+    //     statistics: {
+    //       totalStudents, assessedStudents, notAssessedStudents,
+    //       highestTotal, lowestTotal, classAverage,
+    //       passRate, totalSubjects, subjectsWithScores,
+    //       commentsCount, commentsPercentage
+    //     },
+    //     gradeDistribution: { A: 12, B: 18, C: 15, D: 8, E: 5, F: 2 },
+    //     teacherAssignments: [{ teacherId, teacherName }, ...]  // Only if requested
+    //   },
+    //   meta: { generatedAt: '...' }
+    // }
+    // -------------------------------------------------
+    getClassTeacherBroadsheet: async (classId, params = {}) => {
+        const response = await api.get(`/class-teacher/broadsheet/${classId}`, { params });
         return response.data;
     },
 };
@@ -1088,13 +1187,11 @@ export const principalCommentsAPI = {
         return response.data;
     },
 
-    // ✅ NEW: Update an existing comment
     update: async (id, commentData) => {
         const response = await api.put(`/principal-comments/${id}`, commentData);
         return response.data;
     },
 
-    // ✅ UPDATED: Generate comments using fixed percentage-based templates
     generate: async (generateData) => {
         const response = await api.post('/principal-comments/generate', generateData);
         return response.data;
@@ -1110,19 +1207,16 @@ export const principalCommentsAPI = {
 // CLASS TEACHER COMMENTS API (UPDATED)
 // ============================================
 export const classTeacherCommentsAPI = {
-    // Get all class teacher comments with optional filtering & pagination
     getAll: async (params = {}) => {
         const response = await api.get('/class-teacher-comments', { params });
         return response.data;
     },
 
-    // Get class teacher comments for a specific class (supports termId filtering)
     getByClass: async (classId, params = {}) => {
         const response = await api.get(`/class-teacher-comments/class/${classId}`, { params });
         return response.data;
     },
 
-    // Get class teacher comment for a specific student in a class
     getByStudent: async (studentId, classId) => {
         const response = await api.get(`/class-teacher-comments/student/${studentId}`, { 
             params: { class_id: classId } 
@@ -1130,68 +1224,56 @@ export const classTeacherCommentsAPI = {
         return response.data;
     },
 
-    // Create a new class teacher comment
     create: async (commentData) => {
         const response = await api.post('/class-teacher-comments', commentData);
         return response.data;
     },
 
-    // Update an existing class teacher comment
     update: async (id, commentData) => {
         const response = await api.put(`/class-teacher-comments/${id}`, commentData);
         return response.data;
     },
 
-    // Delete a class teacher comment
     delete: async (id) => {
         const response = await api.delete(`/class-teacher-comments/${id}`);
         return response.data;
     },
 
-    // Submit all draft comments for a class for admin approval
     submitForApproval: async (classId, params = {}) => {
         const response = await api.put(`/class-teacher-comments/submit/${classId}`, params);
         return response.data;
     },
 
-    // Admin: Approve a submitted comment
     approve: async (id) => {
         const response = await api.put(`/class-teacher-comments/${id}/approve`);
         return response.data;
     },
 
-    // Admin: Unapprove (revert to submitted) an approved comment
     unapprove: async (id) => {
         const response = await api.put(`/class-teacher-comments/${id}/unapprove`);
         return response.data;
     },
 
-    // ✅ NEW: Bulk re-approve multiple class teacher comments at once
-    // Usage: await classTeacherCommentsAPI.bulkReapprove(['id1', 'id2', 'id3']);
     bulkReapprove: async (ids) => {
         const response = await api.post('/class-teacher-comments/bulk/reapprove', { ids });
         return response.data;
     },
 
-    // Teacher: Get own class teacher comments with summary statistics
     getMyComments: async (params = {}) => {
         const response = await api.get('/class-teacher-comments/my', { params });
         return response.data;
     },
 
-    // Get students list with existing class teacher comments for a class
     getStudentsForComments: async (classId, params = {}) => {
         const response = await api.get(`/class-teacher-comments/${classId}/students`, { params });
         return response.data;
     },
 
-    // Bulk create/update multiple class teacher comments
     bulkCreate: async (bulkData) => {
         const response = await api.post('/class-teacher-comments/bulk', bulkData);
         return response.data;
     },
 
-    // Get aggregated statistics for class teacher comments
     getStats: async (params = {}) => {
         const response = await api.get('/class-teacher-comments/stats', { params });
         return response.data;
@@ -1202,92 +1284,76 @@ export const classTeacherCommentsAPI = {
 // TEACHER COMMENTS API (Subject Teacher Remarks)
 // ============================================
 export const teacherCommentsAPI = {
-    // Get all teacher comments (admin/teacher view with filtering & pagination)
     getAll: async (params = {}) => {
         const response = await api.get('/teacher-comments', { params });
         return response.data;
     },
 
-    // Get comments grouped by student for a specific class
     getByClass: async (classId, params = {}) => {
         const response = await api.get(`/teacher-comments/class/${classId}`, { params });
         return response.data;
     },
 
-    // Get comments for a specific student (used in report cards)
     getByStudent: async (studentId, params = {}) => {
         const response = await api.get(`/teacher-comments/student/${studentId}`, { params });
         return response.data;
     },
 
-    // Get a single comment by ID
     getById: async (id) => {
         const response = await api.get(`/teacher-comments/${id}`);
         return response.data;
     },
 
-    // Create or update (upsert) a single teacher comment
     create: async (commentData) => {
         const response = await api.post('/teacher-comments', commentData);
         return response.data;
     },
 
-    // Update an existing teacher comment
     update: async (id, commentData) => {
         const response = await api.put(`/teacher-comments/${id}`, commentData);
         return response.data;
     },
 
-    // Soft delete a teacher comment
     delete: async (id) => {
         const response = await api.delete(`/teacher-comments/${id}`);
         return response.data;
     },
 
-    // Bulk create/update multiple comments at once
     bulkCreate: async (bulkData) => {
         const response = await api.post('/teacher-comments/bulk', bulkData);
         return response.data;
     },
 
-    // Submit all draft comments for a class/subject for admin approval
     submitForApproval: async (classId, subjectId, params = {}) => {
         const response = await api.put(`/teacher-comments/submit/${classId}/${subjectId}`, params);
         return response.data;
     },
 
-    // Admin: Approve a submitted comment
     approve: async (id) => {
         const response = await api.put(`/teacher-comments/${id}/approve`);
         return response.data;
     },
 
-    // Admin: Unapprove (revert to submitted) an approved comment
     unapprove: async (id) => {
         const response = await api.put(`/teacher-comments/${id}/unapprove`);
         return response.data;
     },
 
-    // ✅ NEW: Bulk re-approve multiple teacher comments at once
-    // Usage: await teacherCommentsAPI.bulkReapprove(['id1', 'id2', 'id3']);
     bulkReapprove: async (ids) => {
         const response = await api.post('/teacher-comments/bulk/reapprove', { ids });
         return response.data;
     },
 
-    // Teacher: Get own comments with summary statistics for the dashboard
     getMyComments: async (params = {}) => {
         const response = await api.get('/teacher/comments/my', { params });
         return response.data;
     },
 
-    // Teacher: Get list of students in assigned class/subject with existing comments
     getStudentsForComments: async (classId, subjectId, params = {}) => {
         const response = await api.get(`/teacher/comments/${classId}/${subjectId}/students`, { params });
         return response.data;
     },
 
-    // Get aggregated statistics for teacher comments
     getStats: async (params = {}) => {
         const response = await api.get('/teacher-comments/stats', { params });
         return response.data;
@@ -1298,48 +1364,21 @@ export const teacherCommentsAPI = {
 // REPORT CARDS API (UPDATED FOR BULK PRINTING)
 // ============================================
 export const reportCardsAPI = {
-    // ==========================================
-    // EXISTING ENDPOINTS
-    // ==========================================
-
-    // Get student report card data (existing)
     getStudentReport: async (studentId, params = {}) => {
         const response = await api.get(`/report-cards/student/${studentId}`, { params });
         return response.data;
     },
 
-    // Get class report cards summary (existing)
     getClassReport: async (classId, params = {}) => {
         const response = await api.get(`/report-cards/class/${classId}`, { params });
         return response.data;
     },
 
-    // Public endpoint for students to check results (existing)
-    // NOTE: This endpoint now returns blocking codes:
-    //   - FEES_BLOCKED: Student owes fees
-    //   - STUDENT_BLOCKED: Student individually blocked
-    //   - CLASS_BLOCKED: Student's class is blocked
-    //   - RESULTS_NOT_YET_AVAILABLE: Before result schedule start time
-    //   - RESULTS_DEADLINE_PASSED: After result schedule deadline
     checkResults: async (credentials) => {
         const response = await api.post('/student/check-results', credentials);
         return response.data;
     },
 
-    // ==========================================
-    // NEW: BULK STATUS ENDPOINT (Replaces N+1 calls)
-    // ==========================================
-
-    // Get report card readiness status for ALL classes at once
-    // Usage: await reportCardsAPI.getStatus('termId123')
-    // Returns: {
-    //   success: true,
-    //   data: {
-    //     "classId1": { classTeacherCommentCount: 5, teacherCommentCount: 10, uniqueSubjectsCount: 3 },
-    //     ...
-    //   },
-    //   meta: { termName: 'First Term', sessionName: '2024/2025', totalClasses: 20 }
-    // }
     getStatus: async (termId) => {
         const response = await api.get('/report-cards/status', {
             params: { termId }
@@ -1347,15 +1386,7 @@ export const reportCardsAPI = {
         return response.data;
     },
 
-    // ==========================================
-    // NEW: BULK PRINT DATA ENDPOINT
-    // ==========================================
-
-    // Get complete report card data for one or more classes
-    // Usage: await reportCardsAPI.getPrintData('termId123', ['classId1', 'classId2'])
-    //        OR await reportCardsAPI.getPrintData('termId123', 'classId1,classId2')
     getPrintData: async (termId, classIds) => {
-        // Handle both array and comma-separated string
         const idsString = Array.isArray(classIds) ? classIds.join(',') : classIds;
         const response = await api.get('/report-cards/print-data', {
             params: { 
@@ -1366,12 +1397,6 @@ export const reportCardsAPI = {
         return response.data;
     },
 
-    // ==========================================
-    // NEW: SINGLE STUDENT PRINT ENDPOINT
-    // ==========================================
-
-    // Get single student's complete report card (for individual printing)
-    // Usage: await reportCardsAPI.getStudentPrint('studentId123', 'termId456', 'sessionId789')
     getStudentPrint: async (studentId, termId, sessionId = null) => {
         const params = { termId };
         if (sessionId) params.sessionId = sessionId;
@@ -1382,16 +1407,10 @@ export const reportCardsAPI = {
         return response.data;
     },
 
-    // ==========================================
-    // HELPER METHODS
-    // ==========================================
-
-    // Convenience method that wraps getPrintData for a single class
     getSingleClassPrintData: async (classId, termId) => {
         return await reportCardsAPI.getPrintData(termId, [classId]);
     },
 
-    // Get print data for all active classes in the system
     getAllClassesPrintData: async (termId) => {
         const classesResponse = await classesAPI.getAllForDropdown();
         const classes = classesResponse?.data || [];
@@ -1409,15 +1428,11 @@ export const reportCardsAPI = {
 // SCHOOL SETTINGS API (NEW - For Report Card Header)
 // ============================================
 export const schoolSettingsAPI = {
-    // Get school settings (creates default if none exists)
-    // Returns: { success: true, data: { schoolName, schoolMotto, schoolAddress, principalName... } }
     get: async () => {
         const response = await api.get('/school-settings');
         return response.data;
     },
 
-    // Update school settings (admin only)
-    // Usage: await schoolSettingsAPI.update({ schoolName: 'New Name', principalName: 'Mr. Smith' })
     update: async (settingsData) => {
         const response = await api.put('/school-settings', settingsData);
         return response.data;
@@ -1435,114 +1450,152 @@ export const performanceAPI = {
 };
 
 // ============================================
-// ADMIN CA FILTERING API (UPDATED WITH CLEAR APPROVAL STATUS)
+// ADMIN CA FILTERING API (UPDATED WITH CLEAR APPROVAL STATUS + BULK UNAPPROVE)
 // ============================================
 export const adminCAAPI = {
-    // Get subjects/classes/teachers that have actual CA submissions
-    // Usage: await adminCAAPI.getFilterOptions({ termId, sessionId, classId })
-    // Returns: {
-    //   success: true,
-    //   data: {
-    //     subjects: [{ _id, name, code, classLevel, submissionCount }],
-    //     classes: [{ _id, name, level, section, submissionCount }],
-    //     statusCounts: { draft: 5, submitted: 10, approved: 25 }
-    //   }
-    // }
     getFilterOptions: async (params = {}) => {
         const response = await api.get('/admin/ca/filter-options', { params });
         return response.data;
     },
 
-    // Get filtered CA assessments with all options
-    // Usage: await adminCAAPI.getAssessments({ termId, sessionId, subjectId, classId, status, search, page, limit })
+    // -------------------------------------------------
+    // GET - Get ALL active CAs (Admin CA View)
+    // Fetches all active CAs without status filter by default
+    // Status filter only applies if explicitly provided
+    //
+    // Usage:
+    //   const result = await adminCAAPI.getAssessments();
+    //   const result = await adminCAAPI.getAssessments({ termId: '...', sessionId: '...' });
+    //   const result = await adminCAAPI.getAssessments({ status: 'approved' });
+    //   const result = await adminCAAPI.getAssessments({ status: 'all' }); // No status filter
+    //   const result = await adminCAAPI.getAssessments({ search: 'John' });
+    //
+    // Supported params: termId, sessionId, classId, subjectId, teacherId, status, search
+    //
     // Returns: {
     //   success: true,
-    //   data: [...assessments with populated refs...],
-    //   pagination: { page, limit, total, pages }
+    //   data: [{ ... }],
+    //   summary: { total: 150, byStatus: [{ status: 'approved', count: 100 }] }
     // }
+    // -------------------------------------------------
     getAssessments: async (params = {}) => {
-        const response = await api.get('/admin/ca/assessments', { params });
+        const response = await api.get('/admin/ca/all', { params });
         return response.data;
     },
 
-    // Approve a single assessment
+    // -------------------------------------------------
+    // GET - Get ALL approved CAs for unapprove view
+    // Fetches all approved CAs across ALL terms/sessions
+    //
+    // Usage:
+    //   const result = await adminCAAPI.getAllApproved();
+    //   const result = await adminCAAPI.getAllApproved({ classId: '...', subjectId: '...' });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: [{ ... }],
+    //   summary: { total: 150, byClassSubject: [{ termId, termName, sessionId, sessionName, count }] }
+    // }
+    // -------------------------------------------------
+    getAllApproved: async (params = {}) => {
+        const response = await api.get('/admin/ca/all-approved', { params });
+        return response.data;
+    },
+
     approve: async (id) => {
         const response = await api.put(`/continuous-assessments/${id}/approve`);
         return response.data;
     },
 
-    // Unapprove (revert to submitted) a single assessment
     unapprove: async (id) => {
         const response = await api.put(`/continuous-assessments/${id}/unapprove`);
         return response.data;
     },
 
-    // Bulk approve multiple assessments at once
-    // Usage: await adminCAAPI.bulkApprove(['id1', 'id2', 'id3']);
     bulkApprove: async (ids) => {
         const response = await api.post('/continuous-assessments/bulk/reapprove', { ids });
         return response.data;
     },
 
+    // -------------------------------------------------
+    // POST - Bulk approve assessments by filters (Admin CA View)
+    // Approves ALL matching "submitted" records on the server side
+    //
+    // Usage:
+    //   const result = await adminCAAPI.bulkApproveByFilters({
+    //     termId: '...',
+    //     sessionId: '...',
+    //     classId: '...',
+    //     subjectId: '...',
+    //     excludedIds: ['id1', 'id2']  // optional: IDs to exclude from approval
+    //   });
+    //
+    // Returns: { success, message, data: { modified, nowInApprovedStatus } }
+    // -------------------------------------------------
+    bulkApproveByFilters: async (filters) => {
+        const response = await api.post('/continuous-assessments/bulk/approve-by-filters', filters);
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // POST - Bulk unapprove assessments (Admin CA View)
+    // Can unapprove by IDs array OR by filters
+    //
+    // Usage with IDs:
+    //   const result = await adminCAAPI.bulkUnapprove({ ids: ['id1', 'id2', 'id3'] });
+    //
+    // Usage with filters (unapproves ALL matching):
+    //   const result = await adminCAAPI.bulkUnapprove({
+    //     classId: '...',
+    //     subjectId: '...',
+    //     termId: '...',
+    //     sessionId: '...'
+    //   });
+    //
+    // Returns: { success, message, data: { requested, found, modified, nowInSubmittedStatus } }
+    // -------------------------------------------------
+    bulkUnapprove: async (data) => {
+        const response = await api.post('/continuous-assessments/bulk/unapprove', data);
+        return response.data;
+    },
+
     // ==========================================
-    // CLEAR APPROVAL STATUS (NEW)
+    // CLEAR APPROVAL STATUS
     // ==========================================
 
-    // Get classes that have approved CA records (for dropdown selection)
-    // Usage: await adminCAAPI.getClassesWithApproved({ termId: '...', sessionId: '...' })
-    // Returns: {
-    //   success: true,
-    //   data: [{
-    //     classId, className, classLevel, classSession,
-    //     approvedRecords: number, uniqueSubjects: number
-    //   }, ...]
-    // }
     getClassesWithApproved: async (params = {}) => {
         const response = await api.get('/admin/ca/classes-with-approved', { params });
         return response.data;
     },
 
-    // Get subjects with approved CA for a specific class (for dropdown selection)
-    // Usage: await adminCAAPI.getSubjectsWithApproved(classId, { termId: '...', sessionId: '...' })
-    // Returns: {
-    //   success: true,
-    //   meta: { className, classId, totalSubjects, filters: {...} },
-    //   data: [{
-    //     subjectId, subjectName, subjectCode, classLevel,
-    //     approvedRecords: number, uniqueStudents: number,
-    //     teachers: string[]
-    //   }, ...]
-    // }
     getSubjectsWithApproved: async (classId, params = {}) => {
         const response = await api.get(`/admin/ca/classes/${classId}/subjects-with-approved`, { params });
         return response.data;
     },
 
-    // Clear approval status for CA records by class and subject
-    // Usage: await adminCAAPI.clearApprovalStatus({
-    //   classId: '...',
-    //   subjectId: '...',
-    //   termId: '...',      // optional - if omitted, clears ALL terms
-    //   sessionId: '...',   // optional - if omitted, clears ALL sessions
-    //   resetTo: 'draft'    // optional: 'draft' (default) or 'submitted'
-    // })
-    // Returns: {
-    //   success: true,
-    //   message: 'Successfully cleared approval status for X CA record(s).',
-    //   data: {
-    //     classInfo: { id, name, level },
-    //     subjectInfo: { id, name, code },
-    //     filters: { classId, subjectId, termId, sessionId },
-    //     result: {
-    //       recordsFound: number,
-    //       recordsAffected: number,
-    //       resetTo: 'draft',
-    //       nowInStatus: number
-    //     }
-    //   }
-    // }
+    previewClearApproval: async (params = {}) => {
+        const response = await api.get('/admin/ca/clear-approval-status/preview', { params });
+        return response.data;
+    },
+
     clearApprovalStatus: async (data) => {
         const response = await api.patch('/admin/ca/clear-approval-status', data);
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // PATCH - Clear approval by specific assessment IDs
+    //
+    // Usage:
+    //   const result = await adminCAAPI.clearApprovalByIds(['id1', 'id2', 'id3'], 'draft');
+    //
+    // Returns: { success, message, data: { requested, found, modified, resetTo } }
+    // -------------------------------------------------
+    clearApprovalByIds: async (assessmentIds, resetTo = 'draft') => {
+        const response = await api.patch('/admin/ca/clear-approval-status/by-ids', {
+            assessmentIds,
+            resetTo
+        });
         return response.data;
     },
 };
@@ -1551,27 +1604,37 @@ export const adminCAAPI = {
 // ADMIN CA PROGRESS API (NEW)
 // ============================================
 export const adminCAProgressAPI = {
-    // Get CA completion status for all teachers and their assigned subjects
-    // Usage: await adminCAProgressAPI.getTeacherProgress({ termId: '...', sessionId: '...', classId: '...' })
+    getTeacherProgress: async (params = {}) => {
+        const response = await api.get('/admin/ca/teacher-progress', { params });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // GET - Get CA breakdown by specific teacher
+    // Returns detailed breakdown of each class-subject combination for a teacher
+    //
+    // Usage:
+    //   const result = await adminCAProgressAPI.getByTeacher(teacherId);
+    //   const result = await adminCAProgressAPI.getByTeacher(teacherId, { termId: '...' });
+    //   const result = await adminCAProgressAPI.getByTeacher(teacherId, { status: 'approved' });
+    //
     // Returns: {
     //   success: true,
     //   data: {
-    //     summary: { totalTeachers, teachersWithCA, teachersWithoutCA, totalAssignments, assignmentsWithCA, completionPercentage },
-    //     termInfo: { id, name, status },
-    //     sessionInfo: { id, name },
-    //     teachers: [{
-    //       teacherId, teacherName, firstName, lastName, email, username, phone,
-    //       totalAssignments, filledAssignments, completionPercentage,
-    //       subjects: [{
-    //         assignmentId, classId, className, classLevel, classSection,
-    //         subjectId, subjectName, subjectCode,
-    //         hasCA, studentsWithCA, totalStudentsInClass, caPercentage
-    //       }]
-    //     }]
-    //   }
+    //     teacher: { id, name, email, username },
+    //     assignments: 5,
+    //     classSubjects: [{
+    //       classId, className, classLevel, subjectId, subjectName, subjectCode,
+    //       stats: { totalRecords, draft, submitted, approved, uniqueStudents, avgScore, latestUpdate }
+    //     }, ...],
+    //     summary: { totalClassSubjects, totalRecords, totalApproved, totalSubmitted, totalDraft }
+    //   },
+    //   termInfo: { name, id },
+    //   sessionInfo: { name, id }
     // }
-    getTeacherProgress: async (params = {}) => {
-        const response = await api.get('/admin/ca/teacher-progress', { params });
+    // -------------------------------------------------
+    getByTeacher: async (teacherId, params = {}) => {
+        const response = await api.get(`/admin/ca/by-teacher/${teacherId}`, { params });
         return response.data;
     },
 };
@@ -1580,27 +1643,19 @@ export const adminCAProgressAPI = {
 // RESULT ACCESS SCHEDULE API
 // ============================================
 export const resultScheduleAPI = {
-    // Get current result access schedule (for admin/student dashboard)
     getCurrent: async (params = {}) => {
         const response = await api.get('/result-access-schedule', { params });
         return response.data;
     },
 
-    // Get all result access schedules (admin view - includes inactive)
     getAll: async () => {
         const response = await api.get('/result-access-schedules');
         return response.data;
     },
 
-    // ✅ FIXED: Create a new result access schedule
-    // IMPORTANT: Dates MUST be valid ISO strings like "2025-01-15T09:00:00.000Z"
-    // If your date input gives "2025-01-15T09:00" (no Z), it still works
-    // But "2025-01-15" (date only) WILL fail backend validation
     create: async (scheduleData) => {
-        // ✅ FIX: Ensure dates are valid ISO strings before sending
         const payload = { ...scheduleData };
 
-        // Convert Date objects to ISO strings if needed
         if (payload.resultStartTime instanceof Date) {
             payload.resultStartTime = payload.resultStartTime.toISOString();
         }
@@ -1608,27 +1663,20 @@ export const resultScheduleAPI = {
             payload.resultDeadline = payload.resultDeadline.toISOString();
         }
 
-        // ✅ FIX: If you have separate date/time fields, combine them properly
-        // Example: if your form has startDate + startTime fields:
-        // payload.resultStartTime = `${startDate}T${startTime}:00.000Z`;
-        // payload.resultDeadline = `${deadlineDate}T${deadlineTime}:00.000Z`;
-
         try {
             const response = await api.post('/result-access-schedule', payload);
             
-            // ✅ Handle "schedule already exists" error gracefully
             if (response.data?.existingScheduleId) {
                 return {
                     success: false,
                     alreadyExists: true,
                     scheduleId: response.data.existingScheduleId,
-                    message: 'A schedule already exists for this term. Use the update option instead.'
+                    message: response.data.message
                 };
             }
             
             return response.data;
         } catch (error) {
-            // ✅ Better error details
             const backendMessage = error.response?.data?.message || error.message;
             
             if (backendMessage?.includes('already exists')) {
@@ -1643,11 +1691,9 @@ export const resultScheduleAPI = {
         }
     },
 
-    // Update an existing result access schedule
     update: async (id, updateData) => {
         const payload = { ...updateData };
 
-        // Convert Date objects to ISO strings
         if (payload.resultStartTime instanceof Date) {
             payload.resultStartTime = payload.resultStartTime.toISOString();
         }
@@ -1659,13 +1705,11 @@ export const resultScheduleAPI = {
         return response.data;
     },
 
-    // Toggle schedule active status
     toggleActive: async (id) => {
         const response = await api.patch(`/result-access-schedule/${id}/toggle-active`);
         return response.data;
     },
 
-    // Delete a result access schedule
     delete: async (id) => {
         const response = await api.delete(`/result-access-schedule/${id}`);
         return response.data;
@@ -1676,31 +1720,16 @@ export const resultScheduleAPI = {
 // PUBLIC API (No Authentication Required)
 // ============================================
 export const publicAPI = {
-    // Get all active terms (for public result checking page)
-    // Usage: await publicAPI.getTerms({ sessionId: '...', status: 'active' })
-    // Returns: { success: true, data: [{ _id, name, session: { name }, startDate, endDate, status }, ...] }
     getTerms: async (params = {}) => {
         const response = await api.get('/public/terms', { params });
         return response.data;
     },
 
-    // Get all active sessions (for public result checking page)
-    // Returns: { success: true, data: [{ _id, name, startDate, endDate }, ...] }
     getSessions: async () => {
         const response = await api.get('/public/sessions');
         return response.data;
     },
 
-    // Get public result access status (for result check page - no auth required)
-    // Returns: {
-    //   success: true,
-    //   data: {
-    //     scheduleActive: boolean,
-    //     scheduleStatus: 'active' | 'before_start' | 'deadline_passed' | null,
-    //     scheduleDetails: { resultStartTime, resultDeadline, timeRemaining } | null,
-    //     message: string | null
-    //   }
-    // }
     getResultAccessStatus: async () => {
         const response = await api.get('/public/result-access-status');
         return response.data;
@@ -1755,7 +1784,328 @@ export const diagnosticsAPI = {
         const response = await api.get('/diagnose/student-tests');
         return response.data;
     },
+
+    // -------------------------------------------------
+    // GET - Debug CA entries (Admin only)
+    // Shows grouped CA entries by term/session for debugging
+    //
+    // Usage:
+    //   const result = await diagnosticsAPI.debugCAEntries();
+    //   const result = await diagnosticsAPI.debugCAEntries({ teacherId: '...', classId: '...', subjectId: '...', status: 'approved' });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     activeTerm: { id, name, status },
+    //     allTerms: [...],
+    //     allSessions: [...],
+    //     entriesByTermSession: [{
+    //       termId, termName, termStatus, sessionId, sessionName,
+    //       count, uniqueSubjects, uniqueStudents, latestCreated, latestUpdated
+    //     }, ...],
+    //     statusCounts: { draft: 10, submitted: 5, approved: 85 }
+    //   }
+    // }
+    // -------------------------------------------------
+    debugCAEntries: async (params = {}) => {
+        const response = await api.get('/debug/ca-entries', { params });
+        return response.data;
+    },
 };
+
+// ===================================================================
+// *** STUDENT CLASSES AND SCORES MANAGEMENT ***
+// Fetch, Edit, Delete, and Update student scores
+// ===================================================================
+export const studentsClassesScoresAPI = {
+    // -------------------------------------------------
+    // GET - Get all students with their classes and scores
+    // Query params: termId, sessionId, classId, subjectId, status, page, limit, search
+    //
+    // Usage:
+    //   // Get all with default pagination
+    //   const result = await studentsClassesScoresAPI.getAll();
+    //
+    //   // With filters
+    //   const result = await studentsClassesScoresAPI.getAll({
+    //     termId: '...',
+    //     sessionId: '...',
+    //     classId: '...',
+    //     subjectId: '...',
+    //     status: 'approved',
+    //     page: 1,
+    //     limit: 50,
+    //     search: 'john'
+    //   });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: [{
+    //     id: '...',
+    //     student: { id, firstName, lastName, fullName, admissionNumber, gender },
+    //     class: { id, name, level, section, session, fullName },
+    //     subject: { id, name, code },
+    //     teacher: { id, name },
+    //     scores: { testScore, noteTakingScore, assignmentScore, totalCA, examScore, totalScore },
+    //     grade: 'A',
+    //     remark: 'Excellent',
+    //     status: 'approved',
+    //     approvedBy: 'Admin Name',
+    //     updatedAt: '2025-01-15T10:30:00.000Z'
+    //   }, ...],
+    //   summary: {
+    //     totalRecords: 150,
+    //     scoredRecords: 145,
+    //     averageScore: 72.5,
+    //     highestScore: 98,
+    //     lowestScore: 25,
+    //     statusBreakdown: { draft: 5, submitted: 10, approved: 135 }
+    //   },
+    //   pagination: { page: 1, limit: 50, total: 150, pages: 3 },
+    //   meta: { termName: 'First Term', sessionName: '2024/2025', termId: '...', sessionId: '...' }
+    // }
+    // -------------------------------------------------
+    getAll: async (params = {}) => {
+        const response = await api.get('/api/students-classes-scores', { params });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // GET - Get single student's complete classes and scores
+    // Query params: termId, sessionId, classId, subjectId, status
+    //
+    // Usage:
+    //   const result = await studentsClassesScoresAPI.getByStudentId(studentId);
+    //   const result = await studentsClassesScoresAPI.getByStudentId(studentId, { termId: '...', sessionId: '...' });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     student: { _id, firstName, lastName, admissionNumber, gender, class: { id, name, level, section, fullName, teacher } },
+    //     term: { id, name },
+    //     session: { id, name },
+    //     subjects: [{
+    //       subjectId, subjectName, subjectCode,
+    //       hasScore: true,
+    //       assessment: { id, testScore, noteTakingScore, assignmentScore, totalCA, examScore, totalScore, grade, remark, status, teacherName, approvedBy, updatedAt }
+    //     }, ...],
+    //     otherClassScores: [{ id, className, subjectName, testScore, ..., grade }],
+    //     summary: { totalSubjects, subjectsWithScores, subjectsWithoutScores, totalScore, averageScore, highestScore, lowestScore, gradeDistribution, statusBreakdown }
+    //   }
+    // }
+    // -------------------------------------------------
+    getByStudentId: async (studentId, params = {}) => {
+        const response = await api.get(`/api/students-classes-scores/${studentId}`, { params });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // POST - Create a new score record for a student
+    // Body: {
+    //   studentId, classId, subjectId, termId, sessionId, teacherId,
+    //   testScore, noteTakingScore, assignmentScore, examScore, status
+    // }
+    //
+    // Usage:
+    //   const result = await studentsClassesScoresAPI.create({
+    //     studentId: '...',
+    //     classId: '...',
+    //     subjectId: '...',
+    //     termId: '...',
+    //     sessionId: '...',
+    //     testScore: 15,
+    //     noteTakingScore: 8,
+    //     assignmentScore: 9,
+    //     examScore: 45,
+    //     status: 'draft'  // optional: 'draft' (default) | 'submitted' | 'approved'
+    //   });
+    //
+    // Returns: {
+    //   success: true,
+    //   message: 'Score record created successfully.',
+    //   data: {
+    //     id: '...',
+    //     student: { id, name, admissionNumber },
+    //     class: { id, name },
+    //     subject: { id, name },
+    //     scores: { testScore: 15, noteTakingScore: 8, assignmentScore: 9, totalCA: 32, examScore: 45, totalScore: 77 },
+    //     grade: 'A',
+    //     status: 'draft',
+    //     updatedAt: '2025-01-15T10:30:00.000Z'
+    //   }
+    // }
+    // -------------------------------------------------
+    create: async (scoreData) => {
+        const response = await api.post('/api/students-classes-scores', scoreData);
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // PUT - Edit a student's score record
+    // URL param: assessmentId
+    // Body: { testScore, noteTakingScore, assignmentScore, examScore, status }
+    //
+    // Usage:
+    //   const result = await studentsClassesScoresAPI.update(assessmentId, {
+    //     testScore: 18,
+    //     noteTakingScore: 7,
+    //     assignmentScore: 10,
+    //     examScore: 50,
+    //     status: 'approved'
+    //   });
+    //
+    // Returns: {
+    //   success: true,
+    //   message: 'Score record updated successfully.',
+    //   data: {
+    //     id: '...',
+    //     student: { id, name, admissionNumber },
+    //     class: { id, name },
+    //     subject: { id, name },
+    //     scores: { testScore: 18, noteTakingScore: 7, assignmentScore: 10, totalCA: 35, examScore: 50, totalScore: 85 },
+    //     grade: 'A',
+    //     status: 'approved',
+    //     approvedBy: 'Admin Name',
+    //     updatedAt: '2025-01-15T10:30:00.000Z'
+    //   },
+    //   changes: {
+    //     oldValues: { testScore: 15, noteTakingScore: 8, ..., totalScore: 77, grade: 'A', status: 'draft' },
+    //     newValues: { totalScore: 85, grade: 'A', status: 'approved' }
+    //   }
+    // }
+    // -------------------------------------------------
+    update: async (assessmentId, scoreData) => {
+        const response = await api.put(`/api/students-classes-scores/${assessmentId}`, scoreData);
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // DELETE - Delete a student's score record
+    // URL param: assessmentId
+    //
+    // Note: 
+    //   - Teachers: Can only delete their own non-approved records
+    //   - Admins: Can delete any record; approved records are soft-deleted
+    //
+    // Returns: {
+    //   success: true,
+    //   message: 'Score record deleted for John Doe (Mathematics).',
+    //   data: { id, studentName: 'John Doe', subjectName: 'Mathematics', softDeleted: false }
+    // }
+    // -------------------------------------------------
+    delete: async (assessmentId) => {
+        const response = await api.delete(`/api/students-classes-scores/${assessmentId}`);
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // PATCH - Bulk update scores for multiple students
+    // Body: {
+    //   termId, sessionId, classId, subjectId,
+    //   updates: [
+    //     { studentId, testScore?, noteTakingScore?, assignmentScore?, examScore?, status? },
+    //     ...
+    //   ],
+    //   approveAfterUpdate?: boolean
+    // }
+    //
+    // Usage:
+    //   const result = await studentsClassesScoresAPI.bulkUpdate({
+    //     termId: '...',
+    //     sessionId: '...',
+    //     classId: '...',           // optional (uses student's current class if omitted)
+    //     subjectId: '...',        // REQUIRED
+    //     approveAfterUpdate: true,   // optional: auto-approve all edits (default: false)
+    //     updates: [
+    //       { studentId: '...', testScore: 15, noteTakingScore: 8, assignmentScore: 9, examScore: 45 },
+    //       { studentId: '...', testScore: 18, noteTakingScore: 7, assignmentScore: 10, examScore: 50 },
+    //       { studentId: '...', status: 'approved' }  // only change status
+    //     ]
+    //   });
+    //
+    // Returns: {
+    //   success: true,
+    //   message: 'Bulk update completed. Created: 1, Updated: 1, Failed: 0.',
+    //   data: {
+    //     summary: { created: 1, updated: 1, failed: 0, total: 2 },
+    //     results: [{ studentId, action: 'created'|'updated', totalScore, grade }],
+    //     errors: [{ index, studentId, message }] // only present if there are errors
+    //   }
+    // }
+    // -------------------------------------------------
+    bulkUpdate: async (data) => {
+        const response = await api.patch('/api/students-classes-scores/bulk', data);
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // DELETE - Bulk delete score records
+    // Body: { assessmentIds: [...], force?: boolean }
+    //
+    // Usage:
+    //   const result = await studentsClassesScoresAPI.bulkDelete(['id1', 'id2', 'id3']);
+    //   const result = await studentsClassesScoresAPI.bulkDelete(['id1', 'id2'], true); // force delete approved records too
+    //
+    // Note:
+    //   - Teachers: Can only delete their own non-approved records
+    //   - Admins: Can delete any record; approved records require force=true for soft delete
+    //
+    // Returns: {
+    //   success: true,
+    //   message: 'Bulk delete completed.',
+    //   data: {
+    //     summary: { requested: 3, validIds: 3, deleted: 2, notFound: 0 }
+    //   }
+    // }
+    // -------------------------------------------------
+    bulkDelete: async (assessmentIds, force = false) => {
+        const response = await api.delete('/api/students-classes-scores/bulk', { 
+            assessmentIds, 
+            force 
+        });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // GET - Get student's score summary by class (with positions)
+    // URL param: classId
+    // Query params: termId, sessionId, subjectId
+    //
+    // Usage:
+    //   const result = await studentsClassesScoresAPI.getSummaryByClass(classId);
+    //   const result = await studentsClassesScoresAPI.getSummaryByClass(classId, { termId: '...', subjectId: '...' });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     class: { id, name, level, section, fullName: 'JSS 1A' },
+    //     term: { id, name: 'First Term' },
+    //     session: { id, name: '2024/2025' },
+    //     students: [{
+    //       studentId, studentName, firstName, lastName, admissionNumber, gender, position,
+    //       subjects: [{ subjectId, subjectName, subjectCode, testScore, ..., totalScore, grade, status }],
+    //       totalScore, averageScore, subjectsWithScores, totalSubjects
+    //     }, ...],
+    //     classStatistics: {
+    //       totalStudents: 45,
+    //       studentsWithScores: 40,
+    //       studentsWithoutScores: 5,
+    //       classAverage: 72.5,
+    //       highestAverage: 98,
+    //       lowestAverage: 45
+    //     }
+    //   }
+    // }
+    // -------------------------------------------------
+    getSummaryByClass: async (classId, params = {}) => {
+        const response = await api.get(`/api/students-classes-scores/summary/${classId}`, { params });
+        return response.data;
+    },
+};
+
+// ===================================================================
+// *** END OF STUDENT CLASSES AND SCORES MANAGEMENT ***
+// ===================================================================
 
 // ============================================
 // HELPER FUNCTIONS

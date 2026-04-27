@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { adminCAAPI, termsAPI, sessionsAPI, classesAPI, subjectsAPI } from '../../api';
 
 const getGradeColor = (grade) => {
@@ -39,20 +39,42 @@ const extractDataArray = (response) => {
     return [];
 };
 
-const processInBatches = async (items, handler, batchSize = 5, onProgress) => {
-    let successCount = 0;
-    let failCount = 0;
-    for (let i = 0; i < items.length; i += batchSize) {
-        const batch = items.slice(i, i + batchSize);
-        const results = await Promise.allSettled(batch.map(handler));
-        results.forEach(r => {
-            if (r.status === 'fulfilled' && r.value) successCount++;
-            else failCount++;
-        });
-        if (onProgress) onProgress(Math.min(i + batchSize, items.length), items.length);
-    }
-    return { successCount, failCount };
+const normalizeFilterOptions = (response) => {
+    if (!response?.success || !response.data) return null;
+    const d = response.data;
+    const terms = Array.isArray(d.terms) ? d.terms : [];
+    const sessions = Array.isArray(d.sessions) ? d.sessions : [];
+    const classes = Array.isArray(d.classes) ? d.classes : (Array.isArray(d.classesData) ? d.classesData : []);
+    const subjects = Array.isArray(d.subjects) ? d.subjects : [];
+    const nested = d.data || {};
+    const nestedTerms = Array.isArray(nested.terms) ? nested.terms : [];
+    const nestedSessions = Array.isArray(nested.sessions) ? nested.sessions : [];
+    const nestedClasses = Array.isArray(nested.classes) ? nested.classes : (Array.isArray(nested.classesData) ? nested.classesData : []);
+    const nestedSubjects = Array.isArray(nested.subjects) ? nested.subjects : [];
+    const deepNested = nested.data || {};
+    const deepTerms = Array.isArray(deepNested.terms) ? deepNested.terms : [];
+    const deepSessions = Array.isArray(deepNested.sessions) ? deepNested.sessions : [];
+    const deepClasses = Array.isArray(deepNested.classes) ? deepNested.classes : (Array.isArray(deepNested.classesData) ? deepNested.classesData : []);
+    const deepSubjects = Array.isArray(deepNested.subjects) ? deepNested.subjects : [];
+    const pickLongest = (...arrays) => arrays.reduce((a, b) => b.length > a.length ? b : a, []);
+    return {
+        terms: pickLongest(terms, nestedTerms, deepTerms),
+        sessions: pickLongest(sessions, nestedSessions, deepSessions),
+        classes: pickLongest(classes, nestedClasses, deepClasses),
+        subjects: pickLongest(subjects, nestedSubjects, deepSubjects),
+    };
 };
+
+const toOption = (item) => {
+    if (!item) return null;
+    const id = item._id || item.value || item.id || item.termId || item.sessionId || item.classId || item.subjectId;
+    const name = item.name || item.label || item.className || item.subjectName || item.termName || item.sessionName || `${id}`;
+    if (!id) return null;
+    return { _id: id, name, ...item };
+};
+
+// Page size options
+const PAGE_SIZE_OPTIONS = [10, 20, 50];
 
 const ExcludeCheckbox = React.memo(({ checked, indeterminate, onChange }) => (
     <div
@@ -72,63 +94,7 @@ const ExcludeCheckbox = React.memo(({ checked, indeterminate, onChange }) => (
         )}
     </div>
 ));
-
 ExcludeCheckbox.displayName = 'ExcludeCheckbox';
-
-// ==========================================
-// HELPER: Group approved assessments by class
-// ==========================================
-const groupByClass = (assessments) => {
-    const map = new Map();
-    assessments.forEach(a => {
-        const cId = a.classId?._id || a.classId;
-        const cName = a.classId?.name || 'Unknown Class';
-        if (!cId) return;
-        if (!map.has(cId)) {
-            map.set(cId, { classId: cId, className: cName, records: [], subjectIds: new Set(), studentIds: new Set() });
-        }
-        const entry = map.get(cId);
-        entry.records.push(a);
-        const sId = a.subjectId?._id || a.subjectId;
-        if (sId) entry.subjectIds.add(sId);
-        const stId = a.studentId?._id || a.studentId;
-        if (stId) entry.studentIds.add(stId);
-    });
-    return Array.from(map.values()).map(v => ({
-        classId: v.classId,
-        className: v.className,
-        approvedRecords: v.records.length,
-        uniqueSubjects: v.subjectIds.size,
-        uniqueStudents: v.studentIds.size,
-        _records: v.records
-    }));
-};
-
-// ==========================================
-// HELPER: Group assessments by subject for a class
-// ==========================================
-const groupBySubject = (assessments) => {
-    const map = new Map();
-    assessments.forEach(a => {
-        const sId = a.subjectId?._id || a.subjectId;
-        const sName = a.subjectId?.name || 'Unknown Subject';
-        if (!sId) return;
-        if (!map.has(sId)) {
-            map.set(sId, { subjectId: sId, subjectName: sName, records: [], studentIds: new Set() });
-        }
-        const entry = map.get(sId);
-        entry.records.push(a);
-        const stId = a.studentId?._id || a.studentId;
-        if (stId) entry.studentIds.add(stId);
-    });
-    return Array.from(map.values()).map(v => ({
-        subjectId: v.subjectId,
-        subjectName: v.subjectName,
-        approvedRecords: v.records.length,
-        uniqueStudents: v.studentIds.size,
-        _records: v.records
-    }));
-};
 
 const ApproveAssessments = () => {
     const [assessments, setAssessments]                   = useState([]);
@@ -144,7 +110,7 @@ const ApproveAssessments = () => {
     const [loading, setLoading]                           = useState(false);
     const [subjectsLoading, setSubjectsLoading]           = useState(false);
     const [bulkLoading, setBulkLoading]                   = useState(false);
-    const [bulkProgress, setBulkProgress]                 = useState({ current: 0, total: 0 });
+    const [bulkProgress, setBulkProgress]                 = useState({ current: 0, total: 0, phase: '' });
     const [confirmBulk, setConfirmBulk]                   = useState(false);
     const [confirmBulkUnapprove, setConfirmBulkUnapprove] = useState(false);
     const [success, setSuccess]                           = useState('');
@@ -153,7 +119,13 @@ const ApproveAssessments = () => {
     const [excludedIds, setExcludedIds]                   = useState(new Set());
     const [totalResults, setTotalResults]                 = useState(0);
 
-    // Clear Approval Status state
+    // PAGINATION STATE
+    const [currentPage, setCurrentPage]                   = useState(1);
+    const [pageSize, setPageSize]                         = useState(20);
+
+    const [approvedSummary, setApprovedSummary]           = useState(null);
+    const [bulkApproveResult, setBulkApproveResult]       = useState(null);
+
     const [showClearPanel, setShowClearPanel]             = useState(false);
     const [clearClasses, setClearClasses]                 = useState([]);
     const [clearSubjects, setClearSubjects]               = useState([]);
@@ -163,11 +135,17 @@ const ApproveAssessments = () => {
     const [clearSuccess, setClearSuccess]                 = useState('');
     const [clearError, setClearError]                     = useState('');
     const [clearClassesLoading, setClearClassesLoading]   = useState(false);
+    const [clearSubjectsLoading, setClearSubjectsLoading] = useState(false);
     const [clearInfo, setClearInfo]                       = useState(null);
     const [clearProgress, setClearProgress]               = useState({ current: 0, total: 0, phase: '' });
-
-    // Store the full approved assessments for the clear panel
-    const approvedForClearRef = useRef([]);
+    const [clearPreview, setClearPreview]                 = useState(null);
+    const [clearPreviewLoading, setClearPreviewLoading]   = useState(false);
+    const [clearExcludedStudents, setClearExcludedStudents] = useState(new Set());
+    const [clearConfirmAction, setClearConfirmAction]     = useState(null);
+    const [previewExpanded, setPreviewExpanded]           = useState(true);
+    const [clearPreviewAssessmentIds, setClearPreviewAssessmentIds] = useState([]);
+    const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
+    const filterOptionsSourceRef = useRef(null);
 
     const abortRef         = useRef(null);
     const debounceRef      = useRef(null);
@@ -177,11 +155,21 @@ const ApproveAssessments = () => {
 
     const isAllExcluded  = assessments.length > 0 && excludedIds.size === assessments.length;
     const isSomeExcluded = excludedIds.size > 0 && !isAllExcluded;
+
+    // Total pages derived from totalResults and pageSize
+    const totalPages = useMemo(() => {
+        if (totalResults <= 0) return 1;
+        return Math.ceil(totalResults / pageSize);
+    }, [totalResults, pageSize]);
+
+    // For submitted tab: use effectivePendingCount from visible list
     const effectivePendingCount  = Math.max(0, (status === 'submitted' ? assessments.length : 0) - excludedIds.size);
     const effectiveApprovedCount = Math.max(0, (status === 'approved' ? assessments.length : 0) - excludedIds.size);
 
     const activeTermName = terms.find(t => t._id === termId)?.name || '';
     const activeSessionName = sessions.find(s => s._id === sessionId)?.name || '';
+    const isCrossTermApproved = status === 'approved' && approvedSummary?.byTerm?.length > 1;
+    const canUseFilterApprove = status === 'submitted' && (termId || sessionId || classId || subjectId);
 
     const toggleExclude = useCallback((id) => {
         setExcludedIds(prev => {
@@ -203,9 +191,15 @@ const ApproveAssessments = () => {
 
     useEffect(() => {
         if (!success && !error && !clearSuccess) return;
-        const t = setTimeout(() => { setSuccess(''); setError(''); setClearSuccess(''); }, 5000);
+        const t = setTimeout(() => { setSuccess(''); setError(''); setClearSuccess(''); setBulkApproveResult(null); }, 6000);
         return () => clearTimeout(t);
     }, [success, error, clearSuccess]);
+
+    // Reset to page 1 when filters or status change
+    useEffect(() => {
+        if (!initialDoneRef.current) return;
+        setCurrentPage(1);
+    }, [termId, sessionId, classId, subjectId, status, pageSize]);
 
     const fetchSubjectsForClass = useCallback(async (cId) => {
         if (subjectsCacheRef.current[cId]) {
@@ -237,9 +231,10 @@ const ApproveAssessments = () => {
     useEffect(() => {
         if (!initialDoneRef.current) return;
         setExcludedIds(new Set());
+        setBulkApproveResult(null);
         scheduleFetch();
         return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-    }, [termId, sessionId, classId, subjectId, status, scheduleFetch]);
+    }, [termId, sessionId, classId, subjectId, status, currentPage, pageSize, scheduleFetch]);
 
     useEffect(() => {
         if (!initialDoneRef.current) return;
@@ -255,23 +250,80 @@ const ApproveAssessments = () => {
     useEffect(() => {
         const fetchInitialData = async () => {
             try {
-                const [termsRes, sessionsRes, classesRes] = await Promise.all([
-                    termsAPI.getAll(),
-                    sessionsAPI.getAll(),
-                    classesAPI.getAllForDropdown()
-                ]);
-                if (termsRes.success) {
-                    setTerms(termsRes.data);
-                    const active = termsRes.data.find(t => t.status === 'active');
-                    if (active) {
-                        setTermId(active._id);
-                        setSessionId(active.session?._id || active.session);
+                let usedFilterOptions = false;
+                let normalizedFilterOptions = null;
+
+                try {
+                    setFilterOptionsLoading(true);
+                    const filterRes = await adminCAAPI.getFilterOptions({ status });
+                    if (filterRes?.success) {
+                        const normalized = normalizeFilterOptions(filterRes);
+                        if (normalized) {
+                            usedFilterOptions = true;
+                            normalizedFilterOptions = normalized;
+                            filterOptionsSourceRef.current = 'filterOptions';
+                            if (normalized.terms.length > 0) {
+                                const termOpts = normalized.terms.map(toOption).filter(Boolean);
+                                setTerms(termOpts);
+                                const active = termOpts.find(t => t.status === 'active' || t.isActive === true);
+                                if (active) {
+                                    setTermId(active._id);
+                                    setSessionId(active.session?._id || active.session || active.sessionId || '');
+                                }
+                            }
+                            if (normalized.sessions.length > 0) {
+                                setSessions(normalized.sessions.map(toOption).filter(Boolean));
+                            }
+                            if (normalized.classes.length > 0) {
+                                setClasses(normalized.classes.map(toOption).filter(Boolean));
+                            }
+                            if (normalized.subjects.length > 0) {
+                                subjectsCacheRef.current['__global__'] = normalized.subjects.map(toOption).filter(Boolean);
+                            }
+                            if (normalized.terms.length === 0 || normalized.sessions.length === 0 || normalized.classes.length === 0) {
+                                usedFilterOptions = false;
+                            }
+                        }
                     }
+                } catch (filterErr) {
+                    console.warn('[getFilterOptions] failed, falling back:', filterErr.message);
+                    usedFilterOptions = false;
+                } finally {
+                    setFilterOptionsLoading(false);
                 }
-                if (sessionsRes.success) setSessions(sessionsRes.data);
-                if (classesRes.success) {
-                    const data = classesRes.data?.data || classesRes.data;
-                    setClasses(Array.isArray(data) ? data : []);
+
+                if (!usedFilterOptions) {
+                    filterOptionsSourceRef.current = 'individual';
+                    const [termsRes, sessionsRes, classesRes] = await Promise.all([
+                        termsAPI.getAll(), sessionsAPI.getAll(), classesAPI.getAllForDropdown()
+                    ]);
+                    if (termsRes.success) {
+                        setTerms(termsRes.data);
+                        const active = termsRes.data.find(t => t.status === 'active');
+                        if (active) {
+                            setTermId(active._id);
+                            setSessionId(active.session?._id || active.session);
+                        }
+                    }
+                    if (sessionsRes.success) setSessions(sessionsRes.data);
+                    if (classesRes.success) {
+                        const data = classesRes.data?.data || classesRes.data;
+                        setClasses(Array.isArray(data) ? data : []);
+                    }
+                } else if (normalizedFilterOptions) {
+                    const missingPromises = [];
+                    if (normalizedFilterOptions.terms.length === 0) {
+                        missingPromises.push(termsAPI.getAll().then(res => {
+                            if (res.success) { setTerms(res.data); const active = res.data.find(t => t.status === 'active'); if (active) { setTermId(active._id); setSessionId(active.session?._id || active.session); } }
+                        }));
+                    }
+                    if (normalizedFilterOptions.sessions.length === 0) {
+                        missingPromises.push(sessionsAPI.getAll().then(res => { if (res.success) setSessions(res.data); }));
+                    }
+                    if (normalizedFilterOptions.classes.length === 0) {
+                        missingPromises.push(classesAPI.getAllForDropdown().then(res => { if (res.success) { const data = res.data?.data || res.data; setClasses(Array.isArray(data) ? data : []); } }));
+                    }
+                    if (missingPromises.length > 0) await Promise.all(missingPromises);
                 }
             } catch (err) {
                 console.error('[fetchInitialData]', err);
@@ -281,13 +333,35 @@ const ApproveAssessments = () => {
             }
         };
         fetchInitialData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    useEffect(() => {
+        if (!initialDoneRef.current) return;
+        const refetch = async () => {
+            try {
+                setFilterOptionsLoading(true);
+                const filterRes = await adminCAAPI.getFilterOptions({ status });
+                if (filterRes?.success) {
+                    const normalized = normalizeFilterOptions(filterRes);
+                    if (normalized) {
+                        if (normalized.terms.length > 0) setTerms(normalized.terms.map(toOption).filter(Boolean));
+                        if (normalized.sessions.length > 0) setSessions(normalized.sessions.map(toOption).filter(Boolean));
+                        if (normalized.classes.length > 0) setClasses(normalized.classes.map(toOption).filter(Boolean));
+                        if (normalized.subjects.length > 0) subjectsCacheRef.current['__global__'] = normalized.subjects.map(toOption).filter(Boolean);
+                        filterOptionsSourceRef.current = 'filterOptions';
+                    }
+                }
+            } catch (err) { console.warn('[refetchFilterOptions] failed:', err.message); }
+            finally { setFilterOptionsLoading(false); }
+        };
+        refetch();
+    }, [status]);
+
+    // =====================================================
+    // UPDATED fetchAssessments — now sends page & limit
+    // =====================================================
     const fetchAssessments = useCallback(async () => {
-        if (abortRef.current) {
-            abortRef.current.cancelled = true;
-        }
+        if (abortRef.current) abortRef.current.cancelled = true;
         const controller = { cancelled: false };
         abortRef.current = controller;
 
@@ -295,25 +369,61 @@ const ApproveAssessments = () => {
             setLoading(true);
             setConfirmBulk(false);
             setConfirmBulkUnapprove(false);
-            const params = { limit: 1000 };
-            if (termId)    params.termId    = termId;
-            if (sessionId) params.sessionId = sessionId;
-            if (classId)   params.classId   = classId;
-            if (subjectId) params.subjectId = subjectId;
-            if (status)    params.status    = status;
 
-            const response = await adminCAAPI.getAssessments(params);
+            if (status === 'approved') {
+                const params = {};
+                if (classId)   params.classId   = classId;
+                if (subjectId) params.subjectId = subjectId;
+                if (termId)    params.termId    = termId;
+                if (sessionId) params.sessionId = sessionId;
+                params.page  = currentPage;
+                params.limit = pageSize;
 
-            if (controller.cancelled) return;
+                const response = await adminCAAPI.getAllApproved(params);
+                if (controller.cancelled) return;
 
-            const dataArray = extractDataArray(response);
-            setAssessments(dataArray);
-            setExcludedIds(new Set());
-            
-            if (response.pagination?.total) {
-                setTotalResults(response.pagination.total);
+                const dataArray = extractDataArray(response);
+                setAssessments(dataArray);
+                setExcludedIds(new Set());
+                setApprovedSummary(response.success ? response.summary || null : null);
+
+                if (response.success && response.summary?.total != null) {
+                    setTotalResults(response.summary.total);
+                } else if (response.success && response.total != null) {
+                    setTotalResults(response.total);
+                } else {
+                    setTotalResults(dataArray.length);
+                }
             } else {
-                setTotalResults(dataArray.length);
+                const params = {};
+                if (termId)    params.termId    = termId;
+                if (sessionId) params.sessionId = sessionId;
+                if (classId)   params.classId   = classId;
+                if (subjectId) params.subjectId = subjectId;
+                if (status && status !== 'all') params.status = status;
+
+                // PAGINATION: send page and limit to backend
+                params.page  = currentPage;
+                params.limit = pageSize;
+
+                const response = await adminCAAPI.getAssessments(params);
+                if (controller.cancelled) return;
+
+                const dataArray = extractDataArray(response);
+                setAssessments(dataArray);
+                setExcludedIds(new Set());
+                setApprovedSummary(null);
+
+                // Backend should return total count for pagination
+                if (response.summary?.total != null) {
+                    setTotalResults(response.summary.total);
+                } else if (response.total != null) {
+                    setTotalResults(response.total);
+                } else if (response.data?.total != null) {
+                    setTotalResults(response.data.total);
+                } else {
+                    setTotalResults(dataArray.length);
+                }
             }
         } catch (err) {
             if (controller.cancelled) return;
@@ -322,11 +432,9 @@ const ApproveAssessments = () => {
         } finally {
             if (abortRef.current === controller) setLoading(false);
         }
-    }, [termId, sessionId, classId, subjectId, status]);
+    }, [termId, sessionId, classId, subjectId, status, currentPage, pageSize]);
 
-    useEffect(() => {
-        fetchRef.current = fetchAssessments;
-    }, [fetchAssessments]);
+    useEffect(() => { fetchRef.current = fetchAssessments; }, [fetchAssessments]);
 
     const handleApprove = useCallback(async (id) => {
         setSuccess(''); setError('');
@@ -336,9 +444,7 @@ const ApproveAssessments = () => {
             const response = await adminCAAPI.approve(id);
             if (response.success) {
                 setSuccess('Assessment approved successfully');
-                if (response.data) {
-                    setAssessments(prev => prev.map(a => a._id === id ? { ...a, ...response.data, status: 'approved' } : a));
-                }
+                if (response.data) setAssessments(prev => prev.map(a => a._id === id ? { ...a, ...response.data, status: 'approved' } : a));
             } else {
                 setAssessments(prev => prev.map(a => a._id === id ? previous : a));
                 setError(response.message || 'Failed to approve');
@@ -357,9 +463,7 @@ const ApproveAssessments = () => {
             const response = await adminCAAPI.unapprove(id);
             if (response.success) {
                 setSuccess('Assessment unapproved successfully');
-                if (response.data) {
-                    setAssessments(prev => prev.map(a => a._id === id ? { ...a, ...response.data, status: 'submitted' } : a));
-                }
+                if (response.data) setAssessments(prev => prev.map(a => a._id === id ? { ...a, ...response.data, status: 'submitted' } : a));
             } else {
                 setAssessments(prev => prev.map(a => a._id === id ? previous : a));
                 setError(response.message || 'Failed to unapprove');
@@ -367,280 +471,206 @@ const ApproveAssessments = () => {
         } catch (err) {
             setAssessments(prev => prev.map(a => a._id === id ? previous : a));
             setError(err.response?.data?.message || err.message || 'Failed to unapprove assessment');
-        } finally {
-            setUnapprovingId(null);
-        }
+        } finally { setUnapprovingId(null); }
     }, [assessments]);
 
     const handleApproveAll = useCallback(async () => {
         setConfirmBulk(false);
         setBulkLoading(true);
-        setBulkProgress({ current: 0, total: 0 });
-        setSuccess('');
-        setError('');
-
-        const toApprove = assessments.filter(a => !excludedIds.has(a._id));
-        const ids = toApprove.map(a => a._id);
-
-        if (ids.length === 0) { setBulkLoading(false); return; }
-
+        setBulkProgress({ current: 0, total: 1, phase: 'Approving...' });
+        setSuccess(''); setError(''); setBulkApproveResult(null);
+        const excludedIdsArray = excludedIds.size > 0 ? Array.from(excludedIds) : undefined;
         setAssessments(prev => prev.map(a => (!excludedIds.has(a._id) ? { ...a, status: 'approved' } : a)));
-
         try {
-            const response = await adminCAAPI.bulkApprove(ids);
-            setBulkLoading(false);
-            setExcludedIds(new Set());
+            const filters = { termId: termId || undefined, sessionId: sessionId || undefined, classId: classId || undefined, subjectId: subjectId || undefined };
+            if (excludedIdsArray?.length > 0) filters.excludedIds = excludedIdsArray;
+            const response = await adminCAAPI.bulkApproveByFilters(filters);
+            setBulkProgress({ current: 1, total: 1, phase: 'Done' });
+            setBulkLoading(false); setExcludedIds(new Set());
             if (response.success) {
-                setSuccess(`Successfully approved ${ids.length} assessments`);
-            } else {
-                setError(response.message || 'Failed to approve some assessments');
-                fetchRef.current?.();
-            }
+                const modifiedCount = response.data?.modified || response.data?.nowInApprovedStatus || 0;
+                setBulkApproveResult({ count: modifiedCount, excluded: excludedIdsArray?.length || 0 });
+                setSuccess(response.message || `Successfully approved ${modifiedCount} assessment(s).`);
+                setTimeout(async () => {
+                    try { const fr = await adminCAAPI.getFilterOptions({ status }); if (fr?.success) { const n = normalizeFilterOptions(fr); if (n?.classes.length > 0) setClasses(n.classes.map(toOption).filter(Boolean)); } } catch (_) {}
+                    fetchRef.current?.();
+                }, 300);
+            } else { setError(response.message || 'Failed to approve assessments'); fetchRef.current?.(); }
         } catch (err) {
-            setBulkLoading(false);
+            setBulkLoading(false); setBulkProgress({ current: 0, total: 0, phase: '' });
             setError(err.response?.data?.message || err.message || 'Failed to approve assessments');
             fetchRef.current?.();
         }
-    }, [assessments, excludedIds]);
+    }, [termId, sessionId, classId, subjectId, excludedIds, status]);
 
     const handleUnapproveAll = useCallback(async () => {
         setConfirmBulkUnapprove(false);
         setBulkLoading(true);
-        setBulkProgress({ current: 0, total: 0 });
-        setSuccess('');
-        setError('');
-
-        const toUnapprove = assessments.filter(a => !excludedIds.has(a._id));
-        const ids = toUnapprove.map(a => a._id);
-
-        if (ids.length === 0) { setBulkLoading(false); return; }
-
+        setBulkProgress({ current: 0, total: 1, phase: 'Unapproving...' });
+        setSuccess(''); setError('');
+        const excludedIdsArray = excludedIds.size > 0 ? Array.from(excludedIds) : undefined;
         setAssessments(prev => prev.map(a => (!excludedIds.has(a._id) ? { ...a, status: 'submitted' } : a)));
-
-        const { successCount, failCount } = await processInBatches(
-            ids,
-            (id) => adminCAAPI.unapprove(id).then(r => r.success),
-            5,
-            (current, total) => setBulkProgress({ current, total })
-        );
-
-        setBulkLoading(false);
-        setExcludedIds(new Set());
-
-        if (failCount === 0) {
-            setSuccess(`Successfully unapproved ${successCount} assessments`);
-        } else {
-            setError(`Failed to unapprove ${failCount} assessment(s)`);
-            setSuccess(`Unapproved ${successCount} of ${ids.length}`);
+        try {
+            const payload = {};
+            if (termId) payload.termId = termId; if (sessionId) payload.sessionId = sessionId;
+            if (classId) payload.classId = classId; if (subjectId) payload.subjectId = subjectId;
+            if (excludedIdsArray?.length > 0) payload.excludedIds = excludedIdsArray;
+            const response = await adminCAAPI.bulkUnapprove(payload);
+            setBulkProgress({ current: 1, total: 1, phase: 'Done' });
+            setBulkLoading(false); setExcludedIds(new Set());
+            if (response.success) {
+                const modifiedCount = response.data?.modified || response.data?.nowInSubmittedStatus || 0;
+                setSuccess(response.message || `Successfully unapproved ${modifiedCount} assessment(s).`);
+                setTimeout(async () => {
+                    try { const fr = await adminCAAPI.getFilterOptions({ status }); if (fr?.success) { const n = normalizeFilterOptions(fr); if (n?.classes.length > 0) setClasses(n.classes.map(toOption).filter(Boolean)); } } catch (_) {}
+                    fetchRef.current?.();
+                }, 300);
+            } else { setError(response.message || 'Failed to unapprove assessments'); fetchRef.current?.(); }
+        } catch (err) {
+            setBulkLoading(false); setBulkProgress({ current: 0, total: 0, phase: '' });
+            setError(err.response?.data?.message || err.message || 'Failed to unapprove assessments');
             fetchRef.current?.();
         }
-    }, [assessments, excludedIds]);
+    }, [termId, sessionId, classId, subjectId, status, excludedIds]);
 
     const handleClassChange = useCallback((e) => setClassId(e.target.value), []);
 
-    // ==========================================
-    // CLEAR APPROVAL STATUS - Using getAssessments + unapprove
-    // ==========================================
+    // Page size change handler — resets to page 1
+    const handlePageSizeChange = useCallback((e) => {
+        setPageSize(Number(e.target.value));
+        setCurrentPage(1);
+    }, []);
+
+    // Page navigation handler
+    const goToPage = useCallback((page) => {
+        if (page < 1 || page > totalPages || page === currentPage) return;
+        setCurrentPage(page);
+    }, [currentPage, totalPages]);
 
     const openClearPanel = useCallback(async () => {
         setShowClearPanel(true);
-        setClearClassId('');
-        setClearSubjectId('');
-        setClearError('');
-        setClearSuccess('');
-        setClearInfo(null);
-        setClearClasses([]);
-        setClearSubjects([]);
-        setClearProgress({ current: 0, total: 0, phase: '' });
-        setClearClassesLoading(true);
-
+        setClearClassId(''); setClearSubjectId(''); setClearError(''); setClearSuccess('');
+        setClearInfo(null); setClearClasses([]); setClearSubjects([]);
+        setClearProgress({ current: 0, total: 0, phase: '' }); setClearPreview(null);
+        setClearPreviewLoading(false); setClearExcludedStudents(new Set());
+        setClearConfirmAction(null); setClearPreviewAssessmentIds([]); setClearClassesLoading(true);
+        setPreviewExpanded(true);
         try {
-            // Fetch ALL approved assessments for the current term/session
-            const params = { status: 'approved', limit: 5000 };
-            if (termId) params.termId = termId;
-            if (sessionId) params.sessionId = sessionId;
-
-            const response = await adminCAAPI.getAssessments(params);
-            const dataArray = extractDataArray(response);
-
-            approvedForClearRef.current = dataArray;
-
-            if (dataArray.length === 0) {
-                setClearInfo({ type: 'info', message: 'No approved CA records found for the selected term/session.' });
-            } else {
-                const grouped = groupByClass(dataArray);
-                setClearClasses(grouped);
-                setClearInfo({
-                    type: 'success',
-                    message: `${grouped.length} class${grouped.length !== 1 ? 'es' : ''} with ${dataArray.length} approved record${dataArray.length !== 1 ? 's' : ''} found.`
-                });
-            }
+            const response = await adminCAAPI.getClassesWithApproved({ termId: termId || undefined, sessionId: sessionId || undefined });
+            if (response.success && Array.isArray(response.data)) {
+                if (response.data.length === 0) setClearInfo({ type: 'info', message: 'No approved CA records found for the selected term/session.' });
+                else { setClearClasses(response.data); setClearInfo({ type: 'success', message: `${response.data.length} class${response.data.length !== 1 ? 'es' : ''} with approved records found.` }); }
+            } else setClearInfo({ type: 'error', message: response.message || 'Failed to load approved records' });
         } catch (err) {
-            console.error('[openClearPanel]', err);
-            setClearError(err.response?.data?.message || err.message || 'Failed to fetch approved assessments');
-            setClearInfo({ type: 'error', message: 'Failed to load approved records' });
-        } finally {
-            setClearClassesLoading(false);
-        }
+            const msg = err.response?.data?.message || err.message || 'Failed to load approved records.';
+            setClearError(msg); setClearInfo({ type: 'error', message: msg });
+        } finally { setClearClassesLoading(false); }
     }, [termId, sessionId]);
 
     const closeClearPanel = useCallback(() => {
         if (clearLoading) return;
-        setShowClearPanel(false);
-        setClearClassId('');
-        setClearSubjectId('');
-        setClearError('');
-        setClearSuccess('');
-        setClearInfo(null);
-        setClearClasses([]);
-        setClearSubjects([]);
-        setClearProgress({ current: 0, total: 0, phase: '' });
-        approvedForClearRef.current = [];
+        setShowClearPanel(false); setClearClassId(''); setClearSubjectId(''); setClearError('');
+        setClearSuccess(''); setClearInfo(null); setClearClasses([]); setClearSubjects([]);
+        setClearProgress({ current: 0, total: 0, phase: '' }); setClearPreview(null);
+        setClearPreviewLoading(false); setClearExcludedStudents(new Set());
+        setClearConfirmAction(null); setClearPreviewAssessmentIds([]); setPreviewExpanded(true);
     }, [clearLoading]);
 
-    const handleClearClassChange = useCallback((e) => {
+    const handleClearClassChange = useCallback(async (e) => {
         const newClassId = e.target.value;
-        setClearClassId(newClassId);
-        setClearSubjectId('');
-        setClearError('');
-        setClearSuccess('');
-        setClearInfo(null);
-
+        setClearClassId(newClassId); setClearSubjectId(''); setClearError(''); setClearSuccess('');
+        setClearInfo(null); setClearPreview(null); setClearPreviewLoading(false);
+        setClearExcludedStudents(new Set()); setClearConfirmAction(null); setClearPreviewAssessmentIds([]);
         if (newClassId) {
-            // Filter approved assessments for this class and group by subject
-            const classRecords = approvedForClearRef.current.filter(a => {
-                const cId = a.classId?._id || a.classId;
-                return cId === newClassId;
-            });
-            const grouped = groupBySubject(classRecords);
-            setClearSubjects(grouped);
+            setClearSubjectsLoading(true);
+            try {
+                const response = await adminCAAPI.getSubjectsWithApproved(newClassId, { termId: termId || undefined, sessionId: sessionId || undefined });
+                if (response.success && Array.isArray(response.data)) {
+                    setClearSubjects(response.data);
+                    const totalRecs = response.data.reduce((s, g) => s + g.approvedRecords, 0);
+                    setClearInfo({ type: 'success', message: `${response.data.length} subject${response.data.length !== 1 ? 's' : ''} with ${totalRecs} approved record${totalRecs !== 1 ? 's' : ''}. Select "Clear All" to proceed.` });
+                } else { setClearSubjects([]); setClearInfo({ type: 'info', message: response.message || 'No approved subjects found for this class.' }); }
+            } catch (err) {
+                const msg = err.response?.data?.message || err.message || 'Failed to load subjects.';
+                setClearSubjects([]); setClearError(msg); setClearInfo({ type: 'error', message: msg });
+            } finally { setClearSubjectsLoading(false); }
+        } else setClearSubjects([]);
+    }, [termId, sessionId]);
 
-            if (grouped.length === 0) {
-                setClearInfo({ type: 'info', message: 'No approved subjects found for this class.' });
-            } else {
-                const totalRecs = grouped.reduce((s, g) => s + g.approvedRecords, 0);
-                setClearInfo({
-                    type: 'success',
-                    message: `${grouped.length} subject${grouped.length !== 1 ? 's' : ''} with ${totalRecs} approved record${totalRecs !== 1 ? 's' : ''}.`
-                });
-            }
-        } else {
-            setClearSubjects([]);
-        }
+    const loadPreview = useCallback(async (cId, sId) => {
+        setClearPreviewLoading(true); setClearPreview(null); setClearExcludedStudents(new Set());
+        setClearConfirmAction(null); setClearPreviewAssessmentIds([]);
+        try {
+            const response = await adminCAAPI.previewClearApproval({ classId: cId, subjectId: sId, termId: termId || undefined, sessionId: sessionId || undefined });
+            if (response.success && response.data) {
+                const { classInfo, subjectInfo, totalRecords, students } = response.data;
+                setClearPreviewAssessmentIds(students.map(s => s.assessmentId || s._id).filter(Boolean));
+                setClearPreview({ classInfo, subjectInfo, totalRecords, students: students.map(s => ({ studentId: s.studentId, name: s.name, admissionNumber: s.admissionNumber, totalScore: s.totalScore, grade: s.grade, assessmentId: s.assessmentId || s._id })) });
+                if (students.length === 0) setClearInfo({ type: 'info', message: 'No student records found.' }); else setClearInfo(null);
+            } else { setClearInfo({ type: 'error', message: response.message || 'Failed to load preview' }); setClearPreview(null); setClearPreviewAssessmentIds([]); }
+        } catch (err) {
+            const msg = err.response?.data?.message || err.message || 'Failed to load preview.';
+            setClearError(msg); setClearInfo({ type: 'error', message: msg }); setClearPreview(null); setClearPreviewAssessmentIds([]);
+        } finally { setClearPreviewLoading(false); }
+    }, [termId, sessionId]);
+
+    const handleClearSubjectChange = useCallback((e) => {
+        const newSubjectId = e.target.value;
+        setClearSubjectId(newSubjectId); setClearError(''); setClearSuccess(''); setClearInfo(null);
+        setClearPreview(null); setClearPreviewLoading(false); setClearExcludedStudents(new Set());
+        setClearConfirmAction(null); setClearPreviewAssessmentIds([]); setPreviewExpanded(true);
+        if (newSubjectId) loadPreview(clearClassId, newSubjectId); else setClearPreview(null);
+    }, [clearClassId, loadPreview]);
+
+    const toggleClearStudentExclusion = useCallback((studentId) => {
+        setClearExcludedStudents(prev => { const next = new Set(prev); if (next.has(studentId)) next.delete(studentId); else next.add(studentId); return next; });
     }, []);
 
-    const handleClearSingleSubject = useCallback(async () => {
-        setClearLoading(true);
-        setClearSuccess('');
-        setClearError('');
+    const toggleAllClearStudentsExclusion = useCallback(() => {
+        setClearExcludedStudents(prev => { if (!clearPreview) return new Set(); const allIds = clearPreview.students.map(s => s.studentId); if (prev.size === allIds.length) return new Set(); return new Set(allIds); });
+    }, [clearPreview]);
 
-        const subjectData = clearSubjects.find(s => s.subjectId === clearSubjectId);
-        if (!subjectData) { setClearLoading(false); return; }
+    const clearClearStudentExclusions = useCallback(() => setClearExcludedStudents(new Set()), []);
 
-        const ids = subjectData._records.map(a => a._id);
-        setClearProgress({ current: 0, total: ids.length, phase: `Clearing ${subjectData.subjectName}...` });
+    const getEffectiveClearCount = useCallback(() => {
+        if (!clearPreview) return 0;
+        return clearPreview.students.length - clearExcludedStudents.size;
+    }, [clearPreview, clearExcludedStudents]);
 
-        const { successCount, failCount } = await processInBatches(
-            ids,
-            (id) => adminCAAPI.unapprove(id).then(r => r.success),
-            5,
-            (current, total) => setClearProgress({ current, total, phase: `Clearing ${subjectData.subjectName}...` })
-        );
-
-        setClearProgress({ current: ids.length, total: ids.length, phase: 'Done' });
-
-        // Remove cleared records from ref
-        const clearedSet = new Set(subjectData._records.map(a => a._id));
-        approvedForClearRef.current = approvedForClearRef.current.filter(a => !clearedSet.has(a._id));
-
-        if (failCount === 0) {
-            setClearSuccess(`Cleared ${successCount} records for ${subjectData.subjectName}`);
-            fetchRef.current?.();
-            // Refresh subject list
-            setTimeout(() => {
-                const classRecords = approvedForClearRef.current.filter(a => {
-                    const cId = a.classId?._id || a.classId;
-                    return cId === clearClassId;
-                });
-                const grouped = groupBySubject(classRecords);
-                setClearSubjects(grouped);
-                setClearSubjectId('');
-                if (grouped.length === 0) {
-                    setClearInfo({ type: 'info', message: 'All subjects cleared for this class.' });
-                    // Also refresh class list
-                    const classGrouped = groupByClass(approvedForClearRef.current);
-                    setClearClasses(classGrouped);
-                    setClearClassId('');
-                } else {
-                    const totalRecs = grouped.reduce((s, g) => s + g.approvedRecords, 0);
-                    setClearInfo({ type: 'success', message: `${grouped.length} subject${grouped.length !== 1 ? 's' : ''} remaining with ${totalRecs} records.` });
-                }
-            }, 800);
-        } else {
-            setClearError(`Failed to clear ${failCount} record(s)`);
-            if (successCount > 0) setClearSuccess(`Cleared ${successCount} of ${ids.length}`);
-            fetchRef.current?.();
-        }
-
-        setClearLoading(false);
-        setTimeout(() => setClearProgress({ current: 0, total: 0, phase: '' }), 600);
-    }, [clearClassId, clearSubjectId, clearSubjects]);
-
-    const handleClearAllSubjects = useCallback(async () => {
-        setClearLoading(true);
-        setClearSuccess('');
-        setClearError('');
-
-        // Get all assessment IDs for this class
-        const classRecords = approvedForClearRef.current.filter(a => {
-            const cId = a.classId?._id || a.classId;
-            return cId === clearClassId;
-        });
-        const ids = classRecords.map(a => a._id);
-        const totalSubjects = clearSubjects.length;
-
-        if (ids.length === 0) { setClearLoading(false); return; }
-
-        setClearProgress({ current: 0, total: ids.length, phase: 'Clearing all subjects...' });
-
-        const { successCount, failCount } = await processInBatches(
-            ids,
-            (id) => adminCAAPI.unapprove(id).then(r => r.success),
-            5,
-            (current, total) => setClearProgress({ current, total, phase: `Clearing records... (${current}/${total})` })
-        );
-
-        setClearProgress({ current: ids.length, total: ids.length, phase: 'Done' });
-
-        // Remove all class records from ref
-        const clearedSet = new Set(classRecords.map(a => a._id));
-        approvedForClearRef.current = approvedForClearRef.current.filter(a => !clearedSet.has(a._id));
-
-        if (failCount === 0) {
-            setClearSuccess(`Cleared ${successCount} records across ${totalSubjects} subjects`);
-            fetchRef.current?.();
-            setTimeout(() => {
-                const classGrouped = groupByClass(approvedForClearRef.current);
-                setClearClasses(classGrouped);
-                setClearClassId('');
-                setClearSubjects([]);
-                setClearSubjectId('');
-                if (classGrouped.length === 0) {
-                    setClearInfo({ type: 'info', message: 'All approved records have been cleared.' });
-                } else {
-                    const remaining = approvedForClearRef.current.length;
-                    setClearInfo({ type: 'success', message: `${classGrouped.length} class${classGrouped.length !== 1 ? 'es' : ''} with ${remaining} records remaining.` });
-                }
-            }, 800);
-        } else {
-            setClearError(`Failed to clear ${failCount} record(s)`);
-            if (successCount > 0) setClearSuccess(`Cleared ${successCount} of ${ids.length}`);
-            fetchRef.current?.();
-        }
-
-        setClearLoading(false);
-        setTimeout(() => setClearProgress({ current: 0, total: 0, phase: '' }), 600);
-    }, [clearClassId, clearSubjects]);
+    const handleConfirmClear = useCallback(async () => {
+        if (!clearClassId) return;
+        setClearLoading(true); setClearSuccess(''); setClearError('');
+        setClearProgress({ current: 0, total: 1, phase: 'Sending request...' });
+        try {
+            const hasExclusions = clearExcludedStudents.size > 0 && clearExcludedStudents.size < (clearPreview?.students.length || 0);
+            let response;
+            if (clearSubjectId && clearPreviewAssessmentIds.length > 0 && hasExclusions) {
+                const excludedAssessmentIds = clearPreview.students.filter(s => clearExcludedStudents.has(s.studentId)).map(s => s.assessmentId).filter(Boolean);
+                const idsToClear = clearPreviewAssessmentIds.filter(id => !excludedAssessmentIds.includes(id));
+                if (idsToClear.length === 0) { setClearLoading(false); setClearInfo({ type: 'info', message: 'No records to clear after exclusions.' }); setClearProgress({ current: 0, total: 0, phase: '' }); return; }
+                response = await adminCAAPI.clearApprovalByIds(idsToClear, 'draft');
+            } else if (clearSubjectId) {
+                response = await adminCAAPI.clearApprovalStatus({ classId: clearClassId, subjectId: clearSubjectId || undefined, termId: termId || undefined, sessionId: sessionId || undefined, resetTo: 'draft' });
+            } else {
+                response = await adminCAAPI.clearApprovalStatus({ classId: clearClassId, termId: termId || undefined, sessionId: sessionId || undefined, resetTo: 'draft' });
+            }
+            setClearProgress({ current: 1, total: 1, phase: 'Done' });
+            if (response.success) {
+                const result = response.data?.result || response.data;
+                const recordsAffected = result?.recordsAffected || result?.modified || result?.nowInSubmittedStatus || getEffectiveClearCount();
+                setClearSuccess(clearSubjectId ? `Cleared ${recordsAffected} record${recordsAffected !== 1 ? 's' : ''} for ${result?.subjectInfo?.name || clearSubjects.find(s => s.subjectId === clearSubjectId)?.subjectName || 'subject'}` : `Cleared ${recordsAffected} record${recordsAffected !== 1 ? 's' : ''} across ${clearSubjects.length} subject${clearSubjects.length !== 1 ? 's' : ''}`);
+                fetchRef.current?.();
+                setTimeout(async () => {
+                    try {
+                        if (clearClassId) { const subRes = await adminCAAPI.getSubjectsWithApproved(clearClassId, { termId: termId || undefined, sessionId: sessionId || undefined }); if (subRes.success && Array.isArray(subRes.data)) setClearSubjects(subRes.data); }
+                        if (!clearSubjectId && clearClassId) { const classRes = await adminCAAPI.getClassesWithApproved({ termId: termId || undefined, sessionId: sessionId || undefined }); if (classRes.success && Array.isArray(classRes.data)) { setClearClasses(classRes.data); if (classRes.data.length === 0) { setClearInfo({ type: 'info', message: 'All approved records cleared.' }); setClearClassId(''); setClearSubjects([]); } else { const remaining = classRes.data.reduce((sum, c) => sum + c.approvedRecords, 0); setClearInfo({ type: 'success', message: `${classRes.data.length} class${classRes.data.length !== 1 ? 'es' : ''} remaining with ${remaining} records.` }); } } }
+                        if (clearSubjectId) { setClearPreview(null); setClearPreviewAssessmentIds([]); setClearExcludedStudents(new Set()); setClearSubjectId(''); }
+                    } catch (err) { console.error('[refreshClearPanel]', err); }
+                }, 500);
+            } else setClearError(response.message || 'Failed to clear approval status');
+        } catch (err) { setClearError(err.response?.data?.message || err.message || 'Failed to clear approval status.'); }
+        finally { setClearLoading(false); setTimeout(() => setClearProgress({ current: 0, total: 0, phase: '' }), 800); }
+    }, [clearClassId, clearSubjectId, clearSubjects, clearPreview, clearExcludedStudents, clearPreviewAssessmentIds, termId, sessionId, getEffectiveClearCount]);
 
     const statusTabs = [
         { value: 'submitted', label: 'Submitted' },
@@ -649,6 +679,43 @@ const ApproveAssessments = () => {
     ];
 
     const bulkLabel = bulkLoading && bulkProgress.total > 0 ? `${bulkProgress.current}/${bulkProgress.total}` : null;
+
+    const getActiveFiltersDescription = useCallback(() => {
+        const parts = [];
+        if (termId) { const t = terms.find(t => t._id === termId); if (t) parts.push(t.name); }
+        if (sessionId) { const s = sessions.find(s => s._id === sessionId); if (s) parts.push(s.name); }
+        if (classId) { const c = classes.find(c => c._id === classId); if (c) parts.push(c.name + (c.section ? ' ' + c.section : '')); }
+        if (subjectId) { const s = subjects.find(s => s._id === subjectId); if (s) parts.push(s.name); }
+        return parts.length > 0 ? parts.join(' → ') : 'All';
+    }, [termId, sessionId, classId, subjectId, terms, sessions, classes, subjects]);
+
+    // Generate visible page numbers for pagination
+    const visiblePages = useMemo(() => {
+        const pages = [];
+        const maxVisible = 7;
+        if (totalPages <= maxVisible) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            let start = Math.max(2, currentPage - 2);
+            let end = Math.min(totalPages - 1, currentPage + 2);
+            if (currentPage <= 3) { start = 2; end = 5; }
+            if (currentPage >= totalPages - 2) { start = totalPages - 4; end = totalPages - 1; }
+            if (start > 2) pages.push('...');
+            for (let i = start; i <= end; i++) pages.push(i);
+            if (end < totalPages - 1) pages.push('...');
+            pages.push(totalPages);
+        }
+        return pages;
+    }, [currentPage, totalPages]);
+
+    // Show range text like "Showing 1-20 of 245"
+    const paginationRangeText = useMemo(() => {
+        if (totalResults === 0) return 'No results';
+        const from = (currentPage - 1) * pageSize + 1;
+        const to = Math.min(currentPage * pageSize, totalResults);
+        return `Showing ${from}–${to} of ${totalResults}`;
+    }, [currentPage, pageSize, totalResults]);
 
     return (
         <div className="aa-root">
@@ -665,11 +732,13 @@ const ApproveAssessments = () => {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                     color: var(--text); -webkit-font-smoothing: antialiased; background: var(--bg); min-height: 100vh;
                 }
-                .aa-toasts { position: fixed; top: 16px; right: 16px; z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; max-width: 380px; }
-                .aa-toast { pointer-events: auto; display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.84rem; font-weight: 500; box-shadow: var(--shadow-lg); animation: aaToastIn 0.3s cubic-bezier(0.16,1,0.3,1); }
+                .aa-toasts { position: fixed; top: 16px; right: 16px; z-index: 200; display: flex; flex-direction: column; gap: 8px; pointer-events: none; max-width: 420px; }
+                .aa-toast { pointer-events: auto; display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.84rem; font-weight: 500; box-shadow: var(--shadow-lg); animation: aaToastIn 0.3s cubic-bezier(0.16,1,0.3,1); line-height: 1.4; }
                 .aa-toast--success { background: var(--success-light); color: #065f46; border: 1px solid #a7f3d0; }
                 .aa-toast--error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
-                .aa-toast svg { flex-shrink: 0; }
+                .aa-toast svg { flex-shrink: 0; margin-top: 1px; }
+                .aa-toast-content { flex: 1; }
+                .aa-toast-detail { display: block; font-size: 0.78rem; opacity: 0.8; margin-top: 2px; }
                 @keyframes aaToastIn { from { opacity: 0; transform: translateX(20px) scale(0.95); } to { opacity: 1; transform: translateX(0) scale(1); } }
                 .aa-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 24px; position: sticky; top: 0; z-index: 30; }
                 .aa-header-content { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
@@ -733,17 +802,28 @@ const ApproveAssessments = () => {
                 .aa-select option { color: var(--text); background: var(--surface); }
                 .aa-filter-hint { display: flex; align-items: center; gap: 6px; margin-top: 10px; font-size: 0.78rem; color: var(--text-muted); }
                 .aa-filter-hint svg { flex-shrink: 0; }
-                .aa-bulk-confirm { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 24px; background: var(--warning-light); border-bottom: 1px solid #fde68a; animation: aaSlideDown 0.25s ease; flex-wrap: wrap; }
+                .aa-filter-options-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; background: var(--primary-light); color: var(--primary); font-size: 0.68rem; font-weight: 600; text-transform: none; letter-spacing: 0; }
+                .aa-bulk-confirm { display: flex; flex-direction: column; gap: 10px; padding: 14px 24px; background: var(--warning-light); border-bottom: 1px solid #fde68a; animation: aaSlideDown 0.25s ease; }
                 .aa-bulk-confirm--unapprove { background: #fef2f2; border-bottom-color: #fecaca; }
                 .aa-bulk-confirm-inner { display: flex; align-items: center; gap: 10px; font-size: 0.88rem; color: #92400e; }
                 .aa-bulk-confirm--unapprove .aa-bulk-confirm-inner { color: #991b1b; }
-                .aa-bulk-confirm-icon { flex-shrink: 0; }
                 .aa-bulk-confirm-note { display: block; font-size: 0.78rem; color: #a16207; font-weight: 400; margin-top: 2px; }
                 .aa-bulk-confirm--unapprove .aa-bulk-confirm-note { color: #b91c1c; }
+                .aa-bulk-confirm-scope { display: flex; align-items: center; gap: 6px; font-size: 0.76rem; color: #78716c; font-weight: 500; }
+                .aa-bulk-confirm-scope-code { padding: 2px 8px; background: rgba(0,0,0,0.05); border-radius: 4px; font-family: 'SF Mono', Monaco, monospace; font-size: 0.72rem; color: #57534e; }
+                .aa-bulk-confirm-server-note { display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: #059669; font-weight: 500; }
+                .aa-bulk-confirm-server-note svg { flex-shrink: 0; }
+                .aa-bulk-confirm-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
                 .aa-bulk-confirm-actions { display: flex; gap: 8px; }
                 .aa-results-info { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; font-size: 0.82rem; color: var(--text-muted); }
                 .aa-results-count strong { color: var(--text-secondary); font-weight: 700; }
                 .aa-results-status { font-weight: 600; }
+                .aa-approved-summary { padding: 10px 24px; background: var(--success-light); border-bottom: 1px solid #a7f3d0; animation: aaSlideDown 0.25s ease; }
+                .aa-approved-summary-notice { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; font-weight: 600; color: #065f46; margin-bottom: 6px; }
+                .aa-approved-summary-notice svg { flex-shrink: 0; }
+                .aa-approved-summary-terms { display: flex; flex-wrap: wrap; gap: 6px; }
+                .aa-approved-term-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; background: var(--surface); border: 1px solid #a7f3d0; font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); }
+                .aa-approved-term-chip-count { font-weight: 700; color: var(--primary); }
                 .aa-table-loading { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px; padding: 80px 24px; color: var(--text-muted); font-size: 0.88rem; }
                 .aa-inline-loader { display: flex; gap: 6px; }
                 .aa-loader-ring { width: 10px; height: 10px; border-radius: 50%; background: var(--primary); opacity: 0.3; animation: aaBounce 1.2s ease-in-out infinite; }
@@ -757,6 +837,7 @@ const ApproveAssessments = () => {
                 .aa-table-section { background: var(--surface); min-height: 200px; }
                 .aa-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
                 .aa-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 920px; }
+                .aa-table--with-terms { min-width: 1120px; }
                 .aa-table thead { background: #f8fafc; position: sticky; top: 0; z-index: 5; }
                 .aa-table th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
                 .aa-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -786,6 +867,8 @@ const ApproveAssessments = () => {
                 .aa-tag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 6px; font-size: 0.78rem; font-weight: 600; white-space: nowrap; }
                 .aa-tag--class { background: #f1f5f9; color: var(--text-secondary); }
                 .aa-tag--class svg { color: var(--text-muted); }
+                .aa-tag--term { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+                .aa-tag--session { background: #faf5ff; color: #7c3aed; border: 1px solid #ddd6fe; }
                 .aa-subject-name { font-size: 0.85rem; color: var(--text-secondary); font-weight: 500; }
                 .aa-approve-btn { display: inline-flex; align-items: center; gap: 5px; padding: 6px 14px; border-radius: 6px; border: 1px solid #a7f3d0; background: #ecfdf5; color: #065f46; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all var(--transition); }
                 .aa-approve-btn:hover { background: #d1fae5; transform: translateY(-1px); box-shadow: var(--shadow-sm); }
@@ -816,9 +899,32 @@ const ApproveAssessments = () => {
                 .aa-grade-badge--card { margin-left: auto; align-self: center; }
                 .aa-card-action { display: flex; gap: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
                 .aa-card-action .aa-approve-btn, .aa-card-action .aa-unapprove-btn { flex: 1; justify-content: center; padding: 9px 12px; }
+                .aa-card-term-session { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; font-size: 0.76rem; color: var(--text-muted); }
+                .aa-card-term-session-sep { width: 1px; height: 12px; background: var(--border); }
                 @keyframes aaSlideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+                /* ===== PAGINATION STYLES ===== */
+                .aa-pagination-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 24px; background: var(--surface); border-top: 1px solid var(--border); gap: 16px; flex-wrap: wrap; }
+                .aa-pagination-left { display: flex; align-items: center; gap: 12px; }
+                .aa-pagination-range { font-size: 0.82rem; color: var(--text-muted); font-weight: 500; white-space: nowrap; }
+                .aa-pagination-range strong { color: var(--text-secondary); font-weight: 700; }
+                .aa-page-size-select { display: flex; align-items: center; gap: 6px; }
+                .aa-page-size-select label { font-size: 0.76rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+                .aa-page-size-select .aa-select { width: auto; min-width: 72px; padding: 6px 30px 6px 10px; font-size: 0.82rem; }
+                .aa-page-size-select .aa-select-wrap svg { right: 8px; }
+                .aa-pagination-controls { display: flex; align-items: center; gap: 4px; }
+                .aa-page-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 34px; height: 34px; padding: 0 8px; border-radius: 6px; border: 1px solid transparent; background: none; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; transition: all var(--transition); white-space: nowrap; }
+                .aa-page-btn:hover:not(:disabled):not(.aa-page-btn--active) { background: #f1f5f9; border-color: var(--border); }
+                .aa-page-btn:active:not(:disabled) { transform: scale(0.95); }
+                .aa-page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+                .aa-page-btn--active { background: var(--primary); color: #fff; border-color: var(--primary); }
+                .aa-page-btn--active:hover { background: var(--primary-hover); }
+                .aa-page-btn--ellipsis { border: none; color: var(--text-muted); cursor: default; min-width: 28px; }
+                .aa-page-btn--ellipsis:hover { background: none; border-color: transparent; }
+                .aa-page-btn svg { width: 14px; height: 14px; }
+
                 .aa-clear-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 20px; animation: aaOverlayIn 0.2s ease; }
-                .aa-clear-modal { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 90%; max-width: 560px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; animation: aaModalIn 0.3s cubic-bezier(0.16,1,0.3,1); }
+                .aa-clear-modal { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-lg); width: 90%; max-width: 600px; max-height: 85vh; overflow-y: auto; display: flex; flex-direction: column; animation: aaModalIn 0.3s cubic-bezier(0.16,1,0.3,1); }
                 @keyframes aaOverlayIn { from { opacity: 0; } to { opacity: 1; } }
                 @keyframes aaModalIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
                 .aa-clear-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border); }
@@ -854,7 +960,6 @@ const ApproveAssessments = () => {
                 .aa-info-banner--error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
                 .aa-info-banner--info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
                 .aa-info-banner-text { font-size: 0.82rem; font-weight: 500; flex: 1; }
-                .aa-info-banner-close { margin-left: auto; cursor: pointer; padding: 2px; color: inherit; background: none; border: none; }
                 .aa-clear-subjects-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
                 .aa-clear-subject-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: #f8fafc; border: 1px solid var(--border); border-radius: var(--radius-sm); }
                 .aa-clear-subject-name { font-size: 0.88rem; font-weight: 600; color: var(--text); }
@@ -869,6 +974,31 @@ const ApproveAssessments = () => {
                 .aa-clear-progress-count { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); }
                 .aa-progress-bar { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
                 .aa-progress-fill { height: 100%; background: var(--danger); border-radius: 4px; transition: width 0.4s ease; }
+                .aa-preview-section { border: 1px solid var(--border); border-radius: var(--radius-sm); margin-top: 16px; overflow: hidden; }
+                .aa-preview-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid var(--border); cursor: pointer; }
+                .aa-preview-header:hover { background: #f1f5f9; }
+                .aa-preview-header-left { display: flex; align-items: center; gap: 8px; }
+                .aa-preview-header-title { font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+                .aa-preview-header-count { font-size: 0.78rem; font-weight: 700; color: var(--primary); background: var(--primary-light); padding: 3px 10px; border-radius: 20px; }
+                .aa-preview-chevron { width: 16px; height: 16px; color: var(--text-muted); transition: transform 0.2s ease; flex-shrink: 0; }
+                .aa-preview-chevron--open { transform: rotate(180deg); }
+                .aa-preview-list { max-height: 200px; overflow-y: auto; }
+                .aa-preview-list--collapsed { max-height: 0; overflow: hidden; }
+                .aa-preview-row { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid var(--border); transition: background 0.15s ease; }
+                .aa-preview-row:last-child { border-bottom: none; }
+                .aa-preview-row:hover { background: #f1f5f9; }
+                .aa-preview-row-excluded { opacity: 0.4; }
+                .aa-preview-row-excluded .aa-preview-name { text-decoration: line-through; }
+                .aa-preview-cb { flex-shrink: 0; }
+                .aa-preview-name { flex: 1; min-width: 0; font-size: 0.88rem; color: var(--text); font-weight: 500; }
+                .aa-preview-adm { font-size: 0.78rem; color: var(--text-muted); font-weight: 500; margin-left: auto; }
+                .aa-preview-score { font-size: 0.88rem; font-weight: 700; color: var(--text-secondary); font-variant-numeric: tabular-nums; min-width: 40px; text-align: center; }
+                .aa-preview-grade { font-size: 0.78rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; text-align: center; }
+                .aa-preview-exclude-btn { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; transition: all var(--transition); color: var(--text-muted); flex-shrink: 0; }
+                .aa-preview-exclude-btn:hover { border-color: #ef4444; color: #ef4444; background: #fef2f2; }
+                .aa-preview-exclude-btn--excluded { background: #fef2f2; border-color: #ef4444; color: #ef4444; }
+                .aa-preview-exclude-btn svg { width: 14px; height: 14px; }
+                .aa-preview-loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 32px 16px; color: var(--text-muted); font-size: 0.84rem; }
                 @media (min-width: 768px) {
                     .aa-cards { display: none !important; }
                     .aa-table-section { display: block !important; }
@@ -890,13 +1020,26 @@ const ApproveAssessments = () => {
                     .aa-exclusion-bar-actions { width: 100%; }
                     .aa-exclusion-clear { flex: 1; justify-content: center; }
                     .aa-bulk-confirm { padding: 12px 16px; }
+                    .aa-bulk-confirm-row { flex-direction: column; align-items: stretch; }
                     .aa-bulk-confirm-actions { width: 100%; }
                     .aa-bulk-confirm-actions .aa-btn-sm { flex: 1; justify-content: center; }
+                    .aa-approved-summary { padding: 10px 16px; }
+                    .aa-approved-summary-terms { gap: 4px; }
+                    .aa-approved-term-chip { font-size: 0.72rem; padding: 3px 8px; }
                     .aa-clear-modal { max-width: 95%; max-height: 85vh; }
                     .aa-clear-header { padding: 16px 20px; }
                     .aa-clear-body { padding: 16px 20px; }
+                    .aa-clear-steps { gap: 14px; }
                     .aa-clear-confirm-actions { flex-direction: column; }
                     .aa-clear-confirm-actions .aa-btn-sm { width: 100%; justify-content: center; }
+                    .aa-preview-section { margin-top: 12px; }
+                    .aa-preview-header { padding: 10px 16px; }
+                    .aa-preview-list { max-height: 180px; }
+                    .aa-bulk-confirm-scope { flex-wrap: wrap; }
+                    .aa-pagination-bar { padding: 10px 16px; flex-direction: column; align-items: stretch; gap: 10px; }
+                    .aa-pagination-left { flex-direction: column; align-items: stretch; gap: 8px; }
+                    .aa-pagination-controls { justify-content: center; flex-wrap: wrap; }
+                    .aa-results-info { padding: 10px 16px; }
                 }
             `}</style>
 
@@ -904,20 +1047,27 @@ const ApproveAssessments = () => {
             <div className="aa-toasts">
                 {error && (
                     <div className="aa-toast aa-toast--error" key={`err-${Date.now()}`}>
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                        <span>{error}</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+                        <span className="aa-toast-content">{error}</span>
                     </div>
                 )}
                 {success && (
                     <div className="aa-toast aa-toast--success" key={`suc-${Date.now()}`}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        <span>{success}</span>
+                        <span className="aa-toast-content">
+                            {success}
+                            {bulkApproveResult && (
+                                <span className="aa-toast-detail">
+                                    {bulkApproveResult.excluded > 0 ? `${bulkApproveResult.count} approved, ${bulkApproveResult.excluded} excluded` : `${bulkApproveResult.count} total records approved`}
+                                </span>
+                            )}
+                        </span>
                     </div>
                 )}
                 {clearSuccess && (
                     <div className="aa-toast aa-toast--success" key={`clr-${Date.now()}`}>
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                        <span>{clearSuccess}</span>
+                        <span className="aa-toast-content">{clearSuccess}</span>
                     </div>
                 )}
             </div>
@@ -927,9 +1077,7 @@ const ApproveAssessments = () => {
                 <div className="aa-header-content">
                     <div className="aa-header-text">
                         <div className="aa-header-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>
-                            </svg>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 10-10V5l-8-3-8 3v7c0 6 8 10 10"/><polyline points="9 12 11 14 10"/></svg>
                         </div>
                         <div>
                             <h1 className="aa-title">Approve Assessments</h1>
@@ -940,7 +1088,7 @@ const ApproveAssessments = () => {
                         {effectivePendingCount > 0 && (
                             <button className="aa-btn aa-btn-success" onClick={() => setConfirmBulk(true)} disabled={bulkLoading}>
                                 {bulkLoading ? (<><div className="aa-btn-spinner" />{bulkLabel || 'Processing...'}</>) : (
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                                 )}
                                 {!bulkLoading && `Approve All (${effectivePendingCount})`}
                             </button>
@@ -954,25 +1102,21 @@ const ApproveAssessments = () => {
                             </button>
                         )}
                         <button className="aa-btn aa-btn-danger" onClick={openClearPanel} disabled={loading}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
-                            </svg>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                             Clear Approval
                         </button>
                     </div>
                 </div>
             </header>
 
-            {/* Clear Approval Modal */}
+            {/* Clear Approval Modal — unchanged from original */}
             {showClearPanel && (
                 <div className="aa-clear-overlay" onClick={closeClearPanel}>
                     <div className="aa-clear-modal" onClick={(e) => e.stopPropagation()}>
                         <div className="aa-clear-header">
                             <div className="aa-clear-header-left">
                                 <div className="aa-clear-header-icon">
-                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>
-                                    </svg>
+                                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                                 </div>
                                 <div>
                                     <h2 className="aa-clear-title">Clear Approval Status</h2>
@@ -983,171 +1127,137 @@ const ApproveAssessments = () => {
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                             </button>
                         </div>
-
                         <div className="aa-clear-body">
-                            {/* Context */}
                             <div className="aa-clear-context">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)', flexShrink: 0 }}>
-                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-                                </svg>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--primary)', flexShrink: 0 }}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="10" x2="16" y2="10"/></svg>
                                 <span className="aa-clear-context-label">Scope:</span>
-                                <span className="aa-clear-context-value">{activeTermName || 'All Terms'}</span>
-                                {activeSessionName && (<><span className="aa-clear-context-sep" /><span className="aa-clear-context-value">{activeSessionName}</span></>)}
+                                <span className="aa-clear-context-value">{activeTermName || 'All Terms'}{activeSessionName && (<><span className="aa-clear-context-sep" /><span className="aa-clear-context-value">{activeSessionName}</span></>)}</span>
                             </div>
-
-                            <p className="aa-clear-desc">
-                                <strong>This will unapprove assessments</strong> so teachers can modify scores. Select a class, then choose to clear a specific subject or all subjects at once.
-                            </p>
-
-                            {/* Banners */}
+                            <p className="aa-clear-desc"><strong>This will unapprove assessments</strong> so teachers can modify scores. Select a class, then choose to clear a specific subject or all subjects at once.</p>
                             {clearInfo && (
-                                <div className={`aa-info-banner aa-info-banner--${clearInfo.type === 'empty' ? 'info' : clearInfo.type}`}>
+                                <div className={`aa-info-banner aa-info-banner--${clearInfo.type === 'error' ? 'error' : clearInfo.type === 'info' ? 'info' : 'success'}`}>
                                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        {clearInfo.type === 'error' ? (
-                                            <React.Fragment><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></React.Fragment>
-                                        ) : clearInfo.type === 'info' ? (
-                                            <React.Fragment><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></React.Fragment>
-                                        ) : (
-                                            <React.Fragment><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></React.Fragment>
-                                        )}
+                                        {clearInfo.type === 'error' ? (<><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></>) : clearInfo.type === 'info' ? (<><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12.01" y2="8"/></>) : (<><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></>)}
                                     </svg>
                                     <span className="aa-info-banner-text">{clearInfo.message}</span>
-                                    {clearInfo.type !== 'error' && (
-                                        <button className="aa-info-banner-close" onClick={() => setClearInfo(null)}>
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                                        </button>
-                                    )}
                                 </div>
                             )}
-
                             {clearError && (
                                 <div className="aa-info-banner aa-info-banner--error">
-                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
                                     <span className="aa-info-banner-text">{clearError}</span>
                                 </div>
                             )}
-
                             <div className="aa-clear-steps">
-                                {/* Step 1: Class */}
                                 <div className="aa-clear-step">
                                     <div className="aa-clear-step-number">1</div>
                                     <div className="aa-clear-step-content">
                                         <label className="aa-clear-select-label">Select Class</label>
                                         <div className="aa-select-wrap--clear">
-                                            <select
-                                                className="aa-select aa-select--clear"
-                                                value={clearClassId}
-                                                onChange={handleClearClassChange}
-                                                disabled={clearClassesLoading || clearLoading || clearClasses.length === 0}
-                                            >
+                                            <select className="aa-select aa-select--clear" value={clearClassId} onChange={handleClearClassChange} disabled={clearClassesLoading || clearLoading || clearClasses.length === 0}>
                                                 <option value="">{clearClassesLoading ? 'Loading...' : '-- Select a class --'}</option>
-                                                {clearClasses.map(c => (
-                                                    <option key={c.classId} value={c.classId}>
-                                                        {c.className} — {c.approvedRecords} rec, {c.uniqueSubjects} subj
-                                                    </option>
-                                                ))}
+                                                {clearClasses.map(c => (<option key={c.classId} value={c.classId}>{c.className} — {c.approvedRecords} rec, {c.uniqueSubjects} subj</option>))}
                                             </select>
                                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                                         </div>
                                     </div>
                                 </div>
-
-                                {/* Step 2: Subject (optional) */}
                                 {clearClassId && (
                                     <div className="aa-clear-step">
                                         <div className="aa-clear-step-number">2</div>
                                         <div className="aa-clear-step-content">
                                             <label className="aa-clear-select-label">Select Subject (Optional)</label>
                                             <div className="aa-select-wrap--clear">
-                                                <select
-                                                    className="aa-select aa-select--clear"
-                                                    value={clearSubjectId}
-                                                    onChange={(e) => setClearSubjectId(e.target.value)}
-                                                    disabled={clearLoading || clearSubjects.length === 0}
-                                                >
+                                                <select className="aa-select aa-select--clear" value={clearSubjectId} onChange={handleClearSubjectChange} disabled={clearLoading || clearSubjects.length === 0}>
                                                     <option value="">-- Clear all subjects in class --</option>
-                                                    {clearSubjects.map(s => (
-                                                        <option key={s.subjectId} value={s.subjectId}>
-                                                            {s.subjectName} — {s.approvedRecords} records
-                                                        </option>
-                                                    ))}
+                                                    {clearSubjects.map(s => (<option key={s.subjectId} value={s.subjectId}>{s.subjectName} — {s.approvedRecords} records</option>))}
                                                 </select>
                                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                                             </div>
                                         </div>
                                     </div>
                                 )}
-
-                                {/* Subject preview list */}
-                                {clearClassId && !clearSubjectId && clearSubjects.length > 0 && !clearLoading && (
-                                    <div className="aa-clear-subjects-list">
-                                        {clearSubjects.map(s => (
-                                            <div key={s.subjectId} className="aa-clear-subject-item">
-                                                <span className="aa-clear-subject-name">{s.subjectName}</span>
-                                                <span className="aa-clear-subject-count">{s.approvedRecords} records</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Progress */}
-                                {clearProgress.total > 0 && (
-                                    <div className="aa-clear-progress">
-                                        <div className="aa-clear-progress-header">
-                                            <span className="aa-clear-progress-phase">{clearProgress.phase}</span>
-                                            <span className="aa-clear-progress-count">{clearProgress.current}/{clearProgress.total}</span>
-                                        </div>
-                                        <div className="aa-progress-bar">
-                                            <div className="aa-progress-fill" style={{ width: `${(clearProgress.current / clearProgress.total) * 100}%` }}></div>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Confirm: Single Subject */}
-                                {clearClassId && clearSubjectId && (
+                                {!clearSubjectId && clearClassId && clearSubjects.length > 0 && !clearPreviewLoading && !clearPreview && !clearLoading && (
                                     <div className="aa-clear-confirm-bar">
                                         <div className="aa-clear-confirm-inner">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                                            </svg>
-                                            <span>Unapprove <strong>{clearSubjects.find(s => s.subjectId === clearSubjectId)?.approvedRecords || 0} records</strong> for {clearSubjects.find(s => s.subjectId === clearSubjectId)?.subjectName}?</span>
+                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 1-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                            <span>Clear all approved records for <strong>{clearClasses.find(c => c.classId === clearClassId)?.className || 'this class'}</strong>?</span>
                                         </div>
                                         <div className="aa-clear-confirm-detail">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                                            Records will revert to submitted status
-                                        </div>
-                                        <div className="aa-clear-confirm-actions">
-                                            <button className="aa-btn aa-btn-outline-secondary aa-btn-sm" onClick={() => setClearSubjectId('')} disabled={clearLoading}>Cancel</button>
-                                            <button className="aa-btn aa-btn-danger aa-btn-sm" onClick={handleClearSingleSubject} disabled={clearLoading}>
-                                                {clearLoading ? (<><div className="aa-btn-spinner" />Clearing...</>) : (
-                                                    <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Clear This Subject</>
-                                                )}
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Confirm: All Subjects */}
-                                {clearClassId && !clearSubjectId && clearSubjects.length > 0 && (
-                                    <div className="aa-clear-confirm-bar">
-                                        <div className="aa-clear-confirm-inner">
-                                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                                                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
-                                            </svg>
-                                            <span>Unapprove <strong>{clearSubjects.reduce((s, g) => s + g.approvedRecords, 0)} records</strong> across {clearSubjects.length} subjects?</span>
-                                        </div>
-                                        <div className="aa-clear-confirm-detail">
-                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                                            {clearClasses.find(c => c.classId === clearClassId)?.className} — all subjects will be processed
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="16" y2="12"/></svg>
+                                            {clearSubjects.length} subject{clearSubjects.length !== 1 ? 's' : ''} will be affected — records revert to draft
                                         </div>
                                         <div className="aa-clear-confirm-actions">
                                             <button className="aa-btn aa-btn-outline-secondary aa-btn-sm" onClick={() => setClearClassId('')} disabled={clearLoading}>Cancel</button>
-                                            <button className="aa-btn aa-btn-danger aa-btn-sm" onClick={handleClearAllSubjects} disabled={clearLoading}>
-                                                {clearLoading ? (<><div className="aa-btn-spinner" />Clearing...</>) : (
-                                                    <><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Clear All {clearSubjects.length} Subjects</>
-                                                )}
+                                            <button className="aa-btn aa-btn-danger aa-btn-sm" onClick={handleConfirmClear} disabled={clearLoading}>
+                                                {clearLoading ? (<><div className="aa-btn-spinner" />Clearing...</>) : (<><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Clear All Subjects</>)}
                                             </button>
                                         </div>
+                                    </div>
+                                )}
+                                {clearSubjectId && clearPreviewLoading && (
+                                    <div className="aa-preview-loading"><div className="aa-btn-spinner aa-btn-spinner--dark" /><span>Loading preview...</span></div>
+                                )}
+                                {clearSubjectId && clearPreview && !clearPreviewLoading && (
+                                    <div className="aa-preview-section">
+                                        <div className="aa-preview-header" onClick={() => setPreviewExpanded(prev => !prev)}>
+                                            <div className="aa-preview-header-left">
+                                                <span className="aa-preview-header-title">Preview Affected Students</span>
+                                                <span className="aa-preview-header-count">{getEffectiveClearCount()} student{getEffectiveClearCount() !== 1 ? 's' : ''}</span>
+                                            </div>
+                                            <svg className={`aa-preview-chevron ${previewExpanded ? 'aa-preview-chevron--open' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                        </div>
+                                        <div className={`aa-preview-list ${previewExpanded ? '' : 'aa-preview-list--collapsed'}`}>
+                                            {clearPreview.students.map((student) => (
+                                                <div key={student.studentId} className={`aa-preview-row ${clearExcludedStudents.has(student.studentId) ? 'aa-preview-row-excluded' : ''}`}>
+                                                    <div className="aa-preview-cb"><ExcludeCheckbox checked={clearExcludedStudents.has(student.studentId)} onChange={() => toggleClearStudentExclusion(student.studentId)} /></div>
+                                                    <span className="aa-preview-name">{student.name}</span>
+                                                    <span className="aa-preview-adm">{student.admissionNumber}</span>
+                                                    <span className="aa-preview-score">{student.totalScore}</span>
+                                                    <span className="aa-preview-grade" style={{ backgroundColor: getGradeBg(student.grade), color: getGradeColor(student.grade) }}>{student.grade}</span>
+                                                    <button className={`aa-preview-exclude-btn ${clearExcludedStudents.has(student.studentId) ? 'aa-preview-exclude-btn--excluded' : ''}`} onClick={() => toggleClearStudentExclusion(student.studentId)} title={clearExcludedStudents.has(student.studentId) ? 'Include' : 'Exclude'}>
+                                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            {clearExcludedStudents.has(student.studentId) ? (<><line x1="5" y1="12" x2="19" y2="12"/><line x1="12" y1="5" x2="12" y2="19"/></>) : (<line x1="12" y1="5" x2="12" y2="19"/>)}
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {clearExcludedStudents.size > 0 && (
+                                            <div className="aa-exclusion-bar" style={{ borderBottom: '1px solid #fecaca' }}>
+                                                <div className="aa-exclusion-bar-inner">
+                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                                                    <span><span className="aa-exclusion-bar-count">{clearExcludedStudents.size}</span> student{clearExcludedStudents.size !== 1 ? 's' : ''} will not be cleared</span>
+                                                </div>
+                                                <div className="aa-exclusion-bar-actions">
+                                                    <button className="aa-exclusion-clear" onClick={clearClearStudentExclusions}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/></svg>Include All</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {clearPreview && getEffectiveClearCount() > 0 && !clearLoading && (
+                                            <div className="aa-clear-confirm-bar">
+                                                <div className="aa-clear-confirm-inner">
+                                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><path d="M10.29 3.86L1.82 18a2 2 0 0 1-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                                    <span>Clear <strong>{getEffectiveClearCount()}</strong> record{getEffectiveClearCount() !== 1 ? 's' : ''}?</span>
+                                                </div>
+                                                <div className="aa-clear-confirm-detail">
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="16" y2="12"/></svg>
+                                                    Records will revert to draft status
+                                                </div>
+                                                <div className="aa-clear-confirm-actions">
+                                                    <button className="aa-btn aa-btn-outline-secondary aa-btn-sm" onClick={() => { setClearConfirmAction(null); setClearSubjectId(''); setClearPreview(null); setClearPreviewAssessmentIds([]); }} disabled={clearLoading}>Back</button>
+                                                    <button className="aa-btn aa-btn-danger aa-btn-sm" onClick={handleConfirmClear} disabled={clearLoading}>
+                                                        {clearLoading ? (<><div className="aa-btn-spinner" />Clearing...</>) : (<><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Clear{clearSubjectId ? ` ${clearSubjects.find(s => s.subjectId === clearSubjectId)?.subjectName || 'Subject'}` : ' All Subjects'}</>)}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {clearLoading && (
+                                            <div className="aa-clear-progress">
+                                                <div className="aa-clear-progress-header"><span className="aa-clear-progress-phase">{clearProgress.phase || 'Processing...'}</span><span className="aa-clear-progress-count">{clearProgress.current}/{clearProgress.total}</span></div>
+                                                <div className="aa-progress-bar"><div className="aa-progress-fill" style={{ width: `${clearProgress.total > 0 ? (clearProgress.current / clearProgress.total) * 100 : 0}%` }}></div></div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -1163,29 +1273,30 @@ const ApproveAssessments = () => {
                         const meta = getStatusMeta(tab.value);
                         const isActive = status === tab.value;
                         return (
-                            <button key={tab.value} className={`aa-status-tab ${isActive ? 'aa-status-tab--active' : ''}`} onClick={() => setStatus(tab.value)}>
+                            <button key={tab.value} className={`aa-status-tab ${isActive ? 'aa-status-tab--active' : ''}`} onClick={() => setStatus(tab.value)} disabled={filterOptionsLoading}>
                                 <span className="aa-status-tab-dot" style={isActive ? { background: meta.dot } : undefined} />
                                 {tab.label}
+                                {filterOptionsLoading && isActive && <span className="aa-mini-spinner" style={{ width: 10, height: 10, marginLeft: 4 }} />}
                             </button>
                         );
                     })}
                 </div>
                 <div className="aa-filter-row">
                     <div className="aa-filter-field">
-                        <label htmlFor="aa-term">Term</label>
+                        <label htmlFor="aa-term">Term{status === 'approved' && !termId && (<span style={{ fontSize: '0.68rem', fontWeight: 500, color: '#059669', textTransform: 'none', letterSpacing: 0 }}>(optional)</span>)}{filterOptionsSourceRef.current === 'filterOptions' && (<span className="aa-filter-options-badge"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 10-10V5l-8-3-8 3v7c0 6 8 10 10"/></svg>filtered</span>)}</label>
                         <div className="aa-select-wrap">
-                            <select id="aa-term" value={termId} onChange={(e) => setTermId(e.target.value)} className="aa-select">
-                                <option value="">All Terms</option>
+                            <select id="aa-term" value={termId} onChange={(e) => setTermId(e.target.value)} className="aa-select" disabled={filterOptionsLoading}>
+                                <option value="">{filterOptionsLoading ? 'Loading...' : 'All Terms'}</option>
                                 {terms.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}
                             </select>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
                         </div>
                     </div>
                     <div className="aa-filter-field">
-                        <label htmlFor="aa-session">Session</label>
+                        <label htmlFor="aa-session">Session{status === 'approved' && !sessionId && (<span style={{ fontSize: '0.68rem', fontWeight: 500, color: '#059669', textTransform: 'none', letterSpacing: 0 }}>(optional)</span>)}</label>
                         <div className="aa-select-wrap">
-                            <select id="aa-session" value={sessionId} onChange={(e) => setSessionId(e.target.value)} className="aa-select">
-                                <option value="">All Sessions</option>
+                            <select id="aa-session" value={sessionId} onChange={(e) => setSessionId(e.target.value)} className="aa-select" disabled={filterOptionsLoading}>
+                                <option value="">{filterOptionsLoading ? 'Loading...' : 'All Sessions'}</option>
                                 {sessions.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                             </select>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1194,8 +1305,8 @@ const ApproveAssessments = () => {
                     <div className="aa-filter-field">
                         <label htmlFor="aa-class">Class</label>
                         <div className="aa-select-wrap">
-                            <select id="aa-class" value={classId} onChange={handleClassChange} className="aa-select">
-                                <option value="">All Classes</option>
+                            <select id="aa-class" value={classId} onChange={handleClassChange} className="aa-select" disabled={filterOptionsLoading}>
+                                <option value="">{filterOptionsLoading ? 'Loading...' : 'All Classes'}</option>
                                 {classes.map(c => <option key={c._id} value={c._id}>{c.name}{c.section ? ` ${c.section}` : ''}</option>)}
                             </select>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1204,8 +1315,8 @@ const ApproveAssessments = () => {
                     <div className="aa-filter-field">
                         <label htmlFor="aa-subject">Subject{subjectsLoading && <span className="aa-subject-loading"><span className="aa-mini-spinner" /></span>}</label>
                         <div className="aa-select-wrap">
-                            <select id="aa-subject" value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="aa-select" disabled={!classId && subjects.length === 0}>
-                                <option value="">All Subjects</option>
+                            <select id="aa-subject" value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className="aa-select" disabled={(!classId && subjects.length === 0) || filterOptionsLoading}>
+                                <option value="">{subjectsLoading ? 'Loading...' : 'All Subjects'}</option>
                                 {subjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                             </select>
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
@@ -1228,10 +1339,7 @@ const ApproveAssessments = () => {
                         <span><span className="aa-exclusion-bar-count">{excludedIds.size}</span> student{excludedIds.size !== 1 ? 's' : ''} excluded from bulk actions</span>
                     </div>
                     <div className="aa-exclusion-bar-actions">
-                        <button className="aa-exclusion-clear" onClick={clearExclusions}>
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/></svg>
-                            Clear
-                        </button>
+                        <button className="aa-exclusion-clear" onClick={clearExclusions}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/></svg>Clear</button>
                     </div>
                 </div>
             )}
@@ -1240,12 +1348,17 @@ const ApproveAssessments = () => {
             {confirmBulk && (
                 <div className="aa-bulk-confirm">
                     <div className="aa-bulk-confirm-inner">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="aa-bulk-confirm-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        <span>Approve <strong>{effectivePendingCount}</strong> assessment{effectivePendingCount !== 1 ? 's' : ''}?{excludedIds.size > 0 && <span className="aa-bulk-confirm-note">{excludedIds.size} excluded</span>}</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 1-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span>Approve all submitted assessments matching current filters?{excludedIds.size > 0 && <span className="aa-bulk-confirm-note">{excludedIds.size} excluded</span>}</span>
                     </div>
-                    <div className="aa-bulk-confirm-actions">
-                        <button className="aa-btn aa-btn-ghost aa-btn-sm" onClick={() => setConfirmBulk(false)}>Cancel</button>
-                        <button className="aa-btn aa-btn-success aa-btn-sm" onClick={handleApproveAll}>Confirm</button>
+                    <div className="aa-bulk-confirm-scope"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Scope: <span className="aa-bulk-confirm-scope-code">{getActiveFiltersDescription()}</span></div>
+                    <div className="aa-bulk-confirm-server-note"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 10-10V5l-8-3-8 3v7c0 6 8 10 10"/></svg>Server-side: approves all matching records</div>
+                    <div className="aa-bulk-confirm-row">
+                        <span style={{ fontSize: '0.82rem', color: '#78716c' }}>Showing {effectivePendingCount} on this page — server will process all matches</span>
+                        <div className="aa-bulk-confirm-actions">
+                            <button className="aa-btn aa-btn-ghost aa-btn-sm" onClick={() => setConfirmBulk(false)} disabled={bulkLoading}>Cancel</button>
+                            <button className="aa-btn aa-btn-success aa-btn-sm" onClick={handleApproveAll} disabled={bulkLoading}>{bulkLoading ? <><div className="aa-btn-spinner" />Approving...</> : 'Confirm Approve All'}</button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -1254,52 +1367,71 @@ const ApproveAssessments = () => {
             {confirmBulkUnapprove && (
                 <div className="aa-bulk-confirm aa-bulk-confirm--unapprove">
                     <div className="aa-bulk-confirm-inner">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="aa-bulk-confirm-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                        <span>Unapprove <strong>{effectiveApprovedCount}</strong> assessment{effectiveApprovedCount !== 1 ? 's' : ''}?{excludedIds.size > 0 && <span className="aa-bulk-confirm-note">{excludedIds.size} excluded</span>}</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 1-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span>Unapprove all approved assessments matching current filters?{excludedIds.size > 0 && <span className="aa-bulk-confirm-note">{excludedIds.size} excluded</span>}</span>
                     </div>
-                    <div className="aa-bulk-confirm-actions">
-                        <button className="aa-btn aa-btn-ghost aa-btn-sm" onClick={() => setConfirmBulkUnapprove(false)}>Cancel</button>
-                        <button className="aa-btn aa-btn-danger-outline aa-btn-sm" onClick={handleUnapproveAll}>Confirm</button>
+                    <div className="aa-bulk-confirm-scope"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Scope: <span className="aa-bulk-confirm-scope-code">{getActiveFiltersDescription()}</span></div>
+                    <div className="aa-bulk-confirm-server-note" style={{ color: '#991b1b' }}><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 10-10V5l-8-3-8 3v7c0 6 8 10 10"/></svg>Server-side: unapproves all matching records</div>
+                    <div className="aa-bulk-confirm-row">
+                        <span style={{ fontSize: '0.82rem', color: '#78716c' }}>Showing {effectiveApprovedCount} on this page — server will process all matches</span>
+                        <div className="aa-bulk-confirm-actions">
+                            <button className="aa-btn aa-btn-ghost aa-btn-sm" onClick={() => setConfirmBulkUnapprove(false)} disabled={bulkLoading}>Cancel</button>
+                            <button className="aa-btn aa-btn-danger-outline aa-btn-sm" onClick={handleUnapproveAll} disabled={bulkLoading}>{bulkLoading ? <><div className="aa-btn-spinner aa-btn-spinner--dark" />Unapproving...</> : 'Confirm Unapprove All'}</button>
+                        </div>
                     </div>
-                </div>
-            )}
-
-            {/* Results Info */}
-            {!loading && assessments.length > 0 && (
-                <div className="aa-results-info">
-                    <span className="aa-results-count">
-                        Showing <strong>{assessments.length}</strong> assessment{assessments.length !== 1 ? 's' : ''}
-                        {totalResults > assessments.length && <span style={{ color: 'var(--text-muted)', fontWeight: 500, marginLeft: 4 }}>of {totalResults}</span>}
-                        {excludedIds.size > 0 && <span style={{ color: '#ef4444', fontWeight: 600, marginLeft: 8 }}>({excludedIds.size} excluded)</span>}
-                    </span>
-                    <span className="aa-results-status" style={{ color: getStatusMeta(status).color }}>{getStatusMeta(status).label}</span>
                 </div>
             )}
 
             {/* Main Content */}
-            {loading ? (
+            {(loading || filterOptionsLoading) && assessments.length === 0 ? (
                 <div className="aa-table-loading">
                     <div className="aa-inline-loader"><div className="aa-loader-ring"></div><div className="aa-loader-ring"></div><div className="aa-loader-ring"></div></div>
-                    <span>Fetching assessments...</span>
+                    <span>{filterOptionsLoading && !loading ? 'Loading filter options...' : 'Fetching assessments...'}</span>
                 </div>
-            ) : assessments.length === 0 ? (
+            ) : !loading && assessments.length === 0 ? (
                 <div className="aa-empty">
-                    <div className="aa-empty-illustration">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg>
-                    </div>
+                    <div className="aa-empty-illustration"><svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 10-10V5l-8-3-8 3v7c0 6 8 10 10"/></svg></div>
                     <h3>No Assessments Found</h3>
                     <p>{status === 'submitted' ? 'All assessments have been reviewed.' : `No ${status} assessments match the current filters.`}</p>
                 </div>
             ) : (
                 <>
+                    {/* Results Info */}
+                    {!loading && assessments.length > 0 && (
+                        <div className="aa-results-info">
+                            <span className="aa-results-count">
+                                <strong>{paginationRangeText}</strong>
+                                {excludedIds.size > 0 && <span style={{ color: '#ef4444', fontWeight: 600, marginLeft: 8 }}>({excludedIds.size} excluded)</span>}
+                            </span>
+                            <span className="aa-results-status" style={{ color: getStatusMeta(status).color }}>{getStatusMeta(status).label}</span>
+                        </div>
+                    )}
+
+                    {/* Approved Summary Bar */}
+                    {!loading && status === 'approved' && approvedSummary?.byTerm?.length > 0 && (
+                        <div className="aa-approved-summary">
+                            <div className="aa-approved-summary-notice">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                                {isCrossTermApproved ? `Showing approved records across ${approvedSummary.byTerm.length} terms` : `Approved records for ${approvedSummary.byTerm[0]?.termName} (${approvedSummary.byTerm[0]?.sessionName})`}
+                            </div>
+                            <div className="aa-approved-summary-terms">
+                                {approvedSummary.byTerm.map((t) => (
+                                    <span key={`${t.termId}-${t.sessionId}`} className="aa-approved-term-chip">{t.termName}<span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>({t.sessionName})</span><span className="aa-approved-term-chip-count">{t.count}</span></span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {/* Desktop Table */}
                     <div className="aa-table-section">
                         <div className="aa-table-wrap">
-                            <table className="aa-table">
+                            <table className={`aa-table ${status === 'approved' ? 'aa-table--with-terms' : ''}`}>
                                 <thead>
                                     <tr>
                                         <th className="aa-th-exclude"><div className="aa-th-exclude-label"><ExcludeCheckbox checked={isAllExcluded} indeterminate={isSomeExcluded} onChange={toggleExcludeAll} /><span className="aa-th-exclude-text">Exclude</span></div></th>
                                         <th>Student</th><th>Class</th><th>Subject</th>
+                                        {status === 'approved' && <th>Term</th>}
+                                        {status === 'approved' && <th>Session</th>}
                                         <th className="aa-th-score">CA<span className="aa-th-max">/40</span></th>
                                         <th className="aa-th-score">Exam<span className="aa-th-max">/60</span></th>
                                         <th className="aa-th-total">Total<span className="aa-th-max">/100</span></th>
@@ -1312,25 +1444,20 @@ const ApproveAssessments = () => {
                                         const isUnapproving = unapprovingId === a._id;
                                         const isExcluded = excludedIds.has(a._id);
                                         return (
-                                            <tr key={a._id} className={isExcluded ? 'aa-row-excluded' : ''} style={{ animationDelay: `${Math.min(i * 0.03, 0.5)}s` }}>
+                                            <tr key={a._id} className={isExcluded ? 'aa-row-excluded' : ''} style={{ animationDelay: `${Math.min(i * 0.03, 0.3)}s` }}>
                                                 <td className="aa-td-exclude"><ExcludeCheckbox checked={isExcluded} onChange={() => toggleExclude(a._id)} /></td>
                                                 <td className="aa-td-student"><span className="aa-student-name">{a.studentId?.lastName} {a.studentId?.firstName}</span><span className="aa-student-id">{a.studentId?.admissionNumber}</span></td>
-                                                <td><span className="aa-tag aa-tag--class"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>{a.classId?.name}</span></td>
+                                                <td><span className="aa-tag aa-tag--class"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 1 2-2 0z"/><path d="M19 6l-1 14H6L5 6"/></svg>{a.classId?.name}</span></td>
                                                 <td><span className="aa-subject-name">{a.subjectId?.name}</span></td>
+                                                {status === 'approved' && (<td><span className="aa-tag aa-tag--term">{a.termId?.name || '—'}</span></td>)}
+                                                {status === 'approved' && (<td><span className="aa-tag aa-tag--session">{a.sessionId?.name || '—'}</span></td>)}
                                                 <td className="aa-td-score">{a.totalCA}</td>
                                                 <td className="aa-td-score">{a.examScore}</td>
                                                 <td className="aa-td-total"><span className="aa-total-badge">{a.totalScore}</span></td>
                                                 <td><span className="aa-grade-badge" style={{ backgroundColor: getGradeBg(a.grade), color: getGradeColor(a.grade) }}>{a.grade}</span></td>
                                                 <td><span className="aa-status-badge" style={{ color: sm.color, backgroundColor: sm.bg }}><span className="aa-status-dot" style={{ backgroundColor: sm.dot }} />{sm.label}</span></td>
                                                 <td className="aa-td-action">
-                                                    {a.status === 'submitted' ? (
-                                                        <button className="aa-approve-btn" onClick={() => handleApprove(a._id)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Approve</button>
-                                                    ) : a.status === 'approved' ? (
-                                                        <button className="aa-unapprove-btn" onClick={() => handleUnapprove(a._id)} disabled={isUnapproving}>
-                                                            {isUnapproving ? <div className="aa-btn-spinner aa-btn-spinner--sm aa-btn-spinner--dark" /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l18 18"/><path d="M9 9l6 6"/></svg>}
-                                                            Unapprove
-                                                        </button>
-                                                    ) : <span className="aa-draft-label">Draft</span>}
+                                                    {a.status === 'submitted' ? (<button className="aa-approve-btn" onClick={() => handleApprove(a._id)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Approve</button>) : a.status === 'approved' ? (<button className="aa-unapprove-btn" onClick={() => handleUnapprove(a._id)} disabled={isUnapproving}>{isUnapproving ? <div className="aa-btn-spinner aa-btn-spinner--sm aa-btn-spinner--dark" /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l18 18"/><path d="M9 9l6 6"/></svg>}Unapprove</button>) : <span className="aa-draft-label">Draft</span>}
                                                 </td>
                                             </tr>
                                         );
@@ -1347,47 +1474,106 @@ const ApproveAssessments = () => {
                                 <ExcludeCheckbox checked={isAllExcluded} indeterminate={isSomeExcluded} onChange={toggleExcludeAll} />
                                 <span style={{ fontSize: '0.76rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Exclude from bulk</span>
                             </div>
-                            {excludedIds.size > 0 && <button onClick={clearExclusions} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>Clear ({excludedIds.size})</button>}
+                            {excludedIds.size > 0 && (<button onClick={clearExclusions} style={{ fontSize: '0.72rem', fontWeight: 600, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px' }}>Clear ({excludedIds.length})</button>)}
                         </div>
                         {assessments.map((a, i) => {
                             const sm = getStatusMeta(a.status);
                             const isUnapproving = unapprovingId === a._id;
                             const isExcluded = excludedIds.has(a._id);
                             return (
-                                <div key={a._id} className={`aa-card ${isExcluded ? 'aa-card-excluded' : ''}`} style={{ animationDelay: `${Math.min(i * 0.05, 0.8)}s` }}>
+                                <div key={a._id} className={`aa-card ${isExcluded ? 'aa-card-excluded' : ''}`} style={{ animationDelay: `${Math.min(i * 0.05, 0.5)}s` }}>
                                     <div className="aa-card-top">
                                         <div className="aa-card-top-left">
                                             <ExcludeCheckbox checked={isExcluded} onChange={() => toggleExclude(a._id)} />
                                             <div className="aa-card-student"><span className="aa-student-name">{a.studentId?.lastName} {a.studentId?.firstName}</span><span className="aa-student-id">{a.studentId?.admissionNumber}</span></div>
                                         </div>
-                                        <span className="aa-status-badge" style={{ color: sm.color, backgroundColor: sm.bg, flexShrink: 0 }}><span className="aa-status-dot" style={{ backgroundColor: sm.dot }} />{sm.label}</span>
                                     </div>
                                     <div className="aa-card-meta">
-                                        <span className="aa-tag aa-tag--class"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>{a.classId?.name}</span>
+                                        <span className="aa-tag aa-tag--class"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 1 2-2 0z"/><path d="M19 6l-1 14H6L5 6"/></svg>{a.classId?.name}</span>
                                         <span className="aa-subject-name">{a.subjectId?.name}</span>
                                     </div>
+                                    {status === 'approved' && (a.termId?.name || a.sessionId?.name) && (
+                                        <div className="aa-card-term-session">{a.termId?.name && <span style={{ fontWeight: 600 }}>{a.termId?.name}</span>}{a.termId?.name && a.sessionId?.name && <span className="aa-card-term-session-sep" />}{a.sessionId?.name && <span>{a.sessionId?.name}</span>}</div>
+                                    )}
                                     <div className="aa-card-scores">
                                         <div className="aa-score-block"><span className="aa-score-label">CA</span><span className="aa-score-value">{a.totalCA}<span className="aa-score-max">/40</span></span></div>
                                         <div className="aa-score-divider"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-                                        <div className="aa-score-block"><span className="aa-score-label">Exam</span><span className="aa-score-value">{a.examScore}<span className="aa-score-max">/60</span></span></div>
-                                        <div className="aa-score-divider"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
-                                        <div className="aa-score-block aa-score-block--total"><span className="aa-score-label">Total</span><span className="aa-score-value aa-score-value--total">{a.totalScore}<span className="aa-score-max">/100</span></span></div>
+                                        <div className="aa-score-block aa-score-block--total"><span className="aa-score-label">Exam</span><span className="aa-score-value aa-score-value--total">{a.examScore}<span className="aa-score-max">/60</span></span></div>
                                         <span className="aa-grade-badge aa-grade-badge--card" style={{ backgroundColor: getGradeBg(a.grade), color: getGradeColor(a.grade) }}>{a.grade}</span>
                                     </div>
                                     <div className="aa-card-action">
-                                        {a.status === 'submitted' ? (
-                                            <button className="aa-approve-btn" onClick={() => handleApprove(a._id)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Approve</button>
-                                        ) : a.status === 'approved' ? (
-                                            <button className="aa-unapprove-btn" onClick={() => handleUnapprove(a._id)} disabled={isUnapproving}>
-                                                {isUnapproving ? <div className="aa-btn-spinner aa-btn-spinner--sm aa-btn-spinner--dark" /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l18 18"/><path d="M9 9l6 6"/></svg>}
-                                                Unapprove
-                                            </button>
-                                        ) : <span className="aa-draft-label" style={{ flex: 1, textAlign: 'center', padding: '9px 0' }}>Draft</span>}
+                                        {a.status === 'submitted' ? (<button className="aa-approve-btn" onClick={() => handleApprove(a._id)}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Approve</button>) : a.status === 'approved' ? (<button className="aa-unapprove-btn" onClick={() => handleUnapprove(a._id)} disabled={isUnapproving}>{isUnapproving ? <div className="aa-btn-spinner aa-btn-spinner--sm aa-btn-spinner--dark" /> : <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3l18 18"/><path d="M9 9l6 6"/></svg>}Unapprove</button>) : (<span className="aa-draft-label" style={{ flex: 1, textAlign: 'center', padding: '9px 0' }}>Draft</span>)}
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
+
+                    {/* ===== PAGINATION BAR ===== */}
+                    {!loading && totalResults > 0 && totalPages > 1 && (
+                        <div className="aa-pagination-bar">
+                            <div className="aa-pagination-left">
+                                <span className="aa-pagination-range">{paginationRangeText}</span>
+                                <div className="aa-page-size-select">
+                                    <label htmlFor="aa-page-size">Per page:</label>
+                                    <div className="aa-select-wrap">
+                                        <select id="aa-page-size" className="aa-select" value={pageSize} onChange={handlePageSizeChange} disabled={loading}>
+                                            {PAGE_SIZE_OPTIONS.map(size => (
+                                                <option key={size} value={size}>{size}</option>
+                                            ))}
+                                        </select>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="aa-pagination-controls">
+                                <button className="aa-page-btn" onClick={() => goToPage(1)} disabled={currentPage === 1 || loading} title="First page">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+                                </button>
+                                <button className="aa-page-btn" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1 || loading} title="Previous page">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                                </button>
+                                {visiblePages.map((page, idx) => (
+                                    page === '...' ? (
+                                        <span key={`ellipsis-${idx}`} className="aa-page-btn aa-page-btn--ellipsis">…</span>
+                                    ) : (
+                                        <button key={page} className={`aa-page-btn ${currentPage === page ? 'aa-page-btn--active' : ''}`} onClick={() => goToPage(page)} disabled={loading}>
+                                            {page}
+                                        </button>
+                                    )
+                                ))}
+                                <button className="aa-page-btn" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages || loading} title="Next page">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                                </button>
+                                <button className="aa-page-btn" onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages || loading} title="Last page">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Show page size selector even with 1 page when there are results, for future use */}
+                    {!loading && totalResults > 0 && totalPages <= 1 && (
+                        <div className="aa-pagination-bar">
+                            <div className="aa-pagination-left">
+                                <span className="aa-pagination-range">{paginationRangeText}</span>
+                                <div className="aa-page-size-select">
+                                    <label htmlFor="aa-page-size">Per page:</label>
+                                    <div className="aa-select-wrap">
+                                        <select id="aa-page-size" className="aa-select" value={pageSize} onChange={handlePageSizeChange} disabled={loading}>
+                                            {PAGE_SIZE_OPTIONS.map(size => (
+                                                <option key={size} value={size}>{size}</option>
+                                            ))}
+                                        </select>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                                {totalResults <= pageSize ? 'All results shown' : 'Use "Per page" to show more'}
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div>
