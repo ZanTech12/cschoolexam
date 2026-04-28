@@ -2,6 +2,7 @@
 // CLASS TEACHER BROADSHEET PAGE
 // Nigerian Secondary School System
 // Bootstrap + Custom Creative Design
+// Mobile-Optimized Version
 // ============================================
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -102,6 +103,9 @@ const Icons = {
     DoubleArrow: (p) => (
         <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="m18 8 4 4-4 4"/><path d="m18 4 4 4-4 4"/><path d="m6 8-4 4 4 4"/><path d="m6 4-4 4 4 4"/></svg>
     ),
+    User: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    ),
 };
 
 // ============================================
@@ -122,7 +126,7 @@ const GRADING_KEY = [
     { grade: 'F', range: '0 – 39', color: '#991b1b' },
 ];
 
-const VIEW_MODES = { DETAILED: 'detailed', COMPACT: 'compact', GRADE_ONLY: 'grade_only' };
+const VIEW_MODES = { DETAILED: 'detailed', COMPACT: 'compact', GRADE_ONLY: 'grade_only', CARDS: 'cards' };
 
 const STICKY_COLS = {
     sn: { width: 42, left: 0 },
@@ -131,6 +135,14 @@ const STICKY_COLS = {
     gender: { width: 40, left: 292 },
 };
 const STICKY_TOTAL_W = 332;
+
+const STICKY_COLS_MOBILE = {
+    sn: { width: 32, left: 0 },
+    admNo: { width: 56, left: 32 },
+    name: { width: 120, left: 88 },
+    gender: { width: 0, left: 208 },
+};
+const STICKY_TOTAL_W_MOBILE = 208;
 
 const SUB_COLS_DETAILED = [
     { key: 'testScore', label: 'T', width: 36 },
@@ -176,7 +188,14 @@ const PAL = {
 // ============================================
 function getGradeColor(grade) {
     const g = (grade || '').toUpperCase();
-    const map = { 'A': { text: 'text-success', bg: 'bg-success-subtle', dot: '#059669' }, 'B': { text: 'text-primary', bg: 'bg-primary-subtle', dot: '#2563eb' }, 'C': { text: 'text-warning', bg: 'bg-warning-subtle', dot: '#d97706' }, 'D': { text: 'text-orange', bg: 'bg-orange-subtle', dot: '#ea580c' }, 'E': { text: 'text-danger', bg: 'bg-danger-subtle', dot: '#dc2626' }, 'F': { text: 'text-dark', bg: 'bg-dark-subtle', dot: '#991b1b' } };
+    const map = {
+        'A': { text: 'text-success', bg: 'bg-success-subtle', dot: '#059669' },
+        'B': { text: 'text-primary', bg: 'bg-primary-subtle', dot: '#2563eb' },
+        'C': { text: 'text-warning', bg: 'bg-warning-subtle', dot: '#d97706' },
+        'D': { text: 'text-orange', bg: 'bg-orange-subtle', dot: '#ea580c' },
+        'E': { text: 'text-danger', bg: 'bg-danger-subtle', dot: '#dc2626' },
+        'F': { text: 'text-dark', bg: 'bg-dark-subtle', dot: '#991b1b' }
+    };
     return map[g] || { text: 'text-secondary', bg: 'bg-body-tertiary', dot: '#6c757d' };
 }
 function getScoreColor(key, value) {
@@ -236,6 +255,7 @@ function useClassList(filters) {
     useEffect(() => { load(); }, [load]);
     return { classes, loading, error, meta, refetch: load };
 }
+
 function useBroadsheet(classId, filters) {
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -253,8 +273,160 @@ function useBroadsheet(classId, filters) {
     return { data, loading, error, refetch: load };
 }
 
+function useIsMobile(breakpoint = 640) {
+    const [isMobile, setIsMobile] = useState(
+        typeof window !== 'undefined' ? window.innerWidth < breakpoint : false
+    );
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const mql = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+        const handler = (e) => setIsMobile(e.matches);
+        mql.addEventListener('change', handler);
+        setIsMobile(mql.matches);
+        return () => mql.removeEventListener('change', handler);
+    }, [breakpoint]);
+    return isMobile;
+}
+
 // ============================================
-// VERTICAL SCROLL CONTROL BAR (Below Table)
+// MOBILE STUDENT CARD
+// ============================================
+function MobileStudentCard({ student, subjects, index, showAttendance, showComments }) {
+    const [expanded, setExpanded] = useState(false);
+    const missingBg = getStudentRowBg(student, subjects);
+    const borderColor = student.subjectsWithoutScores === subjects.length
+        ? '#ef4444'
+        : student.subjectsWithoutScores > subjects.length / 2
+            ? '#f59e0b'
+            : PAL.green + '30';
+
+    const posStyle = student.position ? getPositionStyle(student.position) : null;
+
+    return (
+        <div
+            className="bs-mobile-student-card"
+            style={{
+                borderLeft: `4px solid ${borderColor}`,
+                background: missingBg ? `${missingBg}30` : 'white',
+            }}
+        >
+            <button
+                className="bs-mobile-card-header"
+                onClick={() => setExpanded(!expanded)}
+                type="button"
+            >
+                <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ minWidth: 0 }}>
+                    <span className="bs-mobile-card-sn">{index + 1}</span>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                        <p className="bs-mobile-card-name mb-0" title={student.studentName}>
+                            {student.studentName}
+                        </p>
+                        <div className="d-flex align-items-center gap-2" style={{ fontSize: '0.6rem', color: '#868e96' }}>
+                            <span className="font-monospace">{student.admissionNumber}</span>
+                            <span style={{
+                                color: student.gender === 'Male' ? '#2563eb' : '#db2777',
+                                fontWeight: 700,
+                                fontSize: '0.55rem',
+                            }}>{student.gender === 'Male' ? 'M' : 'F'}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="d-flex align-items-center gap-2 flex-shrink-0">
+                    {student.totalScore > 0 && (
+                        <div className="text-end">
+                            <p className="bs-mobile-card-total mb-0">{student.totalScore}</p>
+                            <p className="mb-0" style={{ fontSize: '0.55rem', color: '#868e96' }}>
+                                Avg: {fmt(student.averageScore, 1)}
+                            </p>
+                        </div>
+                    )}
+                    {posStyle && (
+                        <span className="bs-pos-badge" style={{
+                            background: posStyle.bg,
+                            color: posStyle.text,
+                            border: `1px solid ${posStyle.border}`,
+                            fontSize: '0.5rem',
+                            minWidth: 28,
+                            padding: '2px 4px',
+                        }}>
+                            {getPositionSuffix(student.position)}
+                        </span>
+                    )}
+                    <div className="bs-mobile-card-chevron" style={{
+                        transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }}>
+                        <Icons.ChevronDown size={14} />
+                    </div>
+                </div>
+            </button>
+
+            {expanded && (
+                <div className="bs-mobile-card-body">
+                    <div className="bs-mobile-subjects-grid">
+                        {subjects.map((subject) => {
+                            const score = student.scores?.[subject.subjectId];
+                            if (!score) {
+                                return (
+                                    <div key={subject.subjectId} className="bs-mobile-subject-item bs-mobile-subject-item--empty">
+                                        <p className="bs-mobile-subject-name mb-0">{subject.subjectName}</p>
+                                        <span className="bs-mobile-subject-dash">—</span>
+                                    </div>
+                                );
+                            }
+                            const gc = getGradeColor(score.grade);
+                            const totalColor = score.totalScore >= 70 ? '#059669' : score.totalScore >= 50 ? '#212529' : score.totalScore >= 40 ? '#ea580c' : '#dc2626';
+                            return (
+                                <div key={subject.subjectId} className="bs-mobile-subject-item">
+                                    <p className="bs-mobile-subject-name mb-0">{subject.subjectName}</p>
+                                    <div className="d-flex align-items-center gap-1.5">
+                                        <span className="bs-mobile-subject-total" style={{ color: totalColor }}>
+                                            {fmt(score.totalScore)}
+                                        </span>
+                                        <span className="bs-grade-badge" style={{
+                                            background: `${gc.dot}15`,
+                                            color: gc.dot,
+                                            width: 20, height: 20,
+                                            fontSize: '0.5rem',
+                                        }}>
+                                            {score.grade}
+                                        </span>
+                                    </div>
+                                    {(score.totalCA !== null && score.totalCA !== undefined) && (
+                                        <p className="mb-0" style={{ fontSize: '0.5rem', color: '#868e96' }}>
+                                            CA: {fmt(score.totalCA)} | EX: {fmt(score.examScore)}
+                                        </p>
+                                    )}
+                                    {score.remark && (
+                                        <p className="mb-0 fst-italic" style={{ fontSize: '0.5rem', color: '#6c757d' }}>
+                                            {score.remark}
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                    {showAttendance && student.attendance && (
+                        <div className="bs-mobile-att-row">
+                            <span className="text-body-tertiary" style={{ fontSize: '0.6rem' }}>Attendance:</span>
+                            <span className={`fw-semibold ${student.attendance.percentage >= 75 ? 'text-success' : student.attendance.percentage >= 50 ? 'text-warning' : 'text-danger'}`} style={{ fontSize: '0.65rem' }}>
+                                {fmtPct(student.attendance.percentage)}
+                            </span>
+                        </div>
+                    )}
+                    {showComments && student.classTeacherComment && (
+                        <div className="bs-mobile-comment-row">
+                            <span className="text-body-tertiary" style={{ fontSize: '0.6rem' }}>Comment:</span>
+                            <span style={{ fontSize: '0.6rem', color: '#6c757d' }}>{student.classTeacherComment}</span>
+                        </div>
+                    )}
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ============================================
+// VERTICAL SCROLL CONTROL BAR
 // ============================================
 function VerticalScrollBar({ scrollRef }) {
     const [scrollTop, setScrollTop] = useState(0);
@@ -284,11 +456,20 @@ function VerticalScrollBar({ scrollRef }) {
     }, [scrollRef]);
 
     const startHold = useCallback((dir) => {
-        const step = () => { const c = scrollRef?.current; if (c) c.scrollBy({ top: dir * 8, behavior: 'auto' }); holdRef.current = requestAnimationFrame(step); };
+        const step = () => {
+            const c = scrollRef?.current;
+            if (c) c.scrollBy({ top: dir * 8, behavior: 'auto' });
+            holdRef.current = requestAnimationFrame(step);
+        };
         holdRef.current = requestAnimationFrame(step);
     }, [scrollRef]);
-    const stopHold = useCallback(() => { if (holdRef.current) { cancelAnimationFrame(holdRef.current); holdRef.current = null; } }, []);
-    const jump = useCallback((pos) => { const c = scrollRef?.current; if (c) c.scrollTo({ top: pos === 'start' ? 0 : maxScroll, behavior: 'smooth' }); }, [scrollRef, maxScroll]);
+    const stopHold = useCallback(() => {
+        if (holdRef.current) { cancelAnimationFrame(holdRef.current); holdRef.current = null; }
+    }, []);
+    const jump = useCallback((pos) => {
+        const c = scrollRef?.current;
+        if (c) c.scrollTo({ top: pos === 'start' ? 0 : maxScroll, behavior: 'smooth' });
+    }, [scrollRef, maxScroll]);
     const pct = maxScroll > 0 ? Math.round((scrollTop / maxScroll) * 100) : 0;
 
     if (maxScroll <= 20) return null;
@@ -301,7 +482,7 @@ function VerticalScrollBar({ scrollRef }) {
         padding: '4px 10px',
     });
     const arrowStyle = {
-        width: 34, height: 34,
+        width: 40, height: 40,
         background: `linear-gradient(135deg, ${PAL.green}, ${PAL.greenLight})`,
         color: 'white', border: `1px solid ${PAL.green}50`,
         boxShadow: `0 3px 14px ${PAL.accentGlow}, inset 0 1px 0 rgba(255,255,255,0.1)`,
@@ -322,7 +503,7 @@ function VerticalScrollBar({ scrollRef }) {
                 </button>
                 <button onMouseDown={() => startHold(-1)} onMouseUp={stopHold} onMouseLeave={stopHold} onTouchStart={() => startHold(-1)} onTouchEnd={stopHold}
                     className="btn d-flex align-items-center justify-content-center rounded-pill" style={arrowStyle}>
-                    <Icons.ArrowUp size={16} />
+                    <Icons.ArrowUp size={18} />
                 </button>
                 <div className="flex-grow-1 position-relative rounded-pill" style={{ height: 8, background: 'rgba(0,135,81,0.06)', overflow: 'hidden' }}>
                     <div className="position-absolute top-0 start-0 h-100 rounded-pill" style={{ width: `${Math.max(3, pct)}%`, background: `linear-gradient(90deg, ${PAL.green}, ${PAL.greenLight})`, boxShadow: `0 0 10px ${PAL.accentGlow}`, transition: 'width 0.15s' }} />
@@ -331,7 +512,7 @@ function VerticalScrollBar({ scrollRef }) {
                 <span className="font-monospace fw-bold d-none d-md-block" style={{ fontSize: '0.65rem', color: PAL.greenDark, minWidth: 34, textAlign: 'center' }}>{pct}%</span>
                 <button onMouseDown={() => startHold(1)} onMouseUp={stopHold} onMouseLeave={stopHold} onTouchStart={() => startHold(1)} onTouchEnd={stopHold}
                     className="btn d-flex align-items-center justify-content-center rounded-pill" style={arrowStyle}>
-                    <Icons.ArrowDown size={16} />
+                    <Icons.ArrowDown size={18} />
                 </button>
                 <button onClick={() => jump('end')} className="btn btn-sm d-none d-md-flex align-items-center gap-1 rounded-pill" style={btnStyle(false)}>
                     Bottom <Icons.ArrowDown size={11} />
@@ -352,18 +533,38 @@ function HorizontalScrollBar({ scrollRef }) {
 
     useEffect(() => {
         const c = scrollRef?.current; if (!c) return;
-        const u = () => { if (raf.current) cancelAnimationFrame(raf.current); raf.current = requestAnimationFrame(() => { setSLeft(c.scrollLeft); setMaxS(c.scrollWidth - c.clientWidth); }); };
+        const u = () => {
+            if (raf.current) cancelAnimationFrame(raf.current);
+            raf.current = requestAnimationFrame(() => {
+                setSLeft(c.scrollLeft);
+                setMaxS(c.scrollWidth - c.clientWidth);
+            });
+        };
         c.addEventListener('scroll', u, { passive: true }); u();
         const ro = new ResizeObserver(u); ro.observe(c);
-        return () => { c.removeEventListener('scroll', u); if (raf.current) cancelAnimationFrame(raf.current); ro.disconnect(); if (holdRef.current) cancelAnimationFrame(holdRef.current); };
+        return () => {
+            c.removeEventListener('scroll', u);
+            if (raf.current) cancelAnimationFrame(raf.current);
+            ro.disconnect();
+            if (holdRef.current) cancelAnimationFrame(holdRef.current);
+        };
     }, [scrollRef]);
 
     const startHold = useCallback((dir) => {
-        const step = () => { const c = scrollRef?.current; if (c) c.scrollBy({ left: dir * 8, behavior: 'auto' }); holdRef.current = requestAnimationFrame(step); };
+        const step = () => {
+            const c = scrollRef?.current;
+            if (c) c.scrollBy({ left: dir * 8, behavior: 'auto' });
+            holdRef.current = requestAnimationFrame(step);
+        };
         holdRef.current = requestAnimationFrame(step);
     }, [scrollRef]);
-    const stopHold = useCallback(() => { if (holdRef.current) { cancelAnimationFrame(holdRef.current); holdRef.current = null; } }, []);
-    const jump = useCallback((pos) => { const c = scrollRef?.current; if (c) c.scrollTo({ left: pos === 'start' ? 0 : maxS, behavior: 'smooth' }); }, [scrollRef, maxS]);
+    const stopHold = useCallback(() => {
+        if (holdRef.current) { cancelAnimationFrame(holdRef.current); holdRef.current = null; }
+    }, []);
+    const jump = useCallback((pos) => {
+        const c = scrollRef?.current;
+        if (c) c.scrollTo({ left: pos === 'start' ? 0 : maxS, behavior: 'smooth' });
+    }, [scrollRef, maxS]);
     const pct = maxS > 0 ? Math.round((sLeft / maxS) * 100) : 0;
 
     if (maxS <= 20) return null;
@@ -376,7 +577,7 @@ function HorizontalScrollBar({ scrollRef }) {
         padding: '4px 10px',
     });
     const arrowStyle = {
-        width: 34, height: 34,
+        width: 40, height: 40,
         background: `linear-gradient(135deg, ${PAL.hdrPrimary}, ${PAL.hdrSecondary})`,
         color: 'white', border: `1px solid ${PAL.hdrAccent}50`,
         boxShadow: `0 3px 14px ${PAL.hdrGlow}, inset 0 1px 0 rgba(255,255,255,0.1)`,
@@ -397,7 +598,7 @@ function HorizontalScrollBar({ scrollRef }) {
                 </button>
                 <button onMouseDown={() => startHold(-1)} onMouseUp={stopHold} onMouseLeave={stopHold} onTouchStart={() => startHold(-1)} onTouchEnd={stopHold}
                     className="btn d-flex align-items-center justify-content-center rounded-pill" style={arrowStyle}>
-                    <Icons.ChevronLeft size={16} />
+                    <Icons.ChevronLeft size={18} />
                 </button>
                 <div className="flex-grow-1 position-relative rounded-pill" style={{ height: 8, background: 'rgba(0,0,0,0.05)', overflow: 'hidden' }}>
                     <div className="position-absolute top-0 start-0 h-100 rounded-pill" style={{ width: `${Math.max(3, pct)}%`, background: `linear-gradient(90deg, ${PAL.hdrAccent}, ${PAL.hdrGold})`, boxShadow: `0 0 10px ${PAL.hdrGlow}`, transition: 'width 0.15s' }} />
@@ -406,7 +607,7 @@ function HorizontalScrollBar({ scrollRef }) {
                 <span className="font-monospace fw-bold d-none d-md-block" style={{ fontSize: '0.65rem', color: PAL.hdrSecondary, minWidth: 34, textAlign: 'center' }}>{pct}%</span>
                 <button onMouseDown={() => startHold(1)} onMouseUp={stopHold} onMouseLeave={stopHold} onTouchStart={() => startHold(1)} onTouchEnd={stopHold}
                     className="btn d-flex align-items-center justify-content-center rounded-pill" style={arrowStyle}>
-                    <Icons.ChevronRight size={16} />
+                    <Icons.ChevronRight size={18} />
                 </button>
                 <button onClick={() => jump('end')} className="btn btn-sm d-none d-md-flex align-items-center gap-1 rounded-pill" style={btnStyle(false)}>
                     End <Icons.ChevronRight size={11} />
@@ -528,7 +729,7 @@ function CompactStatsBar({ statistics, attendance }) {
     return (
         <div className="no-print row g-1.5 g-md-2 mb-2 mb-md-3">
             {stats.map((s, i) => (
-                <div key={i} className={`col-6 ${stats.length >= 5 ? 'col-sm' : 'col-sm'} col-lg`}>
+                <div key={i} className="col-6 col-sm col-lg">
                     <div className="card border border-opacity-10 h-100" style={{ borderColor: '#dee2e6', boxShadow: '0 1px 3px rgba(0,0,0,0.03)', borderTop: `3px solid ${PAL.hdrAccent}` }}>
                         <div className="card-body p-1.5 p-md-2">
                             <div className="d-flex align-items-center gap-1 mb-0.5">{s.icon}<span className="text-uppercase fw-medium tracking-wider d-none d-sm-inline" style={{ fontSize: '0.58rem', color: '#868e96' }}>{s.label}</span><span className="text-uppercase fw-medium tracking-wider d-sm-none" style={{ fontSize: '0.5rem', color: '#868e96' }}>{s.label}</span></div>
@@ -558,9 +759,9 @@ function StudentSearchBar({ count, onSearch, searchTerm }) {
 }
 
 // ============================================
-// WELL-STRUCTURED BROADSHEET TABLE
+// BROADSHEET TABLE (hooks before returns)
 // ============================================
-function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchTerm, onSearchChange, isFullscreen, scrollRef }) {
+function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchTerm, onSearchChange, isFullscreen, scrollRef, isMobile }) {
     const [scrollState, setScrollState] = useState({ left: 0, maxLeft: 0, top: 0, maxTop: 0 });
 
     const subCols = useMemo(() => {
@@ -609,7 +810,9 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
         };
     }, [scrollRef]);
 
+    if (viewMode === VIEW_MODES.CARDS) return null;
     if (!data) return null;
+
     const { subjects, subjectStats, statistics, attendance } = data;
     const students = filteredStudents;
     const colSpan = subCols.length;
@@ -621,30 +824,34 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
 
     const getScore = (student, subjectId, key) => student.scores?.[subjectId]?.[key] || null;
 
-    const subGroupW = subCols.reduce((s, c) => s + c.width, 0);
-    const summaryColsW = 52 + 44 + 52;
-    const totalMinW = STICKY_TOTAL_W + subjects.length * subGroupW + extraW + summaryColsW;
+    const stickyCols = isMobile ? STICKY_COLS_MOBILE : STICKY_COLS;
+    const stickyTotalW = isMobile ? STICKY_TOTAL_W_MOBILE : STICKY_TOTAL_W;
+    const showGender = !isMobile;
 
-    // Responsive max-height: smaller on mobile, larger on laptop/desktop
+    const subGroupW = subCols.reduce((s, c) => s + c.width, 0);
+    const genderW = showGender ? stickyCols.gender.width : 0;
+    const totalMinW = stickyTotalW + genderW + subjects.length * subGroupW + extraW + 148;
+
     const maxH = isFullscreen
         ? 'calc(100vh - 180px)'
-        : 'clamp(280px, calc(100vh - 340px), 720px)';
+        : isMobile
+            ? 'clamp(240px, 50vh, 400px)'
+            : 'clamp(280px, calc(100vh - 340px), 720px)';
 
     const H1 = '#7c2d12', H2 = '#9a3412', SH1 = '#6b2510', SH2 = '#5c1f0d';
     const GOLD = PAL.hdrGold, ACCENT = PAL.hdrAccent;
 
-    const cellPad = '5px 4px';
-    const hdrPad = '6px 4px';
-    const subPad = '4px 2px';
+    const cellPad = isMobile ? '4px 3px' : '5px 4px';
+    const hdrPad = isMobile ? '5px 3px' : '6px 4px';
+    const subPad = isMobile ? '3px 2px' : '4px 2px';
 
-    const totalCols = 4 + subjects.length * colSpan + extraCols.length + 3;
+    const totalCols = (showGender ? 4 : 3) + subjects.length * colSpan + extraCols.length + 3;
 
     const showLeftShadow = scrollState.left > 5;
     const showRightShadow = scrollState.left < scrollState.maxLeft - 5;
 
     return (
         <div className="card border overflow-hidden rounded-3 rounded-md-4" style={{ borderColor: '#dee2e6', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-            {/* Search bar */}
             <div className="card-body p-2 p-md-3 pb-2 border-bottom" style={{ borderColor: '#f1f5f9' }}>
                 <div className="d-flex align-items-center gap-2">
                     <div className="flex-grow-1"><StudentSearchBar count={data.students?.length || 0} onSearch={onSearchChange} searchTerm={searchTerm} /></div>
@@ -652,34 +859,30 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
                 </div>
             </div>
 
-            {/* ===== DUAL SCROLL CONTAINER ===== */}
             <div className="position-relative">
-                {/* Left Edge Fade Shadow */}
                 <div className="position-absolute top-0 bottom-0 z-2 no-print" style={{ left: 0, width: 18, background: 'linear-gradient(to right, rgba(0,0,0,0.08), transparent)', pointerEvents: 'none', opacity: showLeftShadow ? 1 : 0, transition: 'opacity 0.3s' }} />
-                {/* Right Edge Fade Shadow */}
                 <div className="position-absolute top-0 bottom-0 z-2 no-print" style={{ right: 0, width: 18, background: 'linear-gradient(to left, rgba(0,0,0,0.08), transparent)', pointerEvents: 'none', opacity: showRightShadow ? 1 : 0, transition: 'opacity 0.3s' }} />
 
                 <div ref={scrollRef} className="broadsheet-scroll overflow-auto" style={{ maxHeight: maxH, WebkitOverflowScrolling: 'touch' }}>
-                    <table className="broadsheet-table table table-sm table-bordered mb-0" style={{ width: totalMinW, tableLayout: 'fixed', fontSize: '0.72rem', borderCollapse: 'separate', borderSpacing: 0 }}>
+                    <table className="broadsheet-table table table-sm table-bordered mb-0" style={{ width: totalMinW, tableLayout: 'fixed', fontSize: isMobile ? '0.65rem' : '0.72rem', borderCollapse: 'separate', borderSpacing: 0 }}>
                         <colgroup>
-                            <col style={{ width: STICKY_COLS.sn.width }} />
-                            <col style={{ width: STICKY_COLS.admNo.width }} />
-                            <col style={{ width: STICKY_COLS.name.width }} />
-                            <col style={{ width: STICKY_COLS.gender.width }} />
-                            {subjects.map((_, i) => subCols.map((c) => <col key={`cg-${i}-${c.key}`} style={{ width: c.width }} />))}
+                            <col style={{ width: stickyCols.sn.width }} />
+                            <col style={{ width: stickyCols.admNo.width }} />
+                            <col style={{ width: stickyCols.name.width }} />
+                            {showGender && <col style={{ width: stickyCols.gender.width }} />}
+                            {subjects.map((_, i) => subCols.map((c) => <col key={`cg-${i}-${c.key}`} style={{ width: isMobile ? c.width - 2 : c.width }} />))}
                             {extraCols.map(c => <col key={`cg-${c.key}`} style={{ width: c.width }} />)}
-                            <col style={{ width: 52 }} />
-                            <col style={{ width: 44 }} />
-                            <col style={{ width: 52 }} />
+                            <col style={{ width: isMobile ? 44 : 52 }} />
+                            <col style={{ width: isMobile ? 38 : 44 }} />
+                            <col style={{ width: isMobile ? 44 : 52 }} />
                         </colgroup>
 
                         <thead>
-                            {/* Row 1: Subject names */}
                             <tr>
-                                <th rowSpan="2" className="sticky-col text-center fw-bold text-uppercase align-middle" style={{ left: STICKY_COLS.sn.left, backgroundColor: '#5c1f0d', color: GOLD, fontSize: '0.58rem', padding: hdrPad, borderRight: `2px solid ${ACCENT}50`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>S/N</th>
-                                <th rowSpan="2" className="sticky-col text-center fw-bold text-uppercase align-middle" style={{ left: STICKY_COLS.admNo.left, backgroundColor: '#4a1a0b', color: GOLD, fontSize: '0.55rem', padding: hdrPad, borderRight: `1px solid ${ACCENT}40`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Adm No</th>
-                                <th rowSpan="2" className="sticky-col text-start fw-bold text-uppercase align-middle" style={{ left: STICKY_COLS.name.left, backgroundColor: '#5c1f0d', color: GOLD, fontSize: '0.58rem', padding: hdrPad, borderRight: `1px solid ${ACCENT}40`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Student Name</th>
-                                <th rowSpan="2" className="sticky-col text-center fw-bold text-uppercase align-middle" style={{ left: STICKY_COLS.gender.left, backgroundColor: '#3b1508', color: GOLD, fontSize: '0.58rem', padding: hdrPad, borderRight: `3px solid ${ACCENT}`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>M/F</th>
+                                <th rowSpan="2" className="sticky-col text-center fw-bold text-uppercase align-middle" style={{ left: stickyCols.sn.left, backgroundColor: '#5c1f0d', color: GOLD, fontSize: isMobile ? '0.5rem' : '0.58rem', padding: hdrPad, borderRight: `2px solid ${ACCENT}50`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>S/N</th>
+                                <th rowSpan="2" className="sticky-col text-center fw-bold text-uppercase align-middle" style={{ left: stickyCols.admNo.left, backgroundColor: '#4a1a0b', color: GOLD, fontSize: isMobile ? '0.48rem' : '0.55rem', padding: hdrPad, borderRight: `1px solid ${ACCENT}40`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Adm</th>
+                                <th rowSpan="2" className="sticky-col text-start fw-bold text-uppercase align-middle" style={{ left: stickyCols.name.left, backgroundColor: '#5c1f0d', color: GOLD, fontSize: isMobile ? '0.5rem' : '0.58rem', padding: hdrPad, borderRight: `1px solid ${ACCENT}40`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Name</th>
+                                {showGender && <th rowSpan="2" className="sticky-col text-center fw-bold text-uppercase align-middle" style={{ left: stickyCols.gender.left, backgroundColor: '#3b1508', color: GOLD, fontSize: isMobile ? '0.5rem' : '0.58rem', padding: hdrPad, borderRight: `3px solid ${ACCENT}`, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>M/F</th>}
 
                                 {subjects.map((subject, idx) => (
                                     <th key={subject.subjectId} colSpan={colSpan} className="text-center fw-semibold text-white align-middle" style={{
@@ -688,7 +891,7 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
                                         borderRight: '1px solid rgba(255,255,255,0.08)',
                                         borderBottom: `2px solid ${ACCENT}60`,
                                         whiteSpace: 'nowrap',
-                                        fontSize: '0.65rem',
+                                        fontSize: isMobile ? '0.55rem' : '0.65rem',
                                         textShadow: '0 1px 3px rgba(0,0,0,0.3)',
                                         overflow: 'hidden',
                                         textOverflow: 'ellipsis',
@@ -700,16 +903,15 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
                                 {extraCols.map(col => (
                                     <th key={`th-${col.key}`} rowSpan="2" className="text-center fw-semibold text-uppercase align-middle" style={{ backgroundColor: '#4a1a0b', color: GOLD, fontSize: '0.55rem', padding: hdrPad, borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>{col.label}</th>
                                 ))}
-                                <th rowSpan="2" className="text-center fw-black text-uppercase align-middle" style={{ backgroundColor: '#5c1f0d', color: 'white', fontSize: '0.58rem', padding: hdrPad, borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Total</th>
-                                <th rowSpan="2" className="text-center fw-bold text-uppercase align-middle" style={{ backgroundColor: '#4a1a0b', color: GOLD, fontSize: '0.55rem', padding: hdrPad, borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Avg</th>
-                                <th rowSpan="2" className="text-center fw-black text-uppercase align-middle" style={{ backgroundColor: '#5c1f0d', color: GOLD, fontSize: '0.58rem', padding: hdrPad, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Pos</th>
+                                <th rowSpan="2" className="text-center fw-black text-uppercase align-middle" style={{ backgroundColor: '#5c1f0d', color: 'white', fontSize: isMobile ? '0.5rem' : '0.58rem', padding: hdrPad, borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Total</th>
+                                <th rowSpan="2" className="text-center fw-bold text-uppercase align-middle" style={{ backgroundColor: '#4a1a0b', color: GOLD, fontSize: isMobile ? '0.48rem' : '0.55rem', padding: hdrPad, borderRight: '1px solid rgba(255,255,255,0.06)', borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Avg</th>
+                                <th rowSpan="2" className="text-center fw-black text-uppercase align-middle" style={{ backgroundColor: '#5c1f0d', color: GOLD, fontSize: isMobile ? '0.5rem' : '0.58rem', padding: hdrPad, borderBottom: `1px solid ${ACCENT}30`, letterSpacing: '0.05em' }}>Pos</th>
                             </tr>
 
-                            {/* Row 2: Sub-column labels */}
                             <tr>
                                 {subjects.map((_, sIdx) => subCols.map((col) => (
                                     <th key={`sh-${sIdx}-${col.key}`} className="text-center fw-medium text-uppercase" style={{
-                                        width: col.width,
+                                        width: isMobile ? col.width - 2 : col.width,
                                         backgroundColor: sIdx % 2 === 0 ? SH1 : SH2,
                                         color: 'rgba(255,255,255,0.5)',
                                         fontSize: '0.5rem',
@@ -736,15 +938,15 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
                                         onMouseEnter={e => { if (!missingBg) e.currentTarget.style.backgroundColor = '#fef3c730'; }}
                                         onMouseLeave={e => { e.currentTarget.style.backgroundColor = rowBg; }}>
 
-                                        <td className="sticky-col text-center text-body-tertiary font-monospace" style={{ left: STICKY_COLS.sn.left, backgroundColor: rowBg, fontSize: '0.63rem', padding: cellPad, borderRight: `1px solid ${ACCENT}12` }}>{sIdx + 1}</td>
-                                        <td className="sticky-col text-center text-body-secondary font-monospace" style={{ left: STICKY_COLS.admNo.left, backgroundColor: rowBg, fontSize: '0.58rem', padding: cellPad, borderRight: `1px solid ${ACCENT}12` }}>{student.admissionNumber}</td>
-                                        <td className="sticky-col text-start fw-medium text-dark text-nowrap" style={{ left: STICKY_COLS.name.left, backgroundColor: rowBg, fontSize: '0.68rem', padding: cellPad, borderRight: `1px solid ${ACCENT}12`, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        <td className="sticky-col text-center text-body-tertiary font-monospace" style={{ left: stickyCols.sn.left, backgroundColor: rowBg, fontSize: '0.6rem', padding: cellPad, borderRight: `1px solid ${ACCENT}12` }}>{sIdx + 1}</td>
+                                        <td className="sticky-col text-center text-body-secondary font-monospace" style={{ left: stickyCols.admNo.left, backgroundColor: rowBg, fontSize: isMobile ? '0.52rem' : '0.58rem', padding: cellPad, borderRight: `1px solid ${ACCENT}12` }}>{student.admissionNumber}</td>
+                                        <td className="sticky-col text-start fw-medium text-dark text-nowrap" style={{ left: stickyCols.name.left, backgroundColor: rowBg, fontSize: isMobile ? '0.62rem' : '0.68rem', padding: cellPad, borderRight: `1px solid ${ACCENT}12`, overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             <span className="d-flex align-items-center gap-1.5">
                                                 {student.subjectsWithoutScores > 0 && <span className="rounded-circle d-block flex-shrink-0" style={{ width: 6, height: 6, backgroundColor: student.subjectsWithoutScores === subjects.length ? '#ef4444' : '#f59e0b' }} />}
                                                 <span title={student.studentName}>{student.studentName}</span>
                                             </span>
                                         </td>
-                                        <td className="sticky-col text-center fw-bold" style={{ left: STICKY_COLS.gender.left, backgroundColor: isEven ? '#f3f4f6' : '#ebedf0', fontSize: '0.63rem', padding: cellPad, borderRight: `3px solid ${ACCENT}25`, color: student.gender === 'Male' ? '#2563eb' : '#db2777' }}>{student.gender === 'Male' ? 'M' : 'F'}</td>
+                                        {showGender && <td className="sticky-col text-center fw-bold" style={{ left: stickyCols.gender.left, backgroundColor: isEven ? '#f3f4f6' : '#ebedf0', fontSize: '0.63rem', padding: cellPad, borderRight: `3px solid ${ACCENT}25`, color: student.gender === 'Male' ? '#2563eb' : '#db2777' }}>{student.gender === 'Male' ? 'M' : 'F'}</td>}
 
                                         {subjects.map((subject) => subCols.map((col) => {
                                             const val = getScore(student, subject.subjectId, col.key);
@@ -753,19 +955,19 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
                                             const borderR = col === subCols[subCols.length - 1] ? `1px solid #e9ecef` : '1px solid #f1f3f5';
 
                                             if (val === null || val === undefined || (val === 0 && !isGrade))
-                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center text-body-tertiary" style={{ fontSize: '0.63rem', padding: cellPad, borderRight: borderR }}>–</td>;
+                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center text-body-tertiary" style={{ fontSize: '0.6rem', padding: cellPad, borderRight: borderR }}>–</td>;
                                             if (isGrade) {
                                                 const gc = getGradeColor(val);
-                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center" style={{ fontSize: '0.63rem', padding: cellPad, borderRight: borderR }}><span className={`badge ${gc.bg} ${gc.text} rounded-2 d-inline-flex align-items-center justify-content-center`} style={{ width: 22, height: 22, fontSize: '0.55rem', fontWeight: 900, padding: 0 }}>{val}</span></td>;
+                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center" style={{ fontSize: '0.6rem', padding: cellPad, borderRight: borderR }}><span className={`badge ${gc.bg} ${gc.text} rounded-2 d-inline-flex align-items-center justify-content-center`} style={{ width: isMobile ? 20 : 22, height: isMobile ? 20 : 22, fontSize: '0.5rem', fontWeight: 900, padding: 0 }}>{val}</span></td>;
                                             }
                                             if (isRemark)
-                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center text-secondary fst-italic" style={{ fontSize: '0.52rem', padding: cellPad, borderRight: borderR }} title={val}>{val ? val.substring(0, 3) : ''}</td>;
+                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center text-secondary fst-italic" style={{ fontSize: '0.5rem', padding: cellPad, borderRight: borderR }} title={val}>{val ? val.substring(0, 3) : ''}</td>;
                                             const sc = getScoreColor(col.key, val);
-                                            return <td key={`td-${subject.subjectId}-${col.key}`} className={`text-center ${sc || ''}`} style={{ fontSize: '0.63rem', padding: cellPad, borderRight: borderR }}>{fmt(val)}</td>;
+                                            return <td key={`td-${subject.subjectId}-${col.key}`} className={`text-center ${sc || ''}`} style={{ fontSize: '0.6rem', padding: cellPad, borderRight: borderR }}>{fmt(val)}</td>;
                                         }))}
 
                                         {showAttendance && attendance && (
-                                            <td className="text-center" style={{ fontSize: '0.63rem', padding: cellPad, backgroundColor: '#fffdf5', borderRight: '1px solid #e9ecef' }}>
+                                            <td className="text-center" style={{ fontSize: '0.6rem', padding: cellPad, backgroundColor: '#fffdf5', borderRight: '1px solid #e9ecef' }}>
                                                 {student.attendance ? <span className={`fw-semibold ${student.attendance.percentage >= 75 ? 'text-success' : student.attendance.percentage >= 50 ? 'text-warning' : 'text-danger'}`}>{fmtPct(student.attendance.percentage)}</span> : <span className="text-body-tertiary">—</span>}
                                             </td>
                                         )}
@@ -773,35 +975,35 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
                                             <td className="text-start text-secondary text-truncate" style={{ fontSize: '0.54rem', padding: cellPad, maxWidth: 140, backgroundColor: '#fffdf5', borderRight: '1px solid #e9ecef' }} title={student.classTeacherComment || 'No comment'}>{student.classTeacherComment || <span className="text-body-tertiary fst-italic">—</span>}</td>
                                         )}
 
-                                        <td className="text-center fw-black text-dark" style={{ fontSize: '0.73rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.totalScore > 0 ? student.totalScore : <span className="text-body-tertiary">—</span>}</td>
-                                        <td className="text-center fw-semibold" style={{ fontSize: '0.63rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.averageScore > 0 ? fmt(student.averageScore, 1) : <span className="text-body-tertiary">—</span>}</td>
+                                        <td className="text-center fw-black text-dark" style={{ fontSize: isMobile ? '0.68rem' : '0.73rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.totalScore > 0 ? student.totalScore : <span className="text-body-tertiary">—</span>}</td>
+                                        <td className="text-center fw-semibold" style={{ fontSize: '0.6rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.averageScore > 0 ? fmt(student.averageScore, 1) : <span className="text-body-tertiary">—</span>}</td>
                                         <td className="text-center" style={{ padding: cellPad, backgroundColor: `${ACCENT}08`, borderTop: '1px solid #f1f3f5' }}>
-                                            {student.position ? (() => { const ps = getPositionStyle(student.position); return <span className="badge rounded-pill d-inline-flex align-items-center justify-content-center" style={{ background: ps.bg, color: ps.text, border: `1px solid ${ps.border}`, fontSize: '0.55rem', fontWeight: 700, minWidth: 30, padding: '2px 5px' }}>{getPositionSuffix(student.position)}</span>; })() : <span className="text-body-tertiary" style={{ fontSize: '0.63rem' }}>—</span>}
+                                            {student.position ? (() => { const ps = getPositionStyle(student.position); return <span className="badge rounded-pill d-inline-flex align-items-center justify-content-center" style={{ background: ps.bg, color: ps.text, border: `1px solid ${ps.border}`, fontSize: '0.5rem', fontWeight: 700, minWidth: isMobile ? 26 : 30, padding: '2px 4px' }}>{getPositionSuffix(student.position)}</span>; })() : <span className="text-body-tertiary" style={{ fontSize: '0.6rem' }}>—</span>}
                                         </td>
                                     </tr>
                                 );
                             })}
 
-                            {/* Statistics rows */}
                             {subjectStats && statRows.map((stat, srIdx) => {
                                 const isLight = srIdx % 2 === 0;
                                 const sBg = isLight ? '#fdf2e9' : '#fcebd4';
                                 const isLast = stat.key === 'passRate';
+                                const statColSpan = showGender ? 4 : 3;
                                 return (
                                     <tr key={`stat-${stat.key}`} style={{ backgroundColor: sBg }}>
-                                        <td colSpan="4" className="sticky-col text-start text-uppercase fw-black" style={{ left: 0, minWidth: STICKY_TOTAL_W, backgroundColor: sBg, fontSize: '0.53rem', letterSpacing: '0.1em', color: PAL.hdrSecondary, padding: cellPad, borderRight: `3px solid ${ACCENT}35`, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{stat.label}</td>
+                                        <td colSpan={statColSpan} className="sticky-col text-start text-uppercase fw-black" style={{ left: 0, minWidth: stickyTotalW + genderW, backgroundColor: sBg, fontSize: '0.5rem', letterSpacing: '0.1em', color: PAL.hdrSecondary, padding: cellPad, borderRight: `3px solid ${ACCENT}35`, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{stat.label}</td>
                                         {subjects.map((subject) => {
                                             const sStat = subjectStats.find((s) => s.subjectId === subject.subjectId);
                                             const val = sStat?.[stat.key];
                                             return subCols.map((col) => {
                                                 const show = col.key === stat.key || (col.key === 'totalScore' && stat.key === 'averageScore');
-                                                return <td key={`stat-${subject.subjectId}-${stat.key}-${col.key}`} className={`text-center ${show ? 'text-dark fw-bold' : ''}`} style={{ fontSize: '0.53rem', backgroundColor: sBg, padding: cellPad, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{show && val !== undefined && val !== null ? stat.fmt(val) : ''}</td>;
+                                                return <td key={`stat-${subject.subjectId}-${stat.key}-${col.key}`} className={`text-center ${show ? 'text-dark fw-bold' : ''}`} style={{ fontSize: '0.5rem', backgroundColor: sBg, padding: cellPad, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{show && val !== undefined && val !== null ? stat.fmt(val) : ''}</td>;
                                             });
                                         })}
                                         {showAttendance && attendance && <td style={{ backgroundColor: sBg, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }} />}
                                         {showComments && <td style={{ backgroundColor: sBg, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }} />}
-                                        <td className="text-center text-dark fw-bold" style={{ fontSize: '0.53rem', backgroundColor: `${ACCENT}08`, padding: cellPad, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{stat.key === 'averageScore' ? fmt(statistics?.classAverage, 1) : stat.key === 'highestScore' ? statistics?.highestTotal : stat.key === 'lowestScore' ? statistics?.lowestTotal : ''}</td>
-                                        <td className="text-center text-dark fw-bold" style={{ fontSize: '0.53rem', backgroundColor: `${ACCENT}08`, padding: cellPad, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{stat.key === 'averageScore' ? fmt(statistics?.classAverage, 1) : ''}</td>
+                                        <td className="text-center text-dark fw-bold" style={{ fontSize: '0.5rem', backgroundColor: `${ACCENT}08`, padding: cellPad, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{stat.key === 'averageScore' ? fmt(statistics?.classAverage, 1) : stat.key === 'highestScore' ? statistics?.highestTotal : stat.key === 'lowestScore' ? statistics?.lowestTotal : ''}</td>
+                                        <td className="text-center text-dark fw-bold" style={{ fontSize: '0.5rem', backgroundColor: `${ACCENT}08`, padding: cellPad, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }}>{stat.key === 'averageScore' ? fmt(statistics?.classAverage, 1) : ''}</td>
                                         <td style={{ backgroundColor: `${ACCENT}08`, borderTop: isLast ? `2px solid ${ACCENT}` : '1px solid #e9ecef' }} />
                                     </tr>
                                 );
@@ -811,11 +1013,10 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
                 </div>
             </div>
 
-            {/* Print grading legend */}
             <div className="print-only border-top border-2 border-dark px-3 py-2">
                 <div className="d-flex flex-wrap gap-3 justify-content-center" style={{ fontSize: '0.55rem', color: '#495057' }}>
                     <span className="fw-bold text-uppercase">Grading:</span>
-                    {GRADING_KEY.map((g) => (<span key={g.grade}><strong>{g.grade}</strong>({g.range})</span>))}
+                    {GRADING_KEY.map((g) => (<span key={g.grade} style={{ display: 'inline' }}><strong>{g.grade}</strong>({g.range})</span>))}
                     <span className="text-body-tertiary">|</span>
                     <span><strong>T</strong>=Test <strong>NT</strong>=Notes <strong>AS</strong>=Assign <strong>CA</strong>=Total CA <strong>EX</strong>=Exam <strong>Tot</strong>=Total <strong>G</strong>=Grade <strong>R</strong>=Remark</span>
                 </div>
@@ -825,7 +1026,57 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
 }
 
 // ============================================
-// SUBJECT STATISTICS (Below Table)
+// MOBILE CARDS VIEW
+// ============================================
+function MobileCardsView({ data, searchTerm, onSearchChange, showAttendance, showComments }) {
+    const filteredStudents = useMemo(() => {
+        if (!searchTerm) return data?.students || [];
+        const t = searchTerm.toLowerCase();
+        return (data?.students || []).filter(s => s.studentName?.toLowerCase().includes(t) || s.admissionNumber?.toLowerCase().includes(t) || s.firstName?.toLowerCase().includes(t) || s.lastName?.toLowerCase().includes(t));
+    }, [data?.students, searchTerm]);
+
+    return (
+        <div className="card border overflow-hidden rounded-3" style={{ borderColor: '#dee2e6', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+            <div className="card-body p-2 pb-0 border-bottom" style={{ borderColor: '#f1f5f9' }}>
+                <div className="d-flex align-items-center gap-2 mb-2">
+                    <div className="flex-grow-1"><StudentSearchBar count={data.students?.length || 0} onSearch={onSearchChange} searchTerm={searchTerm} /></div>
+                    {searchTerm && <span className="badge bg-body-tertiary text-body-secondary flex-shrink-0" style={{ fontSize: '0.65rem' }}><span className="fw-bold text-dark">{filteredStudents.length}</span>/{data.students?.length}</span>}
+                </div>
+            </div>
+
+            <div className="p-2" style={{ maxHeight: 'clamp(300px, 60vh, 600px)', overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                {filteredStudents.length === 0 && searchTerm && (
+                    <div className="text-center py-4">
+                        <Icons.Search size={24} className="text-body-tertiary mx-auto d-block mb-2" />
+                        <p className="text-body-tertiary small">No students match "{searchTerm}"</p>
+                    </div>
+                )}
+                <div className="d-flex flex-column gap-2">
+                    {filteredStudents.map((student, idx) => (
+                        <MobileStudentCard
+                            key={student.studentId}
+                            student={student}
+                            subjects={data.subjects || []}
+                            index={idx}
+                            showAttendance={showAttendance}
+                            showComments={showComments}
+                        />
+                    ))}
+                </div>
+            </div>
+
+            <div className="print-only border-top border-2 border-dark px-3 py-2">
+                <div className="d-flex flex-wrap gap-3 justify-content-center" style={{ fontSize: '0.55rem', color: '#495057' }}>
+                    <span className="fw-bold text-uppercase">Grading:</span>
+                    {GRADING_KEY.map((g) => (<span key={g.grade} style={{ display: 'inline' }}><strong>{g.grade}</strong>({g.range})</span>))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ============================================
+// SUBJECT STATISTICS TABLE
 // ============================================
 function SubjectStatisticsTable({ subjectStats }) {
     const [isExpanded, setIsExpanded] = useState(false);
@@ -902,7 +1153,7 @@ function PerformanceInsightsBanner({ data }) {
     return (
         <div className="no-print mt-3 mt-md-4 mb-2 mb-md-3">
             <div className="d-flex align-items-center gap-3 mb-3 d-none d-md-flex"><div className="flex-grow-1" style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,135,81,0.2), transparent)' }} /><span className="badge d-flex align-items-center gap-1 px-3 py-1 rounded-pill" style={{ background: 'rgba(0,135,81,0.06)', border: '1px solid rgba(0,135,81,0.1)', fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: PAL.greenDark }}><Icons.Star size={10} style={{ color: PAL.green }} /> Performance Insights</span><div className="flex-grow-1" style={{ height: 1, background: 'linear-gradient(90deg, transparent, rgba(0,135,81,0.2), transparent)' }} /></div>
-            <div className="row g-2">{insights.map((ins, i) => (<div key={i} className="col-12 col-sm-4"><div className="rounded-3 p-2.5 p-md-3 h-100" style={{ background: ins.bg, border: `1px solid ${ins.border}` }}><div className="d-flex align-items-center gap-2 mb-1.5"><div className="d-flex align-items-center justify-content-center rounded-2" style={{ width: 24, height: 24, color: ins.color }}>{ins.icon}</div><span className="text-uppercase fw-semibold tracking-wider d-none d-sm-inline" style={{ fontSize: '0.56rem', color: ins.color + 'aa' }}>{ins.label}</span></div><p className="fs-5 fw-black mb-1" style={{ fontSize: 'clamp(0.85rem, 2vw, 1.2rem)' }}>{ins.value}</p>{ins.sub && <p className="fw-medium mb-0" style={{ fontSize: '0.65rem', color: ins.color }}>{ins.sub}</p>}</div></div>))}</div>
+            <div className="row g-2">{insights.map((ins, i) => (<div key={i} className="col-12 col-sm-4"><div className="rounded-3 p-2.5 p-md-3 h-100" style={{ background: ins.bg, border: `1px solid ${ins.border}` }}><div className="d-flex align-items-center gap-2 mb-1.5"><div className="d-flex align-items-center justify-content-center rounded-2" style={{ width: 24, height: 24, color: ins.color }}>{ins.icon}</div><span className="text-uppercase fw-semibold tracking-wider" style={{ fontSize: '0.56rem', color: ins.color + 'aa' }}>{ins.label}</span></div><p className="fs-5 fw-black mb-1" style={{ fontSize: 'clamp(0.85rem, 2vw, 1.2rem)' }}>{ins.value}</p>{ins.sub && <p className="fw-medium mb-0" style={{ fontSize: '0.65rem', color: ins.color }}>{ins.sub}</p>}</div></div>))}</div>
         </div>
     );
 }
@@ -947,24 +1198,25 @@ function PageHeader({ classInfo, termInfo, sessionInfo, onBack, onToggleFullscre
                     <p className="text-body-tertiary mb-0 d-none d-sm-block" style={{ fontSize: '0.7rem' }}>{classInfo?.classFullName || '—'} &middot; {termInfo?.name || '—'} &middot; {sessionInfo?.name || '—'}</p>
                 </div>
             </div>
-            <button onClick={onToggleFullscreen} className="btn btn-outline-secondary btn-sm rounded-3 d-flex align-items-center justify-content-center d-none d-md-flex" style={{ width: 36, height: 36 }} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
+            <button onClick={onToggleFullscreen} className="btn btn-outline-secondary btn-sm rounded-3 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }} title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}>
                 {isFullscreen ? <Icons.Minimize2 size={15} /> : <Icons.Maximize2 size={15} />}
             </button>
         </div>
     );
 }
 
-function MobileViewToggle({ viewMode, setViewMode }) {
+function MobileViewToggle({ viewMode, setViewMode, isMobile }) {
     const modes = [
         { mode: VIEW_MODES.DETAILED, label: 'Full', icon: <Icons.Eye size={11} /> },
         { mode: VIEW_MODES.COMPACT, label: 'Compact', icon: <Icons.FileText size={11} /> },
         { mode: VIEW_MODES.GRADE_ONLY, label: 'Grades', icon: <Icons.Award size={11} /> },
+        ...(isMobile ? [{ mode: VIEW_MODES.CARDS, label: 'Cards', icon: <Icons.User size={11} /> }] : []),
     ];
     return (
         <div className="d-inline-flex align-items-center gap-1 p-1 rounded-3" style={{ background: '#f1f5f9', border: '1px solid #dee2e6' }}>
             {modes.map((opt) => (
                 <button key={opt.mode} onClick={() => setViewMode(opt.mode)} className={`btn btn-sm d-flex align-items-center gap-1 rounded-3 ${viewMode === opt.mode ? 'shadow-sm' : ''}`} style={{ fontSize: '0.65rem', fontWeight: 600, padding: '3px 8px', background: viewMode === opt.mode ? 'white' : 'transparent', color: viewMode === opt.mode ? PAL.hdrSecondary : '#94a3b8', border: 'none', boxShadow: viewMode === opt.mode ? '0 1px 4px rgba(0,0,0,0.08)' : 'none' }}>
-                    {opt.icon}<span className="d-none d-sm-inline">{opt.label}</span>
+                    {opt.icon}<span className="bs-view-toggle-label">{opt.label}</span>
                 </button>
             ))}
         </div>
@@ -976,10 +1228,10 @@ function ScrollHintBanner({ visible }) {
     return (<div className="no-print d-flex align-items-center gap-2 px-3 py-2 rounded-3 mb-2 border-0" style={{ background: `linear-gradient(135deg, ${PAL.hdrDeep}08, ${PAL.hdrAccent}04)`, border: `1px solid ${PAL.hdrAccent}15 !important`, color: PAL.hdrSecondary, fontSize: '0.65rem' }} role="alert"><Icons.DoubleArrow size={13} style={{ color: PAL.hdrAccent }} className="flex-shrink-0" /><span className="fw-medium">Scroll ↔ for subjects &bull; ↕ for students</span></div>);
 }
 
-function Toolbar({ viewMode, setViewMode, showAttendance, setShowAttendance, showComments, setShowComments, showFilters, setShowFilters, loading, onRefresh, onPrint, data }) {
+function Toolbar({ viewMode, setViewMode, showAttendance, setShowAttendance, showComments, setShowComments, showFilters, setShowFilters, loading, onRefresh, onPrint, data, isMobile }) {
     return (
         <div className="no-print d-flex align-items-center gap-1.5 gap-md-2 flex-wrap mb-2 mb-md-3">
-            <MobileViewToggle viewMode={viewMode} setViewMode={setViewMode} />
+            <MobileViewToggle viewMode={viewMode} setViewMode={setViewMode} isMobile={isMobile} />
             <div className="flex-grow-1" />
             <div className="d-flex align-items-center gap-1">
                 {data?.attendance && data.attendance.schoolOpenDays > 0 && (<button onClick={() => setShowAttendance(!showAttendance)} className={`btn btn-sm rounded-3 d-flex align-items-center gap-1 ${showAttendance ? 'bg-success-subtle text-success' : 'btn-outline-secondary'}`} style={{ fontSize: '0.65rem', fontWeight: 600, padding: '3px 8px', border: showAttendance ? '1px solid #99f6e4' : '' }}><Icons.ClipboardCheck size={10} /><span className="d-none d-sm-inline">Att</span></button>)}
@@ -999,6 +1251,7 @@ export default function BroadsheetPage() {
     const { classId } = useParams();
     const navigate = useNavigate();
     const [filters, setFilters] = useState({ termId: '', sessionId: '' });
+    const isMobile = useIsMobile(640);
     const [viewMode, setViewMode] = useState(VIEW_MODES.DETAILED);
     const [showAttendance, setShowAttendance] = useState(true);
     const [showComments, setShowComments] = useState(false);
@@ -1010,15 +1263,20 @@ export default function BroadsheetPage() {
     const [showScrollHint, setShowScrollHint] = useState(true);
     const scrollRef = useRef(null);
 
+    useEffect(() => {
+        if (isMobile && classId) setViewMode(VIEW_MODES.CARDS);
+    }, [isMobile, classId]);
+
     const { classes, loading: classesLoading, error: classesError, meta, refetch: refetchClasses } = useClassList(filters);
     const { data, loading, error, refetch } = useBroadsheet(classId, filters);
 
     useEffect(() => {
         const c = scrollRef?.current; if (!c) return;
-        const h = () => { setShowScrollHint(false); c.removeEventListener('scroll', h); };
+        const h = () => { setShowScrollHint(false); c.removeEventListener('scroll', h); c.removeEventListener('touchstart', h); };
         c.addEventListener('scroll', h, { once: true });
-        const t = setTimeout(() => setShowScrollHint(false), 8000);
-        return () => { c.removeEventListener('scroll', h); clearTimeout(t); };
+        c.addEventListener('touchstart', h, { once: true, passive: true });
+        const t = setTimeout(() => setShowScrollHint(false), 5000);
+        return () => { c.removeEventListener('scroll', h); c.removeEventListener('touchstart', h); clearTimeout(t); };
     }, [data]);
 
     useEffect(() => {
@@ -1033,7 +1291,11 @@ export default function BroadsheetPage() {
 
     const handleSelectClass = useCallback((id) => { navigate(`/teacher/broadsheet/${id}`); }, [navigate]);
     const handleBack = useCallback(() => { if (classId) navigate('/teacher/broadsheet'); else navigate(-1); }, [classId, navigate]);
-    const handlePrint = useCallback(() => { setSearchTerm(''); setTimeout(() => window.print(), 100); }, []);
+    const handlePrint = useCallback(() => {
+        setViewMode(VIEW_MODES.DETAILED);
+        setSearchTerm('');
+        setTimeout(() => window.print(), 200);
+    }, []);
     const handleToggleFullscreen = useCallback(() => setIsFullscreen(p => !p), []);
 
     if (!classId) {
@@ -1066,6 +1328,8 @@ export default function BroadsheetPage() {
     if (data && data.students?.length === 0) return (<div style={{ backgroundColor: '#f8fafc' }} className="p-2 p-md-3"><PageHeader classInfo={data.classInfo} termInfo={data.termInfo} sessionInfo={data.sessionInfo} onBack={handleBack} onToggleFullscreen={handleToggleFullscreen} isFullscreen={isFullscreen} /><div className="card border rounded-3 rounded-md-4" style={{ borderColor: '#dee2e6' }}><div className="card-body"><EmptyState Icon={Icons.Users} title="No Students" message="No students assigned to this class." /></div></div></div>);
     if (data && data.subjects?.length === 0) return (<div style={{ backgroundColor: '#f8fafc' }} className="p-2 p-md-3"><PageHeader classInfo={data.classInfo} termInfo={data.termInfo} sessionInfo={data.sessionInfo} onBack={handleBack} onToggleFullscreen={handleToggleFullscreen} isFullscreen={isFullscreen} /><div className="card border rounded-3 rounded-md-4" style={{ borderColor: '#dee2e6' }}><div className="card-body"><EmptyState Icon={Icons.BookOpen} title="No Subjects" message="No subjects assigned to this class." /></div></div></div>);
 
+    const isCardsMode = viewMode === VIEW_MODES.CARDS;
+
     return (
         <div className={`${isFullscreen ? 'position-fixed top-0 start-0 end-0 bottom-0 z-3' : ''}`} style={{ backgroundColor: isFullscreen ? '#f8f6f3' : '#f8fafc' }}>
             <style>{`
@@ -1079,66 +1343,58 @@ export default function BroadsheetPage() {
                     .broadsheet-table th, .broadsheet-table td { padding: 1px 1px !important; }
                     .broadsheet-table .sticky-col { position: relative !important; left: auto !important; z-index: auto !important; }
                 }
-                
-                /* Scrollbar styling */
-                .broadsheet-scroll { scrollbar-width: thin; scrollbar-color: #c9956a #f8f6f3; }
+                .broadsheet-scroll { scrollbar-width: thin; scrollbar-color: #c9956a #f8f6f3; -webkit-overflow-scrolling: touch; }
                 .broadsheet-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
                 .broadsheet-scroll::-webkit-scrollbar-track { background: #f8f6f3; border-radius: 4px; }
                 .broadsheet-scroll::-webkit-scrollbar-thumb { background: linear-gradient(135deg, #d4a574, #c9956a); border-radius: 4px; border: 1px solid #f8f6f3; }
                 .broadsheet-scroll::-webkit-scrollbar-thumb:hover { background: linear-gradient(135deg, ${PAL.hdrAccent}, #d4a574); }
                 .broadsheet-scroll::-webkit-scrollbar-corner { background: #f1ede8; }
-
-                /* CRITICAL STICKY FIXES */
-                .broadsheet-scroll {
-                    -webkit-overflow-scrolling: touch;
-                  }
-                  
-                .broadsheet-table {
-                  border-collapse: separate;
-                  border-spacing: 0;
-                }
-
-                .sticky-col {
-                  position: sticky !important;
-                  z-index: 10 !important;
-                  background-clip: padding-box !important;
-                }
-
-                .broadsheet-table thead {
-                  position: sticky;
-                  top: 0;
-                  z-index: 20;
-                }
-
-                .broadsheet-table thead th {
-                  position: relative;
-                  z-index: 1;
-                }
-
-                .broadsheet-table thead .sticky-col {
-                  z-index: 30 !important;
-                }
-
-                tbody tr {
-                  position: relative;
-                }
-
+                .broadsheet-scroll { -webkit-overflow-scrolling: touch; }
+                .broadsheet-table { border-collapse: separate; border-spacing: 0; }
+                .sticky-col { position: sticky !important; z-index: 10 !important; background-clip: padding-box !important; }
+                .broadsheet-table thead { position: sticky; top: 0; z-index: 20; }
+                .broadsheet-table thead th { position: relative; z-index: 1; }
+                .broadsheet-table thead .sticky-col { z-index: 30 !important; }
+                tbody tr { position: relative; }
                 .print-only { display: none; }
-
-                /* Mobile responsive */
                 @media (max-width: 575.98px) {
+                    .bs-view-toggle-label { display: inline !important; }
                     .rounded-md-4 { border-radius: 0.75rem !important; }
                 }
                 @media (min-width: 576px) {
                     .rounded-md-4 { border-radius: 1rem !important; }
                 }
+                .bs-mobile-student-card { border-radius: 10px; overflow: hidden; background: white; box-shadow: 0 1px 4px rgba(0,0,0,0.06); transition: box-shadow 0.2s ease; }
+                .bs-mobile-student-card:active { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                .bs-mobile-card-header { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 10px 12px; border: none; background: transparent; cursor: pointer; font-family: inherit; text-align: left; color: inherit; -webkit-tap-highlight-color: transparent; }
+                .bs-mobile-card-header:active { background: rgba(0,0,0,0.02); }
+                .bs-mobile-card-sn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: rgba(0,135,81,0.08); color: #065f46; font-size: 0.6rem; font-weight: 700; font-family: ui-monospace, SFMono-Regular, monospace; flex-shrink: 0; }
+                .bs-mobile-card-name { font-weight: 600; font-size: 0.78rem; color: #212529; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; }
+                .bs-mobile-card-total { font-weight: 900; font-size: 1rem; color: #212529; line-height: 1; }
+                .bs-mobile-card-chevron { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.04); color: #868e96; transition: transform 0.3s ease; flex-shrink: 0; }
+                .bs-mobile-card-body { padding: 0 12px 12px 12px; border-top: 1px solid #f1f3f5; animation: bs-card-slide 0.2s ease; }
+                @keyframes bs-card-slide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+                .bs-mobile-subjects-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px;}
+                                .bs-mobile-subjects-grid { grid-template-columns: 1fr 1fr; }
+                @media (max-width: 767.98px) and (orientation: landscape) {
+                    .bs-mobile-subjects-grid { grid-template-columns: repeat(3, 1fr); }
+                }
+                .bs-mobile-subject-item { padding: 6px 8px; border-radius: 8px; background: #f8f9fb; border: 1px solid #f1f3f5; }
+                .bs-mobile-subject-item--empty { opacity: 0.5; }
+                .bs-mobile-subject-name { font-size: 0.6rem; font-weight: 600; color: #495057; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+                .bs-mobile-subject-total { font-weight: 900; font-size: 0.85rem; line-height: 1; }
+                .bs-mobile-subject-dash { color: #ced4da; font-size: 0.8rem; }
+                .bs-grade-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: 900; padding: 0; }
+                .bs-mobile-att-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f3f5; }
+                .bs-mobile-comment-row { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; padding-top: 6px; }
+                .bs-pos-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 50rem; font-weight: 700; }
             `}</style>
 
             <div className={`${isFullscreen ? 'd-flex flex-column h-100 overflow-hidden' : ''}`} style={{ padding: isFullscreen ? 8 : undefined }}>
                 <div className="no-print"><PageHeader classInfo={data?.classInfo} termInfo={data?.termInfo} sessionInfo={data?.sessionInfo} onBack={handleBack} onToggleFullscreen={handleToggleFullscreen} isFullscreen={isFullscreen} /></div>
                 <HeroSchoolHeader data={data} />
                 <PrintHeader data={data} />
-                <Toolbar viewMode={viewMode} setViewMode={setViewMode} showAttendance={showAttendance} setShowAttendance={setShowAttendance} showComments={showComments} setShowComments={setShowComments} showFilters={showFilters} setShowFilters={setShowFilters} loading={loading} onRefresh={refetch} onPrint={handlePrint} data={data} />
+                <Toolbar viewMode={viewMode} setViewMode={setViewMode} showAttendance={showAttendance} setShowAttendance={setShowAttendance} showComments={showComments} setShowComments={setShowComments} showFilters={showFilters} setShowFilters={setShowFilters} loading={loading} onRefresh={refetch} onPrint={handlePrint} data={data} isMobile={isMobile} />
 
                 {showFilters && (<div className="no-print card border rounded-3 p-2 mb-2" style={{ borderColor: '#dee2e6' }}><div className="row g-2"><div className="col-6"><select value={filters.termId} onChange={(e) => setFilters(f => ({ ...f, termId: e.target.value }))} className="form-select form-select-sm rounded-3" style={{ fontSize: '0.7rem' }}><option value="">Current Term</option>{terms.map(t => <option key={t._id} value={t._id}>{t.name}</option>)}</select></div><div className="col-6"><select value={filters.sessionId} onChange={(e) => setFilters(f => ({ ...f, sessionId: e.target.value }))} className="form-select form-select-sm rounded-3" style={{ fontSize: '0.7rem' }}><option value="">Current Session</option>{sessions.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}</select></div></div></div>)}
 
@@ -1149,17 +1405,30 @@ export default function BroadsheetPage() {
                     <MissingScoresAlert statistics={data?.statistics} />
                 </div>
                 <GradingKeyBadge />
-                <ScrollHintBanner visible={showScrollHint} />
+
+                {!isCardsMode && <ScrollHintBanner visible={showScrollHint} />}
 
                 <div className={`${isFullscreen ? 'flex-grow-1 overflow-hidden' : ''}`}>
-                    <BroadsheetTable data={data} viewMode={viewMode} showAttendance={showAttendance} showComments={showComments} searchTerm={searchTerm} onSearchChange={setSearchTerm} isFullscreen={isFullscreen} scrollRef={scrollRef} />
+                    {isCardsMode ? (
+                        <MobileCardsView
+                            data={data}
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            showAttendance={showAttendance}
+                            showComments={showComments}
+                        />
+                    ) : (
+                        <BroadsheetTable data={data} viewMode={viewMode} showAttendance={showAttendance} showComments={showComments} searchTerm={searchTerm} onSearchChange={setSearchTerm} isFullscreen={isFullscreen} scrollRef={scrollRef} isMobile={isMobile} />
+                    )}
                 </div>
 
-                {/* ===== SCROLL BARS BELOW TABLE ===== */}
-                <HorizontalScrollBar scrollRef={scrollRef} />
-                <VerticalScrollBar scrollRef={scrollRef} />
+                {!isCardsMode && (
+                    <>
+                        <HorizontalScrollBar scrollRef={scrollRef} />
+                        <VerticalScrollBar scrollRef={scrollRef} />
+                    </>
+                )}
 
-                {/* ===== SUBJECT ANALYSIS BELOW TABLE & SCROLL BARS ===== */}
                 <PerformanceInsightsBanner data={data} />
                 <GradingLegendStrip />
                 <SubjectStatisticsTable subjectStats={data?.subjectStats} />
