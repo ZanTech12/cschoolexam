@@ -39,6 +39,11 @@ import AdminCATeacherProgress from '../components/admin/AdminCATeacherProgress';
 // ============================================
 import StudentsClassesScoresPage from '../components/admin/StudentsClassesScoresPage';
 
+// ============================================
+// BROADSHEET IMPORT
+// ============================================
+import Broadsheet from '../components/admin/Broadsheet';
+
 import './adminlayout.css';
 
 // ============================================
@@ -65,7 +70,8 @@ const adminMenuItems = [
   { path: '/admin/students-classes-scores', label: 'Classes & Scores', icon: '📊' },
   { path: '/admin/ca-progress', label: 'CA Progress', icon: '📈' },
   { path: '/admin/principal-comments', label: 'Comments', icon: '💬' },
-  { path: '/admin/report-cards', label: 'Report Cards', icon: '📋' },
+  { path: '/admin/broadsheet', label: 'Broadsheet', icon: '📋' },
+  { path: '/admin/report-cards', label: 'Report Cards', icon: '📄' },
   
   // --- Divider: Examinations ---
   { divider: true, label: 'EXAMINATIONS' },
@@ -171,6 +177,7 @@ const AdminLayout = () => {
             <Route path="/students-classes-scores" element={<StudentsClassesScoresPage />} />
             <Route path="/ca-progress" element={<AdminCATeacherProgress />} />
             <Route path="/principal-comments" element={<PrincipalComments />} />
+            <Route path="/broadsheet/:classId?" element={<Broadsheet />} />
             <Route path="/report-cards" element={<ReportCards />} />
             <Route path="/report-cards/class/:classId" element={<ClassReportCards />} />
             <Route path="/report-cards/student/:studentId" element={<StudentReportCard />} />

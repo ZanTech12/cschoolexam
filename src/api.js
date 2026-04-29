@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Base API configuration
-const API_BASE_URL = 'https://schoolcbt.onrender.com';
+const API_BASE_URL = 'http://localhost:5000';
 
 // Create axios instance with default config
 const api = axios.create({
@@ -1138,6 +1138,156 @@ export const teacherBroadsheetAPI = {
     },
 };
 
+// ===================================================================
+// *** ADMIN BROADSHEET API ***
+// ===================================================================
+export const adminBroadsheetAPI = {
+    // -------------------------------------------------
+    // GET - Get broadsheet for ALL classes (Admin only)
+    // URL: /admin/broadsheet/:classId
+    // Params: termId, sessionId
+    //
+    // Usage:
+    //   const result = await adminBroadsheetAPI.getBroadsheet(classId);
+    //   const result = await adminBroadsheetAPI.getBroadsheet(classId, { termId: '...', sessionId: '...' });
+    //
+    // Returns: Same structure as teacher broadsheet but for admin
+    // {
+    //   success: true,
+    //   data: {
+    //     classInfo: { classId, className, classLevel, classSection, classFullName, totalSubjects, totalStudents },
+    //     termInfo: { id, name, status },
+    //     sessionInfo: { id, name },
+    //     subjects: [{ subjectId, subjectName, subjectCode }],
+    //     subjectStats: [{ subjectId, subjectName, totalStudents, assessedStudents, averageScore, passRate, gradeDistribution }],
+    //     students: [{ studentId, studentName, ..., scores: {...}, totalScore, averageScore, position }],
+    //     statistics: { totalStudents, assessedStudents, notAssessedStudents, highestTotal, lowestTotal, classAverage, passRate }
+    //   }
+    // }
+    // -------------------------------------------------
+    getBroadsheet: async (classId, params = {}) => {
+        const response = await api.get(`/admin/broadsheet/${classId}`, { params });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // GET - Get list of all classes for broadsheet selection dropdown
+    // URL: /admin/broadsheet/classes
+    // Params: termId, sessionId
+    //
+    // Usage:
+    //   const result = await adminBroadsheetAPI.getClasses();
+    //   const result = await adminBroadsheetAPI.getClasses({ termId: '...', sessionId: '...' });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: [{
+    //     classId: '...',
+    //     className: 'JSS 1A',
+    //     classLevel: 'JSS 1',
+    //     classSection: 'A',
+    //     studentCount: 45,
+    //     assessmentCount: 150,
+    //     hasBroadsheetData: true,
+    //     completionPercentage: 89
+    //   }],
+    //   meta: { termId, termName, sessionId, sessionName, totalClasses: 3 }
+    // }
+    // -------------------------------------------------
+    getClasses: async (params = {}) => {
+        const response = await api.get('/admin/broadsheet/classes', { params });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // GET - Get detailed broadsheet for a specific class
+    // URL: /admin/broadsheet/:classId
+    // Params: termId, sessionId
+    //
+    // Usage:
+    //   const result = await adminBroadsheetAPI.getDetailedBroadsheet(classId);
+    //   const result = await adminBroadsheetAPI.getDetailedBroadsheet(classId, { termId: '...', sessionId: '...' });
+    //
+    // Returns: Same as getBroadsheet but with additional admin-only data
+    // -------------------------------------------------
+    getDetailedBroadsheet: async (classId, params = {}) => {
+        const response = await api.get(`/admin/broadsheet/${classId}`, { params });
+        return response.data;
+    },
+
+    // -------------------------------------------------
+    // GET - Get global broadsheet statistics across ALL classes
+    // URL: /admin/broadsheet/global-stats
+    // Params: termId, sessionId
+    //
+    // Aggregates broadsheet data across all classes to produce
+    // school-wide Passed, Failed, Average Score, and Pass Rate
+    // metrics for the admin dashboard.
+    //
+    // A student is considered "assessed" if they have at least one
+    // approved CA record in the term/session. Their average score
+    // is the mean of totalScore across all their subject assessments.
+    // Pass/fail is determined by comparing that average against the
+    // grading system's passMark (defaults to 50 if no grading system found).
+    //
+    // Usage:
+    //   // Uses active term/session automatically
+    //   const result = await adminBroadsheetAPI.getGlobalStats();
+    //
+    //   // Specify term and session explicitly
+    //   const result = await adminBroadsheetAPI.getGlobalStats({
+    //     termId: '64a1b2c3d4e5f6g7h8i9j0k1',
+    //     sessionId: '64a1b2c3d4e5f6g7h8i9j0k2'
+    //   });
+    //
+    // Returns: {
+    //   success: true,
+    //   data: {
+    //     totalStudents: 450,          // All active students in school
+    //     assessedStudents: 420,       // Students with at least 1 approved CA
+    //     notAssessedStudents: 30,     // Students with no approved CAs
+    //     passed: 350,                 // Students whose avg score >= passMark
+    //     failed: 70,                  // Students whose avg score < passMark
+    //     averageScore: 72.5,          // Mean of all student averages
+    //     passRate: 83.3,              // (passed / assessedStudents) * 100
+    //     highestTotal: 98,            // Highest student average
+    //     lowestTotal: 12              // Lowest student average
+    //   },
+    //   termInfo: { id: '...', name: 'First Term' },
+    //   sessionInfo: { id: '...', name: '2024/2025' }
+    // }
+    //
+    // No data case:
+    //   {
+    //     success: true,
+    //     data: {
+    //       totalStudents: 450,
+    //       assessedStudents: 0,
+    //       notAssessedStudents: 450,
+    //       passed: 0,
+    //       failed: 0,
+    //       averageScore: 0,
+    //       passRate: 0,
+    //       highestTotal: 0,
+    //       lowestTotal: 0
+    //     },
+    //     termInfo: { ... },
+    //     sessionInfo: { ... }
+    //   }
+    //
+    // Error cases:
+    //   No active term/session:
+    //   {
+    //     success: false,
+    //     message: 'No active term or session found. Please select term and session.'
+    //   }
+    // -------------------------------------------------
+    getGlobalStats: async (params = {}) => {
+        const response = await api.get('/admin/broadsheet/global-stats', { params });
+        return response.data;
+    },
+};
+
 // ============================================
 // TEACHER MY ASSIGNMENTS API
 // ============================================
@@ -1600,6 +1750,8 @@ export const adminCAAPI = {
     },
 };
 
+
+
 // ============================================
 // ADMIN CA PROGRESS API (NEW)
 // ============================================
@@ -1638,6 +1790,8 @@ export const adminCAProgressAPI = {
         return response.data;
     },
 };
+
+
 
 // ============================================
 // RESULT ACCESS SCHEDULE API
