@@ -115,6 +115,12 @@ const Icons = {
     Grid: (p) => (
         <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></svg>
     ),
+    Crown: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M2 4l3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"/></svg>
+    ),
+    Medal: (p) => (
+        <svg xmlns="http://www.w3.org/2000/svg" width={p.size || 16} height={p.size || 16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={p.className}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5C7 4 6 9 6 9Z"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5C17 4 18 9 18 9Z"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+    ),
 };
 
 // ============================================
@@ -193,6 +199,39 @@ const PAL = {
 };
 
 // ============================================
+// TOP 3 RANK STYLES
+// ============================================
+const TOP_RANK_STYLES = [
+    { // 1st
+        bg: 'linear-gradient(135deg, #fef3c7, #fde68a)',
+        border: '#f59e0b',
+        textColor: '#92400e',
+        badgeBg: 'linear-gradient(135deg, #fbbf24, #f59e0b)',
+        badgeText: '#78350f',
+        icon: '🥇',
+        label: '1st',
+    },
+    { // 2nd
+        bg: 'linear-gradient(135deg, #f3f4f6, #e5e7eb)',
+        border: '#9ca3af',
+        textColor: '#374151',
+        badgeBg: 'linear-gradient(135deg, #d1d5db, #9ca3af)',
+        badgeText: '#1f2937',
+        icon: '🥈',
+        label: '2nd',
+    },
+    { // 3rd
+        bg: 'linear-gradient(135deg, #ffedd5, #fed7aa)',
+        border: '#ea580c',
+        textColor: '#7c2d12',
+        badgeBg: 'linear-gradient(135deg, #fdba74, #fb923c)',
+        badgeText: '#7c2d12',
+        icon: '🥉',
+        label: '3rd',
+    },
+];
+
+// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 function getGradeColor(grade) {
@@ -243,6 +282,61 @@ function getStudentRowBg(student, subjects) {
     if (student.subjectsWithoutScores > 0 && student.subjectsWithoutScores === subjects.length) return '#fde2e2';
     if (student.subjectsWithoutScores > subjects.length / 2) return '#fff3cd';
     return null;
+}
+
+// ============================================
+// POSITION COMPUTED BY AVERAGE (not total scores)
+// ============================================
+function computePositionsByAverage(students) {
+    if (!students || students.length === 0) return {};
+    const sorted = [...students]
+        .filter(s => s.averageScore > 0)
+        .sort((a, b) => b.averageScore - a.averageScore);
+    const positionMap = {};
+    sorted.forEach((student, index) => {
+        if (index === 0) {
+            positionMap[student.studentId] = 1;
+        } else {
+            const prevStudent = sorted[index - 1];
+            if (student.averageScore === prevStudent.averageScore) {
+                positionMap[student.studentId] = positionMap[prevStudent.studentId];
+            } else {
+                positionMap[student.studentId] = index + 1;
+            }
+        }
+    });
+    return positionMap;
+}
+
+// ============================================
+// COMPUTE TOP 3 STUDENTS PER SUBJECT
+// ============================================
+function computeTopStudentsBySubject(students, subjects) {
+    if (!students || !subjects) return {};
+    const map = {};
+    subjects.forEach(subject => {
+        const ranked = students
+            .filter(s => {
+                const score = s.scores?.[subject.subjectId]?.totalScore;
+                return score !== null && score !== undefined && score > 0;
+            })
+            .sort((a, b) => {
+                const scoreA = a.scores[subject.subjectId].totalScore;
+                const scoreB = b.scores[subject.subjectId].totalScore;
+                if (scoreB !== scoreA) return scoreB - scoreA;
+                // Tie-break by student name alphabetically for consistency
+                return (a.studentName || '').localeCompare(b.studentName || '');
+            })
+            .slice(0, 3)
+            .map((s, idx) => ({
+                name: s.studentName,
+                score: s.scores[subject.subjectId].totalScore,
+                grade: s.scores[subject.subjectId].grade,
+                rank: idx + 1,
+            }));
+        map[subject.subjectId] = ranked;
+    });
+    return map;
 }
 
 // ============================================
@@ -300,7 +394,7 @@ function useIsMobile(breakpoint = 640) {
 // ============================================
 // MOBILE STUDENT CARD
 // ============================================
-function MobileStudentCard({ student, subjects, index, showAttendance, showComments }) {
+function MobileStudentCard({ student, subjects, index, showAttendance, showComments, positionByAverage }) {
     const [expanded, setExpanded] = useState(false);
     const missingBg = getStudentRowBg(student, subjects);
     const borderColor = student.subjectsWithoutScores === subjects.length
@@ -309,7 +403,8 @@ function MobileStudentCard({ student, subjects, index, showAttendance, showComme
             ? '#f59e0b'
             : PAL.hdrAccent + '30';
 
-    const posStyle = student.position ? getPositionStyle(student.position) : null;
+    const computedPosition = positionByAverage?.[student.studentId] || null;
+    const posStyle = computedPosition ? getPositionStyle(computedPosition) : null;
 
     return (
         <div
@@ -358,7 +453,7 @@ function MobileStudentCard({ student, subjects, index, showAttendance, showComme
                             minWidth: 28,
                             padding: '2px 4px',
                         }}>
-                            {getPositionSuffix(student.position)}
+                            {getPositionSuffix(computedPosition)}
                         </span>
                     )}
                     <div className="bs-mobile-card-chevron" style={{
@@ -700,15 +795,6 @@ function GradingKeyBadge() {
 // ============================================
 // ADMIN CLASS SELECTION VIEW
 // ============================================
-// ============================================
-// ADMIN CLASS SELECTION VIEW
-// ============================================
-// ============================================
-// ADMIN CLASS SELECTION VIEW
-// ============================================
-// ============================================
-// ADMIN CLASS SELECTION VIEW
-// ============================================
 function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass, onRefresh }) {
     const grouped = useMemo(() => {
         const map = {};
@@ -750,7 +836,6 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
 
     return (
         <div>
-            {/* Meta banner */}
             {meta && (
                 <div className="alert d-flex align-items-center gap-2 py-2 px-3 rounded-3 mb-3 border-0" style={{ background: `linear-gradient(135deg, rgba(99,102,241,0.06), rgba(99,102,241,0.02))`, border: `1px solid ${PAL.hdrAccent}20 !important`, color: PAL.hdrPrimary, fontSize: '0.52rem' }} role="alert">
                     <Icons.School size={12} style={{ color: PAL.hdrAccent }} />
@@ -758,7 +843,6 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
                 </div>
             )}
 
-            {/* Summary stats */}
             <div className="row g-2 justify-content-center mb-4" style={{ maxWidth: 480, margin: '0 auto 1rem auto' }}>
                 <div className="col-3"><div className="rounded-3 p-1.5 p-sm-2.5 text-center h-100" style={{ background: 'rgba(99,102,241,0.06)', border: `1px solid ${PAL.hdrAccent}15` }}>
                     <p className="text-uppercase fw-bold mb-0 d-none d-sm-block" style={{ fontSize: '0.38rem', letterSpacing: '0.1em', color: PAL.hdrAccent }}>Classes</p>
@@ -778,10 +862,8 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
                 </div></div>
             </div>
 
-            {/* Grouped class cards */}
             {grouped.map(([level, cls]) => (
                 <div key={level} className="mb-4">
-                    {/* Level heading */}
                     <div className="d-flex align-items-center gap-2 mb-2 px-1">
                         <div className="d-flex align-items-center justify-content-center rounded-2 flex-shrink-0" style={{ width: 20, height: 20, background: `linear-gradient(135deg, ${PAL.hdrPrimary}, ${PAL.hdrSecondary})` }}>
                             <Icons.Grid size={9} style={{ color: 'white' }} />
@@ -791,14 +873,6 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
                         <span className="badge rounded-pill flex-shrink-0" style={{ fontSize: '0.38rem', fontWeight: 700, background: `${PAL.hdrAccent}10`, color: PAL.hdrAccent }}>{cls.length}</span>
                     </div>
 
-                    {/* 
-                        Responsive grid:
-                        Mobile (<576px):  2 columns
-                        Tablet (576-767): 2 columns  
-                        Small desktop (768-991): 3 columns
-                        Desktop (992-1199): 4 columns
-                        Large (1200+): 4 columns
-                    */}
                     <div className="row g-2 g-sm-2.5 g-md-3">
                         {cls.map((c) => (
                             <div key={c.classId} className="col-6 col-sm-6 col-md-4 col-lg-3 col-xl-3">
@@ -821,7 +895,6 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
                                         e.currentTarget.style.transform = 'translateY(0)';
                                     }}
                                 >
-                                    {/* Card title row */}
                                     <div className="d-flex align-items-start justify-content-between mb-1.5 mb-sm-2">
                                         <div style={{ minWidth: 0, flex: 1, marginRight: 4 }}>
                                             <h4 className="fw-bold mb-0" style={{
@@ -844,7 +917,6 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
                                         </span>
                                     </div>
 
-                                    {/* Mini stat boxes - hidden on very small mobile, shown on sm+ */}
                                     <div className="row g-1.5 mb-1.5 mb-sm-2 d-none d-sm-flex">
                                         <div className="col-6">
                                             <div className="rounded-2 p-1.5 text-center" style={{ background: PAL.greenGhost, border: `1px solid ${PAL.green}12` }}>
@@ -860,23 +932,20 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
                                         </div>
                                     </div>
 
-                                    {/* Inline stats for mobile - shown only on xs */}
                                     <div className="d-flex d-sm-none align-items-center gap-2 mb-1.5" style={{ fontSize: '0.5rem' }}>
                                         <span className="d-flex align-items-center gap-0.5" style={{ color: PAL.greenDark }}>
                                             <Icons.Users size={8} style={{ color: PAL.green }} />
                                             <strong>{c.studentCount}</strong>
                                         </span>
-                                        <span className="text-body-tertiary" style={{ fontSize: '0.4rem' }}>•</span>
+                                        <span className="text-body-tertiary" style={{ fontSize: '0.4rem' }}>&bull;</span>
                                         <span className="d-flex align-items-center gap-0.5 text-primary">
                                             <Icons.FileText size={8} />
                                             <strong>{c.assessmentCount}</strong>
                                         </span>
                                     </div>
 
-                                    {/* Spacer to push status to bottom */}
                                     <div className="flex-grow-1" />
 
-                                    {/* Status + progress */}
                                     <div className="d-flex align-items-center gap-1.5 mt-1">
                                         <span className={`badge d-inline-flex align-items-center gap-0.5 flex-shrink-0 ${c.hasBroadsheetData ? 'bg-success-subtle text-success border border-success border-opacity-25' : 'bg-body-tertiary text-body-tertiary border border-opacity-10'}`} style={{ fontWeight: 600, fontSize: '0.38rem', padding: '2px 5px' }}>
                                             <Icons.BarChart size={6} />
@@ -944,7 +1013,7 @@ function StudentSearchBar({ count, onSearch, searchTerm }) {
 // ============================================
 // BROADSHEET TABLE
 // ============================================
-function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchTerm, onSearchChange, isFullscreen, scrollRef, isMobile }) {
+function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchTerm, onSearchChange, isFullscreen, scrollRef, isMobile, positionByAverage }) {
     const [scrollState, setScrollState] = useState({ left: 0, maxLeft: 0, top: 0, maxTop: 0 });
 
     const subCols = useMemo(() => {
@@ -1116,6 +1185,7 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
                                 const isEven = sIdx % 2 === 0;
                                 const missingBg = getStudentRowBg(student, subjects);
                                 const rowBg = missingBg || (isEven ? '#ffffff' : '#f8f9fb');
+                                const computedPos = positionByAverage?.[student.studentId] || null;
                                 return (
                                     <tr key={student.studentId} style={{ backgroundColor: rowBg }}
                                         onMouseEnter={e => { if (!missingBg) e.currentTarget.style.backgroundColor = '#ede9fe20'; }}
@@ -1138,7 +1208,7 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
                                             const borderR = col === subCols[subCols.length - 1] ? `1px solid #e9ecef` : '1px solid #f1f3f5';
 
                                             if (val === null || val === undefined || (val === 0 && !isGrade))
-                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center text-body-tertiary" style={{ fontSize: '0.6rem', padding: cellPad, borderRight: borderR }}>–</td>;
+                                                return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center text-body-tertiary" style={{ fontSize: '0.6rem', padding: cellPad, borderRight: borderR }}>&ndash;</td>;
                                             if (isGrade) {
                                                 const gc = getGradeColor(val);
                                                 return <td key={`td-${subject.subjectId}-${col.key}`} className="text-center" style={{ fontSize: '0.6rem', padding: cellPad, borderRight: borderR }}><span className={`badge ${gc.bg} ${gc.text} rounded-2 d-inline-flex align-items-center justify-content-center`} style={{ width: isMobile ? 20 : 22, height: isMobile ? 20 : 22, fontSize: '0.5rem', fontWeight: 900, padding: 0 }}>{val}</span></td>;
@@ -1151,17 +1221,17 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
 
                                         {showAttendance && attendance && (
                                             <td className="text-center" style={{ fontSize: '0.6rem', padding: cellPad, backgroundColor: '#eef2ff', borderRight: '1px solid #e9ecef' }}>
-                                                {student.attendance ? <span className={`fw-semibold ${student.attendance.percentage >= 75 ? 'text-success' : student.attendance.percentage >= 50 ? 'text-warning' : 'text-danger'}`}>{fmtPct(student.attendance.percentage)}</span> : <span className="text-body-tertiary">—</span>}
+                                                {student.attendance ? <span className={`fw-semibold ${student.attendance.percentage >= 75 ? 'text-success' : student.attendance.percentage >= 50 ? 'text-warning' : 'text-danger'}`}>{fmtPct(student.attendance.percentage)}</span> : <span className="text-body-tertiary">&mdash;</span>}
                                             </td>
                                         )}
                                         {showComments && (
-                                            <td className="text-start text-secondary text-truncate" style={{ fontSize: '0.54rem', padding: cellPad, maxWidth: 140, backgroundColor: '#eef2ff', borderRight: '1px solid #e9ecef' }} title={student.classTeacherComment || 'No comment'}>{student.classTeacherComment || <span className="text-body-tertiary fst-italic">—</span>}</td>
+                                            <td className="text-start text-secondary text-truncate" style={{ fontSize: '0.54rem', padding: cellPad, maxWidth: 140, backgroundColor: '#eef2ff', borderRight: '1px solid #e9ecef' }} title={student.classTeacherComment || 'No comment'}>{student.classTeacherComment || <span className="text-body-tertiary fst-italic">&mdash;</span>}</td>
                                         )}
 
-                                        <td className="text-center fw-black text-dark" style={{ fontSize: isMobile ? '0.68rem' : '0.73rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.totalScore > 0 ? student.totalScore : <span className="text-body-tertiary">—</span>}</td>
-                                        <td className="text-center fw-semibold" style={{ fontSize: '0.6rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.averageScore > 0 ? fmt(student.averageScore, 1) : <span className="text-body-tertiary">—</span>}</td>
+                                        <td className="text-center fw-black text-dark" style={{ fontSize: isMobile ? '0.68rem' : '0.73rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.totalScore > 0 ? student.totalScore : <span className="text-body-tertiary">&mdash;</span>}</td>
+                                        <td className="text-center fw-semibold" style={{ fontSize: '0.6rem', padding: cellPad, backgroundColor: `${ACCENT}08`, borderRight: '1px solid #e9ecef', borderTop: '1px solid #f1f3f5' }}>{student.averageScore > 0 ? fmt(student.averageScore, 1) : <span className="text-body-tertiary">&mdash;</span>}</td>
                                         <td className="text-center" style={{ padding: cellPad, backgroundColor: `${ACCENT}08`, borderTop: '1px solid #f1f3f5' }}>
-                                            {student.position ? (() => { const ps = getPositionStyle(student.position); return <span className="badge rounded-pill d-inline-flex align-items-center justify-content-center" style={{ background: ps.bg, color: ps.text, border: `1px solid ${ps.border}`, fontSize: '0.5rem', fontWeight: 700, minWidth: isMobile ? 26 : 30, padding: '2px 4px' }}>{getPositionSuffix(student.position)}</span>; })() : <span className="text-body-tertiary" style={{ fontSize: '0.6rem' }}>—</span>}
+                                            {computedPos ? (() => { const ps = getPositionStyle(computedPos); return <span className="badge rounded-pill d-inline-flex align-items-center justify-content-center" style={{ background: ps.bg, color: ps.text, border: `1px solid ${ps.border}`, fontSize: '0.5rem', fontWeight: 700, minWidth: isMobile ? 26 : 30, padding: '2px 4px' }}>{getPositionSuffix(computedPos)}</span>; })() : <span className="text-body-tertiary" style={{ fontSize: '0.6rem' }}>&mdash;</span>}
                                         </td>
                                     </tr>
                                 );
@@ -1211,7 +1281,7 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
 // ============================================
 // MOBILE CARDS VIEW
 // ============================================
-function MobileCardsView({ data, searchTerm, onSearchChange, showAttendance, showComments }) {
+function MobileCardsView({ data, searchTerm, onSearchChange, showAttendance, showComments, positionByAverage }) {
     const filteredStudents = useMemo(() => {
         if (!searchTerm) return data?.students || [];
         const t = searchTerm.toLowerCase();
@@ -1243,6 +1313,7 @@ function MobileCardsView({ data, searchTerm, onSearchChange, showAttendance, sho
                             index={idx}
                             showAttendance={showAttendance}
                             showComments={showComments}
+                            positionByAverage={positionByAverage}
                         />
                     ))}
                 </div>
@@ -1259,9 +1330,101 @@ function MobileCardsView({ data, searchTerm, onSearchChange, showAttendance, sho
 }
 
 // ============================================
-// SUBJECT STATISTICS TABLE
+// TOP 3 STUDENTS POD (reusable within subject card)
 // ============================================
-function SubjectStatisticsTable({ subjectStats }) {
+function TopStudentsPod({ topStudents }) {
+    if (!topStudents || topStudents.length === 0) return null;
+
+    return (
+        <div className="mt-2 pt-2" style={{ borderTop: '1px dashed rgba(0,0,0,0.08)' }}>
+            <div className="d-flex align-items-center gap-1 mb-1.5">
+                <Icons.Crown size={10} style={{ color: '#f59e0b' }} />
+                <span className="text-uppercase fw-bold" style={{ fontSize: '0.48rem', letterSpacing: '0.1em', color: '#92400e' }}>
+                    Top 3
+                </span>
+            </div>
+            <div className="d-flex flex-column gap-1">
+                {topStudents.map((student, idx) => {
+                    const style = TOP_RANK_STYLES[idx];
+                    return (
+                        <div
+                            key={idx}
+                            className="d-flex align-items-center gap-1.5 rounded-2 px-2 py-1"
+                            style={{
+                                background: style.bg,
+                                border: `1px solid ${style.border}30`,
+                            }}
+                        >
+                            {/* Rank badge */}
+                            <span
+                                className="d-flex align-items-center justify-content-center rounded-circle flex-shrink-0"
+                                style={{
+                                    width: 18,
+                                    height: 18,
+                                    background: style.badgeBg,
+                                    color: style.badgeText,
+                                    fontSize: '0.42rem',
+                                    fontWeight: 900,
+                                    boxShadow: `0 1px 4px rgba(0,0,0,0.12)`,
+                                    border: '1px solid rgba(255,255,255,0.6)',
+                                }}
+                                title={style.label}
+                            >
+                                {style.icon}
+                            </span>
+
+                            {/* Student name */}
+                            <span
+                                className="fw-semibold flex-grow-1 text-truncate"
+                                style={{
+                                    fontSize: '0.56rem',
+                                    color: style.textColor,
+                                    lineHeight: 1.2,
+                                }}
+                                title={student.name}
+                            >
+                                {student.name}
+                            </span>
+
+                            {/* Score + Grade */}
+                            <div className="d-flex align-items-center gap-0.5 flex-shrink-0">
+                                <span
+                                    className="fw-black"
+                                    style={{
+                                        fontSize: '0.6rem',
+                                        color: style.textColor,
+                                    }}
+                                >
+                                    {fmt(student.score)}
+                                </span>
+                                {student.grade && (
+                                    <span
+                                        className="d-flex align-items-center justify-content-center rounded-1"
+                                        style={{
+                                            width: 15,
+                                            height: 15,
+                                            fontSize: '0.38rem',
+                                            fontWeight: 900,
+                                            background: `${getGradeColor(student.grade).dot}18`,
+                                            color: getGradeColor(student.grade).dot,
+                                        }}
+                                    >
+                                        {student.grade}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+// ============================================
+// SUBJECT STATISTICS TABLE (with top 3 students)
+// ============================================
+function SubjectStatisticsTable({ subjectStats, topStudentsBySubject }) {
     const [isExpanded, setIsExpanded] = useState(false);
     if (!subjectStats || subjectStats.length === 0) return null;
     return (
@@ -1290,6 +1453,7 @@ function SubjectStatisticsTable({ subjectStats }) {
                     {subjectStats.map((stat) => {
                         const passColor = stat.assessedStudents > 0 ? (stat.passRate >= 80 ? '#059669' : stat.passRate >= 60 ? '#2563eb' : stat.passRate >= 50 ? '#d97706' : '#dc2626') : '#94a3b8';
                         const passBg = stat.assessedStudents > 0 ? (stat.passRate >= 80 ? 'rgba(5,150,105,0.06)' : stat.passRate >= 60 ? 'rgba(37,99,235,0.06)' : stat.passRate >= 50 ? 'rgba(217,119,6,0.06)' : 'rgba(220,38,38,0.06)') : '#f8f9fa';
+                        const topStudents = topStudentsBySubject?.[stat.subjectId] || [];
                         return (
                             <div key={stat.subjectId} className="col-12 col-sm-6 col-lg-4 col-xl-3">
                                 <div className="rounded-3 p-2.5 p-md-3 h-100 transition-all" style={{ background: `linear-gradient(160deg, white, ${passBg})`, border: `1.5px solid ${passColor}18`, position: 'relative', overflow: 'hidden' }}
@@ -1310,8 +1474,15 @@ function SubjectStatisticsTable({ subjectStats }) {
                                             </div>
                                             <div className="d-flex gap-1 mt-1.5 flex-wrap">{GRADING_KEY.map((g) => { const c = stat.gradeDistribution?.[g.grade] || 0; if (c === 0) return null; return <span key={g.grade} className="d-flex align-items-center gap-0.5 px-1.5 py-0.5 rounded-1" style={{ fontSize: '0.52rem', background: `${g.color}10`, border: `1px solid ${g.color}15` }}><span className="fw-black" style={{ color: g.color }}>{g.grade}</span><span className="fw-semibold" style={{ color: g.color + 'bb' }}>{c}</span></span>; })}</div>
                                             <div className="mt-1.5"><div className="d-flex justify-content-between mb-0.5" style={{ fontSize: '0.48rem' }}><span className="text-success fw-semibold">{stat.passCount || 0} passed</span><span className="text-danger fw-semibold">{stat.failCount || 0} failed</span></div><div className="progress" style={{ height: 4, background: 'rgba(220,38,38,0.15)', borderRadius: 999 }}><div className="progress-bar bg-success" style={{ width: `${stat.passRate || 0}%`, borderRadius: 999 }} /></div></div>
+
+                                            {/* ===== TOP 3 STUDENTS POD ===== */}
+                                            <TopStudentsPod topStudents={topStudents} />
                                         </div>
-                                    ) : (<div className="ps-1 text-center py-2"><span className="text-body-tertiary" style={{ fontSize: '0.6rem' }}>No scores entered</span></div>)}
+                                    ) : (
+                                        <div className="ps-1 text-center py-2">
+                                            <span className="text-body-tertiary" style={{ fontSize: '0.6rem' }}>No scores entered</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
@@ -1407,7 +1578,6 @@ function MobileViewToggle({ viewMode, setViewMode, isMobile }) {
         </div>
     );
 }
-
 function ScrollHintBanner({ visible }) {
     if (!visible) return null;
     return (<div className="no-print d-flex align-items-center gap-2 px-3 py-2 rounded-3 mb-2 border-0" style={{ background: `linear-gradient(135deg, ${PAL.hdrDeep}08, ${PAL.hdrAccent}04)`, border: `1px solid ${PAL.hdrAccent}15 !important`, color: PAL.hdrSecondary, fontSize: '0.65rem' }} role="alert"><Icons.DoubleArrow size={13} style={{ color: PAL.hdrAccent }} className="flex-shrink-0" /><span className="fw-medium">Scroll ↔ for subjects &bull; ↕ for students</span></div>);
@@ -1455,6 +1625,12 @@ export default function AdminBroadsheetPage() {
     const { classes, loading: classesLoading, error: classesError, meta, refetch: refetchClasses } = useAdminClassList(filters);
     const { data, loading, error, refetch } = useAdminBroadsheet(classId, filters);
 
+    // Compute positions based on average score alone (not total scores)
+    const positionByAverage = useMemo(() => computePositionsByAverage(data?.students), [data?.students]);
+
+    // Compute top 3 students per subject
+    const topStudentsBySubject = useMemo(() => computeTopStudentsBySubject(data?.students, data?.subjects), [data?.students, data?.subjects]);
+
     useEffect(() => {
         const c = scrollRef?.current; if (!c) return;
         const h = () => { setShowScrollHint(false); c.removeEventListener('scroll', h); c.removeEventListener('touchstart', h); };
@@ -1484,9 +1660,6 @@ export default function AdminBroadsheetPage() {
     const handleToggleFullscreen = useCallback(() => setIsFullscreen(p => !p), []);
 
     // ============================================
-    // CLASS SELECTION VIEW (no classId)
-    // ============================================
-        // ============================================
     // CLASS SELECTION VIEW (no classId)
     // ============================================
     if (!classId) {
@@ -1684,10 +1857,12 @@ export default function AdminBroadsheetPage() {
                 .bs-mobile-subject-name { font-size: 0.6rem; font-weight: 600; color: #495057; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                 .bs-mobile-subject-total { font-weight: 900; font-size: 0.85rem; line-height: 1; }
                 .bs-mobile-subject-dash { color: #ced4da; font-size: 0.8rem; }
-                .bs-grade-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: 900; padding: 0; }
+                .bs-grade-badge { display: inline-flex; align-items: center; justify-content-center; border-radius: 6px; font-weight: 900; padding: 0; }
                 .bs-mobile-att-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f3f5; }
                 .bs-mobile-comment-row { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; padding-top: 6px; }
-                .bs-pos-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 50rem; font-weight: 700; }
+                .bs-pos-badge { display: inline-flex; align-items: center; justify-content-center; border-radius: 50rem; font-weight: 700; }
+                .bs-top-student-row { transition: transform 0.15s ease; }
+                .bs-top-student-row:hover { transform: translateX(2px); }
             `}</style>
 
             <div className={`${isFullscreen ? 'd-flex flex-column h-100 overflow-hidden' : ''}`} style={{ padding: isFullscreen ? 8 : undefined }}>
@@ -1756,9 +1931,21 @@ export default function AdminBroadsheetPage() {
                             onSearchChange={setSearchTerm}
                             showAttendance={showAttendance}
                             showComments={showComments}
+                            positionByAverage={positionByAverage}
                         />
                     ) : (
-                        <BroadsheetTable data={data} viewMode={viewMode} showAttendance={showAttendance} showComments={showComments} searchTerm={searchTerm} onSearchChange={setSearchTerm} isFullscreen={isFullscreen} scrollRef={scrollRef} isMobile={isMobile} />
+                        <BroadsheetTable
+                            data={data}
+                            viewMode={viewMode}
+                            showAttendance={showAttendance}
+                            showComments={showComments}
+                            searchTerm={searchTerm}
+                            onSearchChange={setSearchTerm}
+                            isFullscreen={isFullscreen}
+                            scrollRef={scrollRef}
+                            isMobile={isMobile}
+                            positionByAverage={positionByAverage}
+                        />
                     )}
                 </div>
 
@@ -1770,10 +1957,13 @@ export default function AdminBroadsheetPage() {
                     </>
                 )}
 
-                {/* Insights & analysis */}
+                {/* Insights & analysis — now passes topStudentsBySubject */}
                 <PerformanceInsightsBanner data={data} />
                 <GradingLegendStrip />
-                <SubjectStatisticsTable subjectStats={data?.subjectStats} />
+                <SubjectStatisticsTable
+                    subjectStats={data?.subjectStats}
+                    topStudentsBySubject={topStudentsBySubject}
+                />
 
                 {/* Signature block (print) */}
                 <SignatureBlock classTeacher={data?.classInfo?.classTeacher?.name} />
