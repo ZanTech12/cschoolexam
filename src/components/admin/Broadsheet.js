@@ -175,7 +175,6 @@ const PAL = {
     greenDark: '#065f46',
     greenGhost: 'rgba(0,135,81,0.08)',
     greenGhostMed: 'rgba(0,135,81,0.15)',
-    // Admin uses deep indigo/navy instead of burnt orange
     hdrPrimary: '#1e1b4b',
     hdrSecondary: '#312e81',
     hdrDeep: '#0f0d2e',
@@ -667,8 +666,8 @@ function HeroSchoolHeader({ data }) {
                         {[['Class', data.classInfo?.classFullName], ['Teacher', data.classInfo?.classTeacher?.name], ['Term', data.termInfo?.name], ['Session', data.sessionInfo?.name]].map(([label, value]) => (
                             <div key={label} className="d-flex align-items-center gap-1">
                                 <span className="rounded-circle d-block" style={{ width: 3, height: 3, background: PAL.hdrGold }} />
-                                <span style={{ fontSize: 'clamp(0.48rem, 1.4vw, 0.6rem)', color: PAL.hdrMuted }}>{label}</span>
-                                <span className="fw-semibold" style={{ fontSize: 'clamp(0.52rem, 1.5vw, 0.65rem)', color: PAL.hdrText, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || '—'}</span>
+                                <span style={{ fontSize: 'clamp(0.52rem, 1.5vw, 0.62rem)', color: PAL.hdrMuted, fontWeight: 600 }}>{label}:</span>
+                                <span className="fw-bold" style={{ fontSize: 'clamp(0.6rem, 2.2vw, 0.78rem)', color: '#ffffff', maxWidth: label === 'Class' ? 'none' : '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: label === 'Class' ? 'normal' : 'nowrap' }}>{value || '—'}</span>
                             </div>
                         ))}
                     </div>
@@ -701,8 +700,16 @@ function GradingKeyBadge() {
 // ============================================
 // ADMIN CLASS SELECTION VIEW
 // ============================================
+// ============================================
+// ADMIN CLASS SELECTION VIEW
+// ============================================
+// ============================================
+// ADMIN CLASS SELECTION VIEW
+// ============================================
+// ============================================
+// ADMIN CLASS SELECTION VIEW
+// ============================================
 function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass, onRefresh }) {
-    // Group classes by level — must be before any early returns (Rules of Hooks)
     const grouped = useMemo(() => {
         const map = {};
         classes.forEach(c => {
@@ -713,9 +720,29 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
         return Object.entries(map).sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }));
     }, [classes]);
 
-    if (loading) return (<div className="d-flex align-items-center justify-content-center py-5"><div className="text-center"><div className="spinner-border mb-2" role="status" style={{ width: 48, height: 48, color: PAL.hdrAccent }}><span className="visually-hidden">Loading...</span></div><p className="text-body-secondary small">Loading all classes...</p></div></div>);
-    if (error) return (<div className="d-flex flex-column align-items-center justify-content-center py-5 px-3"><div className="rounded-circle d-flex align-items-center justify-content-center mb-3" style={{ width: 56, height: 56, background: 'rgba(99,102,241,0.1)' }}><Icons.AlertCircle size={26} className="text-danger" /></div><h3 className="h6 fw-semibold mb-1">Error Loading Classes</h3><p className="text-body-secondary small text-center mb-3" style={{ maxWidth: 400 }}>{error}</p><button onClick={onRefresh} className="btn btn-sm rounded-3 px-4 shadow text-white" style={{ backgroundColor: PAL.hdrPrimary }}>Try Again</button></div>);
-    if (classes.length === 0) return (<div className="d-flex flex-column align-items-center justify-content-center py-5 px-3"><div className="rounded-circle d-flex align-items-center justify-content-center mb-3" style={{ width: 56, height: 56, background: 'rgba(99,102,241,0.08)', border: `1px solid ${PAL.hdrAccent}20` }}><Icons.School size={26} style={{ color: PAL.hdrAccent }} /></div><h3 className="h6 fw-semibold mb-1">No Classes Found</h3><p className="text-body-secondary small text-center">No classes found for the selected term/session.</p></div>);
+    if (loading) return (
+        <div className="d-flex align-items-center justify-content-center py-5">
+            <div className="text-center">
+                <div className="spinner-border mb-2" role="status" style={{ width: 48, height: 48, color: PAL.hdrAccent }}><span className="visually-hidden">Loading...</span></div>
+                <p className="text-body-secondary small">Loading all classes...</p>
+            </div>
+        </div>
+    );
+    if (error) return (
+        <div className="d-flex flex-column align-items-center justify-content-center py-5 px-3">
+            <div className="rounded-circle d-flex align-items-center justify-content-center mb-3" style={{ width: 56, height: 56, background: 'rgba(99,102,241,0.1)' }}><Icons.AlertCircle size={26} className="text-danger" /></div>
+            <h3 className="h6 fw-semibold mb-1">Error Loading Classes</h3>
+            <p className="text-body-secondary small text-center mb-3" style={{ maxWidth: 400 }}>{error}</p>
+            <button onClick={onRefresh} className="btn btn-sm rounded-3 px-4 shadow text-white" style={{ backgroundColor: PAL.hdrPrimary }}>Try Again</button>
+        </div>
+    );
+    if (classes.length === 0) return (
+        <div className="d-flex flex-column align-items-center justify-content-center py-5 px-3">
+            <div className="rounded-circle d-flex align-items-center justify-content-center mb-3" style={{ width: 56, height: 56, background: 'rgba(99,102,241,0.08)', border: `1px solid ${PAL.hdrAccent}20` }}><Icons.School size={26} style={{ color: PAL.hdrAccent }} /></div>
+            <h3 className="h6 fw-semibold mb-1">No Classes Found</h3>
+            <p className="text-body-secondary small text-center">No classes found for the selected term/session.</p>
+        </div>
+    );
 
     const totalStudents = classes.reduce((s, c) => s + (c.studentCount || 0), 0);
     const totalAssessments = classes.reduce((s, c) => s + (c.assessmentCount || 0), 0);
@@ -723,81 +750,144 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
 
     return (
         <div>
+            {/* Meta banner */}
             {meta && (
-                <div className="alert d-flex align-items-center gap-2 py-2 px-3 rounded-3 mb-3 border-0" style={{ background: `linear-gradient(135deg, rgba(99,102,241,0.06), rgba(99,102,241,0.02))`, border: `1px solid ${PAL.hdrAccent}20 !important`, color: PAL.hdrPrimary, fontSize: '0.78rem' }} role="alert">
-                    <Icons.School size={14} style={{ color: PAL.hdrAccent }} />
+                <div className="alert d-flex align-items-center gap-2 py-2 px-3 rounded-3 mb-3 border-0" style={{ background: `linear-gradient(135deg, rgba(99,102,241,0.06), rgba(99,102,241,0.02))`, border: `1px solid ${PAL.hdrAccent}20 !important`, color: PAL.hdrPrimary, fontSize: '0.52rem' }} role="alert">
+                    <Icons.School size={12} style={{ color: PAL.hdrAccent }} />
                     <span className="fw-medium">{classes.length} class{classes.length !== 1 ? 'es' : ''} &bull; <strong>{totalStudents}</strong> students &bull; <strong>{totalAssessments}</strong> assessments &bull; <strong>{meta.termName}</strong> &bull; <strong>{meta.sessionName}</strong></span>
                 </div>
             )}
 
-            {/* Overview stats */}
-            <div className="row g-2 mb-3">
-                <div className="col-6 col-sm-3">
-                    <div className="rounded-3 p-2 text-center" style={{ background: 'rgba(99,102,241,0.06)', border: `1px solid ${PAL.hdrAccent}15` }}>
-                        <p className="text-uppercase fw-bold mb-0" style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: PAL.hdrAccent }}>Classes</p>
-                        <p className="fs-4 fw-black mb-0" style={{ color: PAL.hdrPrimary }}>{classes.length}</p>
-                    </div>
-                </div>
-                <div className="col-6 col-sm-3">
-                    <div className="rounded-3 p-2 text-center" style={{ background: PAL.greenGhost, border: `1px solid ${PAL.green}15` }}>
-                        <p className="text-uppercase fw-bold mb-0" style={{ fontSize: '0.55rem', letterSpacing: '0.1em', color: PAL.green }}>Students</p>
-                        <p className="fs-4 fw-black mb-0" style={{ color: PAL.greenDark }}>{totalStudents}</p>
-                    </div>
-                </div>
-                <div className="col-6 col-sm-3">
-                    <div className="rounded-3 p-2 text-center bg-primary-subtle border border-primary border-opacity-10">
-                        <p className="text-uppercase fw-bold mb-0 text-primary" style={{ fontSize: '0.55rem', letterSpacing: '0.1em' }}>With Data</p>
-                        <p className="fs-4 fw-black text-primary mb-0">{classesWithData}</p>
-                    </div>
-                </div>
-                <div className="col-6 col-sm-3">
-                    <div className="rounded-3 p-2 text-center bg-warning-subtle border border-warning border-opacity-10">
-                        <p className="text-uppercase fw-bold mb-0 text-warning" style={{ fontSize: '0.55rem', letterSpacing: '0.1em' }}>Pending</p>
-                        <p className="fs-4 fw-black text-warning mb-0">{classes.length - classesWithData}</p>
-                    </div>
-                </div>
+            {/* Summary stats */}
+            <div className="row g-2 justify-content-center mb-4" style={{ maxWidth: 480, margin: '0 auto 1rem auto' }}>
+                <div className="col-3"><div className="rounded-3 p-1.5 p-sm-2.5 text-center h-100" style={{ background: 'rgba(99,102,241,0.06)', border: `1px solid ${PAL.hdrAccent}15` }}>
+                    <p className="text-uppercase fw-bold mb-0 d-none d-sm-block" style={{ fontSize: '0.38rem', letterSpacing: '0.1em', color: PAL.hdrAccent }}>Classes</p>
+                    <p className="fw-black mb-0" style={{ color: PAL.hdrPrimary, fontSize: 'clamp(0.8rem, 2.5vw, 1rem)' }}>{classes.length}</p>
+                </div></div>
+                <div className="col-3"><div className="rounded-3 p-1.5 p-sm-2.5 text-center h-100" style={{ background: PAL.greenGhost, border: `1px solid ${PAL.green}15` }}>
+                    <p className="text-uppercase fw-bold mb-0 d-none d-sm-block" style={{ fontSize: '0.38rem', letterSpacing: '0.1em', color: PAL.green }}>Students</p>
+                    <p className="fw-black mb-0" style={{ color: PAL.greenDark, fontSize: 'clamp(0.8rem, 2.5vw, 1rem)' }}>{totalStudents}</p>
+                </div></div>
+                <div className="col-3"><div className="rounded-3 p-1.5 p-sm-2.5 text-center h-100 bg-primary-subtle border border-primary border-opacity-10">
+                    <p className="text-uppercase fw-bold mb-0 d-none d-sm-block text-primary" style={{ fontSize: '0.38rem', letterSpacing: '0.1em' }}>Ready</p>
+                    <p className="fw-black text-primary mb-0" style={{ fontSize: 'clamp(0.8rem, 2.5vw, 1rem)' }}>{classesWithData}</p>
+                </div></div>
+                <div className="col-3"><div className="rounded-3 p-1.5 p-sm-2.5 text-center h-100 bg-warning-subtle border border-warning border-opacity-10">
+                    <p className="text-uppercase fw-bold mb-0 d-none d-sm-block text-warning" style={{ fontSize: '0.38rem', letterSpacing: '0.1em' }}>Pending</p>
+                    <p className="fw-black text-warning mb-0" style={{ fontSize: 'clamp(0.8rem, 2.5vw, 1rem)' }}>{classes.length - classesWithData}</p>
+                </div></div>
             </div>
 
             {/* Grouped class cards */}
             {grouped.map(([level, cls]) => (
-                <div key={level} className="mb-3">
-                    <div className="d-flex align-items-center gap-2 mb-2">
-                        <div className="d-flex align-items-center justify-content-center rounded-2" style={{ width: 22, height: 22, background: `linear-gradient(135deg, ${PAL.hdrPrimary}, ${PAL.hdrSecondary})` }}>
-                            <Icons.Grid size={10} style={{ color: 'white' }} />
+                <div key={level} className="mb-4">
+                    {/* Level heading */}
+                    <div className="d-flex align-items-center gap-2 mb-2 px-1">
+                        <div className="d-flex align-items-center justify-content-center rounded-2 flex-shrink-0" style={{ width: 20, height: 20, background: `linear-gradient(135deg, ${PAL.hdrPrimary}, ${PAL.hdrSecondary})` }}>
+                            <Icons.Grid size={9} style={{ color: 'white' }} />
                         </div>
-                        <h3 className="h6 fw-bold mb-0" style={{ fontSize: '0.8rem', color: PAL.hdrPrimary }}>{level}</h3>
+                        <h3 className="fw-bold mb-0" style={{ fontSize: '0.56rem', color: PAL.hdrPrimary }}>{level}</h3>
                         <div className="flex-grow-1" style={{ height: 1, background: `linear-gradient(90deg, ${PAL.hdrAccent}15, transparent)` }} />
-                        <span className="badge rounded-pill" style={{ fontSize: '0.55rem', fontWeight: 700, background: `${PAL.hdrAccent}10`, color: PAL.hdrAccent }}>{cls.length}</span>
+                        <span className="badge rounded-pill flex-shrink-0" style={{ fontSize: '0.38rem', fontWeight: 700, background: `${PAL.hdrAccent}10`, color: PAL.hdrAccent }}>{cls.length}</span>
                     </div>
-                    <div className="row g-2">
+
+                    {/* 
+                        Responsive grid:
+                        Mobile (<576px):  2 columns
+                        Tablet (576-767): 2 columns  
+                        Small desktop (768-991): 3 columns
+                        Desktop (992-1199): 4 columns
+                        Large (1200+): 4 columns
+                    */}
+                    <div className="row g-2 g-sm-2.5 g-md-3">
                         {cls.map((c) => (
-                            <div key={c.classId} className="col-12 col-sm-6 col-lg-4 col-xl-3">
-                                <button onClick={() => onSelectClass(c.classId)} className="btn w-100 text-start p-2.5 p-md-3 rounded-3 border border-opacity-10 transition-all" style={{ background: 'white', borderColor: '#dee2e6', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
-                                    onMouseEnter={e => { e.currentTarget.style.borderColor = `${PAL.hdrAccent}40`; e.currentTarget.style.boxShadow = `0 8px 30px ${PAL.accentGlow}`; }}
-                                    onMouseLeave={e => { e.currentTarget.style.borderColor = '#dee2e6'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; }}>
-                                    <div className="d-flex align-items-start justify-content-between mb-2">
-                                        <div>
-                                            <h4 className="fw-bold mb-0" style={{ fontSize: 'clamp(0.85rem, 2vw, 1rem)' }}>{c.className}</h4>
-                                            <p className="text-body-tertiary mb-0" style={{ fontSize: '0.68rem' }}>{c.classSection ? `${c.classLevel} (${c.classSection})` : c.classLevel}</p>
+                            <div key={c.classId} className="col-6 col-sm-6 col-md-4 col-lg-3 col-xl-3">
+                                <button
+                                    onClick={() => onSelectClass(c.classId)}
+                                    className="btn w-100 text-start p-2 p-sm-2.5 p-md-3 rounded-3 border border-opacity-10 h-100 transition-all d-flex flex-column"
+                                    style={{
+                                        background: 'white',
+                                        borderColor: '#dee2e6',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                                    }}
+                                    onMouseEnter={e => {
+                                        e.currentTarget.style.borderColor = `${PAL.hdrAccent}40`;
+                                        e.currentTarget.style.boxShadow = `0 6px 24px ${PAL.accentGlow}`;
+                                        e.currentTarget.style.transform = 'translateY(-1px)';
+                                    }}
+                                    onMouseLeave={e => {
+                                        e.currentTarget.style.borderColor = '#dee2e6';
+                                        e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                    }}
+                                >
+                                    {/* Card title row */}
+                                    <div className="d-flex align-items-start justify-content-between mb-1.5 mb-sm-2">
+                                        <div style={{ minWidth: 0, flex: 1, marginRight: 4 }}>
+                                            <h4 className="fw-bold mb-0" style={{
+                                                fontSize: 'clamp(0.62rem, 2.2vw, 0.82rem)',
+                                                color: '#1e1b4b',
+                                                lineHeight: 1.2,
+                                                display: '-webkit-box',
+                                                WebkitLineClamp: 2,
+                                                WebkitBoxOrient: 'vertical',
+                                                overflow: 'hidden',
+                                            }}>
+                                                {c.className}
+                                            </h4>
+                                            <p className="mb-0 mt-0.5 d-none d-sm-block" style={{ fontSize: 'clamp(0.45rem, 1.2vw, 0.52rem)', color: '#6b7294' }}>
+                                                {c.classSection ? `${c.classLevel} (${c.classSection})` : c.classLevel}
+                                            </p>
                                         </div>
-                                        <span className={`d-flex align-items-center justify-content-center rounded-2 ${c.hasBroadsheetData ? 'text-success' : 'text-body-tertiary'}`} style={{ width: 32, height: 32, background: c.hasBroadsheetData ? 'rgba(5,150,105,0.08)' : 'rgba(0,0,0,0.03)' }}>
-                                            <Icons.ChevronRight size={14} />
+                                        <span className={`d-flex align-items-center justify-content-center rounded-2 flex-shrink-0 ${c.hasBroadsheetData ? 'text-success' : 'text-body-tertiary'}`} style={{ width: 22, height: 22, background: c.hasBroadsheetData ? 'rgba(5,150,105,0.08)' : 'rgba(0,0,0,0.03)' }}>
+                                            <Icons.ChevronRight size={9} />
                                         </span>
                                     </div>
-                                    <div className="row g-2 mb-2">
-                                        <div className="col-6"><div className="rounded-3 p-2" style={{ background: PAL.greenGhost, border: `1px solid ${PAL.green}15` }}><p className="text-uppercase fw-bold mb-0" style={{ fontSize: '0.56rem', letterSpacing: '0.1em', color: PAL.green }}>Students</p><p className="fs-5 fw-black mb-0" style={{ color: PAL.greenDark }}>{c.studentCount}</p></div></div>
-                                        <div className="col-6"><div className="rounded-3 p-2 bg-primary-subtle border border-primary border-opacity-10"><p className="text-uppercase fw-bold mb-0 text-primary" style={{ fontSize: '0.56rem', letterSpacing: '0.1em' }}>CAs</p><p className="fs-5 fw-black text-primary mb-0">{c.assessmentCount}</p></div></div>
+
+                                    {/* Mini stat boxes - hidden on very small mobile, shown on sm+ */}
+                                    <div className="row g-1.5 mb-1.5 mb-sm-2 d-none d-sm-flex">
+                                        <div className="col-6">
+                                            <div className="rounded-2 p-1.5 text-center" style={{ background: PAL.greenGhost, border: `1px solid ${PAL.green}12` }}>
+                                                <p className="text-uppercase fw-bold mb-0" style={{ fontSize: '0.32rem', letterSpacing: '0.06em', color: PAL.green }}>Students</p>
+                                                <p className="fw-black mb-0" style={{ fontSize: 'clamp(0.68rem, 1.8vw, 0.85rem)', color: PAL.greenDark }}>{c.studentCount}</p>
+                                            </div>
+                                        </div>
+                                        <div className="col-6">
+                                            <div className="rounded-2 p-1.5 text-center bg-primary-subtle border border-primary border-opacity-10">
+                                                <p className="text-uppercase fw-bold mb-0 text-primary" style={{ fontSize: '0.32rem', letterSpacing: '0.06em' }}>CAs</p>
+                                                <p className="fw-black text-primary mb-0" style={{ fontSize: 'clamp(0.68rem, 1.8vw, 0.85rem)' }}>{c.assessmentCount}</p>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="d-flex align-items-center gap-2">
-                                        <span className={`badge d-inline-flex align-items-center gap-1 ${c.hasBroadsheetData ? 'bg-success-subtle text-success border border-success border-opacity-25' : 'bg-body-tertiary text-body-tertiary border border-opacity-10'}`} style={{ fontWeight: 600, fontSize: '0.6rem' }}>
-                                            <Icons.BarChart size={9} />{c.hasBroadsheetData ? 'Ready' : 'Pending'}
+
+                                    {/* Inline stats for mobile - shown only on xs */}
+                                    <div className="d-flex d-sm-none align-items-center gap-2 mb-1.5" style={{ fontSize: '0.5rem' }}>
+                                        <span className="d-flex align-items-center gap-0.5" style={{ color: PAL.greenDark }}>
+                                            <Icons.Users size={8} style={{ color: PAL.green }} />
+                                            <strong>{c.studentCount}</strong>
+                                        </span>
+                                        <span className="text-body-tertiary" style={{ fontSize: '0.4rem' }}>•</span>
+                                        <span className="d-flex align-items-center gap-0.5 text-primary">
+                                            <Icons.FileText size={8} />
+                                            <strong>{c.assessmentCount}</strong>
+                                        </span>
+                                    </div>
+
+                                    {/* Spacer to push status to bottom */}
+                                    <div className="flex-grow-1" />
+
+                                    {/* Status + progress */}
+                                    <div className="d-flex align-items-center gap-1.5 mt-1">
+                                        <span className={`badge d-inline-flex align-items-center gap-0.5 flex-shrink-0 ${c.hasBroadsheetData ? 'bg-success-subtle text-success border border-success border-opacity-25' : 'bg-body-tertiary text-body-tertiary border border-opacity-10'}`} style={{ fontWeight: 600, fontSize: '0.38rem', padding: '2px 5px' }}>
+                                            <Icons.BarChart size={6} />
+                                            {c.hasBroadsheetData ? 'Ready' : 'Pending'}
                                         </span>
                                         {c.completionPercentage > 0 && (
-                                            <div className="d-flex align-items-center gap-1 flex-grow-1">
-                                                <div className="progress flex-grow-1" style={{ height: 6 }}>
+                                            <div className="d-flex align-items-center gap-1 flex-grow-1" style={{ minWidth: 0 }}>
+                                                <div className="progress flex-grow-1" style={{ height: 3 }}>
                                                     <div className={`progress-bar ${c.completionPercentage === 100 ? 'bg-success' : c.completionPercentage >= 50 ? 'bg-warning' : 'bg-danger'}`} style={{ width: `${c.completionPercentage}%` }} />
                                                 </div>
-                                                <span className="text-body-tertiary" style={{ fontSize: '0.58rem' }}>{c.completionPercentage}%</span>
+                                                <span className="text-body-tertiary flex-shrink-0" style={{ fontSize: '0.34rem' }}>{c.completionPercentage}%</span>
                                             </div>
                                         )}
                                     </div>
@@ -810,7 +900,6 @@ function AdminClassSelectionView({ classes, loading, error, meta, onSelectClass,
         </div>
     );
 }
-
 function CompactStatsBar({ statistics, attendance }) {
     if (!statistics) return null;
     const stats = [
@@ -932,7 +1021,6 @@ function BroadsheetTable({ data, viewMode, showAttendance, showComments, searchT
             ? 'clamp(240px, 50vh, 400px)'
             : 'clamp(280px, calc(100vh - 340px), 720px)';
 
-    // Admin indigo/navy header palette
     const H1 = '#1e1b4b', H2 = '#312e81', SH1 = '#1a1845', SH2 = '#15133a';
     const GOLD = PAL.hdrGold, ACCENT = PAL.hdrAccent;
 
@@ -1398,12 +1486,16 @@ export default function AdminBroadsheetPage() {
     // ============================================
     // CLASS SELECTION VIEW (no classId)
     // ============================================
+        // ============================================
+    // CLASS SELECTION VIEW (no classId)
+    // ============================================
     if (!classId) {
         return (
             <div style={{ backgroundColor: '#f8fafc', minHeight: '100vh' }}>
-                <div className="container-xl p-2 p-md-4">
-                    {/* Admin hero header */}
-                    <div className="position-relative overflow-hidden rounded-3 rounded-md-4 mb-3 mb-md-4 px-4 py-3 py-md-4 text-center" style={{ background: `linear-gradient(135deg, ${PAL.hdrDeep} 0%, ${PAL.hdrPrimary} 35%, ${PAL.hdrSecondary} 70%, ${PAL.hdrDeep} 100%)`, boxShadow: `0 8px 40px ${PAL.hdrGlow}` }}>
+                <div className="container" style={{ maxWidth: 960, paddingTop: 16, paddingBottom: 40 }}>
+                    
+                    {/* School hero banner */}
+                    <div className="position-relative overflow-hidden rounded-3 mb-3 px-4 py-3 py-md-4 text-center" style={{ background: `linear-gradient(135deg, ${PAL.hdrDeep} 0%, ${PAL.hdrPrimary} 35%, ${PAL.hdrSecondary} 70%, ${PAL.hdrDeep} 100%)`, boxShadow: `0 8px 40px ${PAL.hdrGlow}` }}>
                         <div className="position-absolute top-0 start-0 end-0 bottom-0 pointer-events-none">
                             <div className="w-100 h-100" style={{ backgroundImage: `linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px)`, backgroundSize: '40px 40px' }} />
                             <div className="position-absolute top-0 start-0 end-0" style={{ height: 4, background: `linear-gradient(90deg, #008751 0%, #008751 33%, white 33%, white 66%, #008751 66%, #008751 100%)` }} />
@@ -1420,44 +1512,50 @@ export default function AdminBroadsheetPage() {
                                     </div>
                                 </div>
                             </div>
-                            <h1 className="fw-black text-uppercase mb-1" style={{ fontFamily: 'Georgia, serif', letterSpacing: '0.18em', fontSize: 'clamp(0.85rem, 3vw, 1.15rem)', color: PAL.hdrGold, textShadow: `0 2px 20px ${PAL.hdrGoldGlow}` }}>{SCHOOL_INFO.name}</h1>
-                            <p className="text-uppercase mb-2 d-none d-md-block" style={{ fontSize: '0.65rem', letterSpacing: '0.15em', color: PAL.hdrMuted }}>{SCHOOL_INFO.address}</p>
-                            <div className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)' }}><span className="rounded-circle d-block" style={{ width: 5, height: 5, background: PAL.hdrGold, boxShadow: `0 0 6px ${PAL.hdrGoldGlow}` }} /><p className="fst-italic fw-medium mb-0" style={{ fontSize: '0.58rem', color: PAL.hdrGold }}>"{SCHOOL_INFO.motto}"</p><span className="rounded-circle d-block" style={{ width: 5, height: 5, background: PAL.hdrGold, boxShadow: `0 0 6px ${PAL.hdrGoldGlow}` }} /></div>
-                        </div>
-                    </div>
-
-                    {/* Page title */}
-                    <div className="d-flex align-items-center gap-2 mb-2 mb-md-3">
-                        <button onClick={handleBack} className="btn btn-outline-secondary btn-sm rounded-3 d-flex align-items-center justify-content-center" style={{ width: 36, height: 36 }}><Icons.ArrowLeft size={15} /></button>
-                        <div>
-                            <div className="d-flex align-items-center gap-2">
-                                <h2 className="h6 fw-black mb-0">Admin Broadsheet</h2>
-                                <span className="badge text-white d-flex align-items-center justify-content-center" style={{ fontSize: '0.52rem', fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase', backgroundColor: PAL.hdrPrimary, boxShadow: `0 2px 8px ${PAL.hdrGlow}`, borderRadius: 6, padding: '2px 7px' }}><Icons.Shield size={8} className="me-1" />Admin</span>
+                            <h1 className="fw-black text-uppercase mb-1" style={{ fontFamily: 'Georgia, serif', letterSpacing: '0.18em', fontSize: 'clamp(0.8rem, 3vw, 1.1rem)', color: PAL.hdrGold, textShadow: `0 2px 20px ${PAL.hdrGoldGlow}` }}>{SCHOOL_INFO.name}</h1>
+                            <p className="text-uppercase mb-2 d-none d-sm-block" style={{ fontSize: '0.62rem', letterSpacing: '0.15em', color: PAL.hdrMuted }}>{SCHOOL_INFO.address}</p>
+                            <div className="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill" style={{ background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.18)' }}>
+                                <span className="rounded-circle d-block" style={{ width: 4, height: 4, background: PAL.hdrGold, boxShadow: `0 0 6px ${PAL.hdrGoldGlow}` }} />
+                                <p className="fst-italic fw-medium mb-0" style={{ fontSize: '0.56rem', color: PAL.hdrGold }}>"{SCHOOL_INFO.motto}"</p>
+                                <span className="rounded-circle d-block" style={{ width: 4, height: 4, background: PAL.hdrGold, boxShadow: `0 0 6px ${PAL.hdrGoldGlow}` }} />
                             </div>
-                            <p className="text-body-tertiary mb-0 d-none d-sm-block" style={{ fontSize: '0.7rem' }}>View broadsheets for all classes</p>
                         </div>
                     </div>
 
-                    {/* Filter bar */}
-                    <div className="d-flex align-items-center gap-2 mb-2 mb-md-3">
-                        <button onClick={() => setShowFilters(!showFilters)} className={`btn btn-sm rounded-3 d-flex align-items-center gap-1 ${showFilters ? '' : 'btn-outline-secondary'}`} style={{ fontSize: '0.7rem', fontWeight: 600, border: showFilters ? `1px solid ${PAL.hdrAccent}40` : '', background: showFilters ? `${PAL.hdrAccent}10` : '', color: showFilters ? PAL.hdrPrimary : '' }}><Icons.Filter size={11} /> Filters</button>
-                        <button onClick={() => refetchClasses()} disabled={classesLoading} className="btn btn-sm btn-outline-secondary rounded-3 d-flex align-items-center gap-1" style={{ fontSize: '0.7rem' }}>{classesLoading ? <Icons.Loader size={11} spin /> : <Icons.FileText size={11} />} Refresh</button>
+                    {/* Page title row */}
+                    <div className="d-flex align-items-center gap-2 mb-3">
+                        <button onClick={handleBack} className="btn btn-outline-secondary btn-sm rounded-3 d-flex align-items-center justify-content-center flex-shrink-0" style={{ width: 36, height: 36 }}>
+                            <Icons.ArrowLeft size={15} />
+                        </button>
+                        <div style={{ minWidth: 0 }}>
+                            <div className="d-flex align-items-center gap-2 flex-wrap">
+                                <h2 className="h6 fw-black mb-0" style={{ fontSize: 'clamp(0.95rem, 2.5vw, 1.1rem)' }}>Admin Broadsheet</h2>
+                                <span className="badge text-white d-flex align-items-center justify-content-center flex-shrink-0" style={{ fontSize: '0.5rem', fontWeight: 900, letterSpacing: '0.1em', textTransform: 'uppercase', backgroundColor: PAL.hdrPrimary, boxShadow: `0 2px 8px ${PAL.hdrGlow}`, borderRadius: 6, padding: '2px 7px' }}>
+                                    <Icons.Shield size={8} className="me-1" />Admin
+                                </span>
+                            </div>
+                            <p className="text-body-tertiary mb-0" style={{ fontSize: '0.68rem' }}>Select a class to view broadsheet</p>
+                        </div>
                     </div>
 
+                    {/* Filter / Refresh row */}
+                    <div className="d-flex align-items-center gap-2 mb-3">
+                        <button onClick={() => setShowFilters(!showFilters)} className={`btn btn-sm rounded-3 d-flex align-items-center gap-1 ${showFilters ? '' : 'btn-outline-secondary'}`} style={{ fontSize: '0.68rem', fontWeight: 600, border: showFilters ? `1px solid ${PAL.hdrAccent}40` : '', background: showFilters ? `${PAL.hdrAccent}10` : '', color: showFilters ? PAL.hdrPrimary : '' }}>
+                            <Icons.Filter size={11} /> Filters
+                        </button>
+                        <button onClick={() => refetchClasses()} disabled={classesLoading} className="btn btn-sm btn-outline-secondary rounded-3 d-flex align-items-center gap-1" style={{ fontSize: '0.68rem' }}>
+                            {classesLoading ? <Icons.Loader size={11} spin /> : <Icons.FileText size={11} />} Refresh
+                        </button>
+                    </div>
+
+                    {/* Filter panel */}
                     {showFilters && (
-                        <div className="card border rounded-3 p-2 p-md-3 mb-3" style={{ borderColor: '#dee2e6' }}>
-                            <div className="row g-2">
+                        <div className="card border rounded-3 p-3 mb-3" style={{ borderColor: '#dee2e6' }}>
+                            <div className="row g-2 justify-content-center" style={{ maxWidth: 400, margin: '0 auto' }}>
                                 <div className="col-sm-6">
-                                    <label className="form-label text-uppercase fw-semibold" style={{ fontSize: '0.58rem', color: '#868e96', letterSpacing: '0.08em' }}>Term</label>
-                                    <select value={filters.termId} onChange={(e) => setFilters(f => ({ ...f, termId: e.target.value }))} className="form-select form-select-sm rounded-3" style={{ fontSize: '0.7rem' }}>
-                                        <option value="">Current/Active</option>
-                                        {terms.map(t => <option key={t._id} value={t._id}>{t.name}{t.status === 'active' ? ' ✓' : ''}</option>)}
-                                    </select>
-                                </div>
-                                <div className="col-sm-6">
-                                    <label className="form-label text uppercase fw-semibold" style={{ fontSize: '0.58rem', color: '#868e96', letterSpacing: '0.08em' }}>Session</label>
+                                    <label className="form-label text-uppercase fw-semibold" style={{ fontSize: '0.56rem', color: '#868e96', letterSpacing: '0.08em' }}>Session</label>
                                     <select value={filters.sessionId} onChange={(e) => setFilters(f => ({ ...f, sessionId: e.target.value }))} className="form-select form-select-sm rounded-3" style={{ fontSize: '0.7rem' }}>
-                                        <option value="">Current/Active</option>
+                                        <option value="">Current / Active</option>
                                         {sessions.map(s => <option key={s._id} value={s._id}>{s.name}{s.isActive ? ' ✓' : ''}</option>)}
                                     </select>
                                 </div>
@@ -1465,12 +1563,20 @@ export default function AdminBroadsheetPage() {
                         </div>
                     )}
 
-                    <AdminClassSelectionView classes={classes} loading={classesLoading} error={classesError} meta={meta} onSelectClass={handleSelectClass} onRefresh={refetchClasses} />
+                    {/* Class list */}
+                    <AdminClassSelectionView
+                        classes={classes}
+                        loading={classesLoading}
+                        error={classesError}
+                        meta={meta}
+                        onSelectClass={handleSelectClass}
+                        onRefresh={refetchClasses}
+                    />
+
                 </div>
             </div>
         );
     }
-
     // ============================================
     // LOADING STATE
     // ============================================
@@ -1563,10 +1669,10 @@ export default function AdminBroadsheetPage() {
                 .bs-mobile-student-card:active { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
                 .bs-mobile-card-header { display: flex; align-items: center; justify-content: space-between; width: 100%; padding: 10px 12px; border: none; background: transparent; cursor: pointer; font-family: inherit; text-align: left; color: inherit; -webkit-tap-highlight-color: transparent; }
                 .bs-mobile-card-header:active { background: rgba(0,0,0,0.02); }
-                .bs-mobile-card-sn { display: inline-flex; align-items: center; justify-content-center; width: 24px; height: 24px; border-radius: 6px; background: rgba(99,102,241,0.08); color: ${PAL.hdrPrimary}; font-size: 0.6rem; font-weight: 700; font-family: ui-monospace, SFMono-Regular, monospace; flex-shrink: 0; }
+                .bs-mobile-card-sn { display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background: rgba(99,102,241,0.08); color: ${PAL.hdrPrimary}; font-size: 0.6rem; font-weight: 700; font-family: ui-monospace, SFMono-Regular, monospace; flex-shrink: 0; }
                 .bs-mobile-card-name { font-weight: 600; font-size: 0.78rem; color: #212529; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.2; }
                 .bs-mobile-card-total { font-weight: 900; font-size: 1rem; color: #212529; line-height: 1; }
-                .bs-mobile-card-chevron { display: flex; align-items: center; justify-content-center; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.04); color: #868e96; transition: transform 0.3s ease; flex-shrink: 0; }
+                .bs-mobile-card-chevron { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: rgba(0,0,0,0.04); color: #868e96; transition: transform 0.3s ease; flex-shrink: 0; }
                 .bs-mobile-card-body { padding: 0 12px 12px 12px; border-top: 1px solid #f1f3f5; animation: bs-card-slide 0.2s ease; }
                 @keyframes bs-card-slide { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
                 .bs-mobile-subjects-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
@@ -1578,10 +1684,10 @@ export default function AdminBroadsheetPage() {
                 .bs-mobile-subject-name { font-size: 0.6rem; font-weight: 600; color: #495057; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                 .bs-mobile-subject-total { font-weight: 900; font-size: 0.85rem; line-height: 1; }
                 .bs-mobile-subject-dash { color: #ced4da; font-size: 0.8rem; }
-                .bs-grade-badge { display: inline-flex; align-items: center; justify-content-center; border-radius: 6px; font-weight: 900; padding: 0; }
+                .bs-grade-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: 900; padding: 0; }
                 .bs-mobile-att-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid #f1f3f5; }
                 .bs-mobile-comment-row { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; padding-top: 6px; }
-                .bs-pos-badge { display: inline-flex; align-items-center center; justify-content: center; border-radius: 50rem; font-weight: 700; }
+                .bs-pos-badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 50rem; font-weight: 700; }
             `}</style>
 
             <div className={`${isFullscreen ? 'd-flex flex-column h-100 overflow-hidden' : ''}`} style={{ padding: isFullscreen ? 8 : undefined }}>
