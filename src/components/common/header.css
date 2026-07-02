@@ -1,0 +1,344 @@
+/* =========================================
+   Header Styles — Mobile-Fixed
+   ========================================= */
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 1.5rem;
+  height: 64px;
+  min-height: 64px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* ---------- LEFT ---------- */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-width: 0;           /* allow title to shrink */
+}
+
+.header-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
+}
+
+/* Hamburger toggle button */
+.header-toggle {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;        /* prevent shrinking */
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header-toggle:hover {
+  background-color: #f1f5f9;
+}
+
+.header-toggle:active {
+  background-color: #e2e8f0;
+}
+
+.header-toggle-bar {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background-color: #475569;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+/* ---------- RIGHT ---------- */
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  position: relative;     /* for dropdown positioning */
+}
+
+/* --- Desktop user info (visible >= 768px) --- */
+.header-user-desktop {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.header-user-avatar-sm {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.header-user-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.header-user-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+}
+
+.header-user-role {
+  font-size: 0.72rem;
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+
+/* --- Desktop logout button --- */
+.header-logout-desktop {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  min-height: 40px;       /* touch-friendly */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header-logout-desktop:hover {
+  background: #fef2f2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+.header-logout-desktop:active {
+  background: #fee2e2;
+}
+
+/* --- Mobile avatar trigger (hidden on desktop) --- */
+.header-avatar-trigger {
+  display: none;           /* shown via media query */
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #ffffff;
+  font-size: 0.85rem;
+  font-weight: 700;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header-avatar-trigger:active {
+  transform: scale(0.95);
+}
+
+.header-avatar-trigger[aria-expanded="true"] {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+/* --- Dropdown menu --- */
+.header-dropdown {
+  display: none;           /* shown via media query */
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 240px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 0.5rem;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.97);
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+  z-index: 200;
+}
+
+.header-dropdown--open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.header-dropdown-user {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+}
+
+.header-dropdown-avatar {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #6366f1);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.header-dropdown-info {
+  min-width: 0;
+}
+
+.header-dropdown-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-dropdown-role {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: capitalize;
+}
+
+.header-dropdown-divider {
+  height: 1px;
+  background-color: #f1f5f9;
+  margin: 0.25rem 0.5rem;
+}
+
+.header-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.7rem 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #475569;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-height: 44px;       /* Apple-recommended touch target */
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header-dropdown-item:active {
+  transform: scale(0.98);
+}
+
+.header-dropdown-item--logout:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.header-dropdown-item--logout:active {
+  background: #fee2e2;
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+
+/* --- MOBILE  < 768px --- */
+@media (max-width: 767px) {
+  .header {
+    padding: 0 1rem;
+  }
+
+  .header-title {
+    font-size: 0.95rem;
+  }
+
+  /* Hide desktop user info and logout */
+  .header-user-desktop {
+    display: none;
+  }
+
+  .header-logout-desktop {
+    display: none;
+  }
+
+  /* Show mobile avatar trigger */
+  .header-avatar-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Show dropdown */
+  .header-dropdown {
+    display: block;
+  }
+}
+
+/* --- SMALL MOBILE  < 380px --- */
+@media (max-width: 379px) {
+  .header {
+    padding: 0 0.75rem;
+  }
+
+  .header-title {
+    font-size: 0.88rem;
+  }
+
+  .header-dropdown {
+    width: 220px;
+    right: -8px;           /* shift slightly to stay on screen */
+  }
+}
+
+/* --- TABLET  768px — 1023px --- */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .header-user-name {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* --- LARGE DESKTOP  >= 1440px --- */
+@media (min-width: 1440px) {
+  .header {
+    padding: 0 2.5rem;
+  }
+}

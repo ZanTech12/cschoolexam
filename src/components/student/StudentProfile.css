@@ -1,0 +1,398 @@
+/* StudentProfile.css */
+
+/* ---------- Design Tokens ---------- */
+:root {
+  --bg-deep: #0f1117;
+  --bg-surface: #181b24;
+  --card-bg: rgba(255, 255, 255, 0.04);
+  --card-border: rgba(255, 255, 255, 0.08);
+  --accent: #e8a838;
+  --accent-glow: rgba(232, 168, 56, 0.25);
+  --accent-soft: rgba(232, 168, 56, 0.08);
+  --text-primary: #f0ece4;
+  --text-secondary: #8a8d9b;
+  --text-muted: #555869;
+  --success: #34d399;
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --radius-xl: 32px;
+  --shadow-card: 0 8px 40px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.2);
+  --shadow-avatar: 0 0 0 4px var(--bg-deep), 0 0 30px var(--accent-glow);
+  --transition-smooth: 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --transition-bounce: 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ---------- Page Container ---------- */
+.profile-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 24px 80px;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-deep);
+}
+
+/* Atmospheric background layers */
+.student-profile::before {
+  content: '';
+  position: fixed;
+  top: -30%;
+  left: -10%;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.5;
+  pointer-events: none;
+  animation: floatBlob1 18s ease-in-out infinite;
+  z-index: 0;
+}
+
+.student-profile::after {
+  content: '';
+  position: fixed;
+  bottom: -20%;
+  right: -15%;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(56, 152, 232, 0.12) 0%, transparent 70%);
+  border-radius: 50%;
+  filter: blur(90px);
+  opacity: 0.6;
+  pointer-events: none;
+  animation: floatBlob2 22s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes floatBlob1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(60px, 40px) scale(1.1); }
+  66% { transform: translate(-30px, 70px) scale(0.95); }
+}
+
+@keyframes floatBlob2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-50px, -30px) scale(1.08); }
+  66% { transform: translate(40px, -60px) scale(0.92); }
+}
+
+/* Subtle grid pattern overlay */
+.student-profile {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* ---------- Page Title ---------- */
+.profile-page > h2 {
+  position: relative;
+  z-index: 1;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  margin-bottom: 48px;
+  text-align: center;
+  animation: fadeSlideIn 0.7s var(--transition-smooth) both;
+}
+
+.profile-page > h2::after {
+  content: '';
+  display: block;
+  width: 48px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), transparent);
+  border-radius: 4px;
+  margin: 14px auto 0;
+  animation: lineExpand 0.8s 0.5s var(--transition-smooth) both;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(-18px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes lineExpand {
+  from { width: 0; opacity: 0; }
+  to { width: 48px; opacity: 1; }
+}
+
+/* ---------- Profile Card ---------- */
+.profile-card {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+  width: 100%;
+  max-width: 440px;
+  padding: 48px 36px 40px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  box-shadow: var(--shadow-card);
+  animation: cardEnter 0.8s 0.15s var(--transition-smooth) both;
+  transition: transform var(--transition-smooth), box-shadow var(--transition-smooth), border-color var(--transition-smooth);
+}
+
+.profile-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.4), 0 0 40px var(--accent-glow);
+  border-color: rgba(232, 168, 56, 0.15);
+}
+
+/* Shimmer border on hover */
+.profile-card::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: var(--radius-lg);
+  background: conic-gradient(
+    from 180deg,
+    transparent 0%,
+    var(--accent) 8%,
+    transparent 16%,
+    transparent 100%
+  );
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  animation: shimmerRotate 4s linear infinite;
+}
+
+.profile-card:hover::before {
+  opacity: 0.35;
+}
+
+@keyframes shimmerRotate {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(30px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ---------- Avatar ---------- */
+.profile-avatar {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--bg-deep);
+  letter-spacing: 0.04em;
+  background: linear-gradient(135deg, var(--accent) 0%, #f0c060 50%, #e8943a 100%);
+  border-radius: 50%;
+  box-shadow: var(--shadow-avatar);
+  transition: transform var(--transition-bounce), box-shadow var(--transition-smooth);
+  user-select: none;
+  cursor: default;
+}
+
+.profile-card:hover .profile-avatar {
+  transform: scale(1.06);
+  box-shadow:
+    0 0 0 4px var(--bg-deep),
+    0 0 50px var(--accent-glow),
+    0 0 80px rgba(232, 168, 56, 0.1);
+}
+
+/* Pulsing ring behind avatar */
+.student-avatar::after {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(232, 168, 56, 0.2);
+  animation: pulseRing 3s ease-in-out infinite;
+}
+
+@keyframes pulseRing {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.12); opacity: 0; }
+}
+
+/* Online status dot */
+.student-avatar::before {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  width: 14px;
+  height: 14px;
+  background: var(--success);
+  border: 3px solid var(--bg-deep);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(52, 211, 153, 0.5);
+  z-index: 2;
+  animation: statusPulse 2.5s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { box-shadow: 0 0 8px rgba(52, 211, 153, 0.4); }
+  50% { box-shadow: 0 0 16px rgba(52, 211, 153, 0.7); }
+}
+
+/* ---------- Profile Details ---------- */
+.profile-details {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-details p {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  padding: 10px 16px;
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-smooth), color var(--transition-smooth), transform 0.25s ease;
+}
+
+.profile-details p:hover {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  transform: translateX(4px);
+}
+
+.profile-details p strong {
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-right: 10px;
+  transition: color var(--transition-smooth);
+}
+
+.profile-details p:hover strong {
+  color: var(--accent);
+}
+
+/* Name row gets special treatment */
+.profile-details p:first-child {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+  padding: 0 16px 12px;
+  border-bottom: 1px solid var(--card-border);
+  margin-bottom: 8px;
+  border-radius: 0;
+}
+
+.profile-details p:first-child:hover {
+  background: transparent;
+  transform: none;
+}
+
+.profile-details p:first-child strong {
+  display: none;
+}
+
+/* Role badge */
+.profile-details p:last-child {
+  position: relative;
+  margin-top: 8px;
+}
+
+.profile-details p:last-child::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 8px;
+  height: 8px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--accent-glow);
+  opacity: 0.7;
+}
+
+/* ---------- Loading State ---------- */
+.loading {
+  position: relative;
+  z-index: 1;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-size: 1rem;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  animation: loadPulse 1.8s ease-in-out infinite;
+}
+
+.loading::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--text-muted);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  margin-right: 12px;
+  vertical-align: middle;
+}
+
+@keyframes loadPulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 520px) {
+  .profile-page {
+    padding: 40px 16px 60px;
+  }
+
+  .profile-card {
+    padding: 40px 24px 32px;
+    border-radius: var(--radius-md);
+  }
+
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+    font-size: 1.5rem;
+  }
+
+  .profile-details p {
+    font-size: 0.9rem;
+    padding: 9px 12px;
+  }
+
+  .profile-details p:first-child {
+    font-size: 1.05rem;
+  }
+}
+
+/* ---------- Reduced Motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

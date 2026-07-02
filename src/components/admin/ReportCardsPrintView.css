@@ -1,0 +1,1628 @@
+/* ============================================================
+   STUDENT REPORT CARD — Modern Responsive Stylesheet
+   Optimized for A4 print fitting
+   ============================================================ */
+
+/* ---------- Custom Properties ---------- */
+:root {
+  --clr-primary: #1a365d;
+  --clr-primary-light: #2c5282;
+  --clr-accent: #c9952b;
+  --clr-accent-light: #f6e5a3;
+  --clr-success: #276749;
+  --clr-danger: #c53030;
+  --clr-text: #1a202c;
+  --clr-text-muted: #718096;
+  --clr-bg: #ffffff;
+  --clr-bg-alt: #f7fafc;
+  --clr-border: #e2e8f0;
+  --clr-border-strong: #cbd5e0;
+
+  --font-heading: 'Georgia', 'Times New Roman', serif;
+  --font-body: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Courier New', monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-medium: 0 4px 6px rgba(0, 0, 0, 0.05), 0 2px 4px rgba(0, 0, 0, 0.03);
+  --shadow-strong: 0 10px 25px rgba(0, 0, 0, 0.08), 0 4px 10px rgba(0, 0, 0, 0.04);
+
+  --a4-width: 210mm;
+  --a4-min-height: 297mm;
+  --page-pad-x: 15mm;
+  --page-pad-y: 10mm;
+}
+
+/* ---------- Reset & Base ---------- */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ---------- Loading & Error States ---------- */
+.print-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  color: var(--clr-text-muted);
+  gap: 12px;
+}
+
+.print-loading::before {
+  content: '';
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--clr-border);
+  border-top-color: var(--clr-primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.print-error-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 16px;
+  font-family: var(--font-body);
+  color: var(--clr-text);
+  text-align: center;
+  padding: 24px;
+}
+
+.print-error-page h3 {
+  color: var(--clr-danger);
+  font-size: 1.4rem;
+}
+
+.print-error-page p {
+  color: var(--clr-text-muted);
+  font-size: 0.95rem;
+  max-width: 400px;
+  line-height: 1.6;
+}
+
+.print-error-page button {
+  margin-top: 8px;
+  padding: 10px 28px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--clr-bg);
+  background: var(--clr-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.15s;
+}
+
+.print-error-page button:hover {
+  background: var(--clr-primary-light);
+  transform: translateY(-1px);
+}
+
+/* ---------- Wrapper ---------- */
+.report-sheet-wrapper {
+  background: #edf2f7;
+  min-height: 100vh;
+  padding: 24px 16px 48px;
+}
+
+/* ---------- Screen Controls ---------- */
+.screen-controls {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.ctrl-btn {
+  padding: 10px 24px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-family: var(--font-body);
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ctrl-btn.back {
+  color: var(--clr-primary);
+  background: var(--clr-bg);
+  border: 1.5px solid var(--clr-border-strong);
+}
+
+.ctrl-btn.back:hover {
+  background: var(--clr-bg-alt);
+  border-color: var(--clr-primary);
+}
+
+.ctrl-btn.print {
+  color: var(--clr-bg);
+  background: var(--clr-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+.ctrl-btn.print:hover {
+  background: var(--clr-primary-light);
+  box-shadow: var(--shadow-medium);
+  transform: translateY(-1px);
+}
+
+/* ---------- A4 Document ---------- */
+.a4-document {
+  width: 100%;
+  max-width: var(--a4-width);
+  margin: 0 auto;
+  background: var(--clr-bg);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-strong);
+  overflow: hidden;
+  padding: var(--page-pad-y) var(--page-pad-x);
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.school-header-elegant {
+  text-align: center;
+  position: relative;
+  padding-bottom: 14px;
+}
+
+.header-ornament {
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--clr-accent) 20%,
+    var(--clr-primary) 50%,
+    var(--clr-accent) 80%,
+    transparent 100%
+  );
+}
+
+.header-ornament.top {
+  margin-bottom: 12px;
+}
+
+.header-ornament.bottom {
+  margin-top: 12px;
+}
+
+.header-logo-wrap {
+  margin-bottom: 6px;
+}
+
+.header-logo {
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+  border-radius: 50%;
+  border: 3px solid var(--clr-accent);
+  box-shadow: 0 0 0 4px rgba(201, 149, 43, 0.15);
+}
+
+.school-name {
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+
+.doc-title {
+  font-family: var(--font-body);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--clr-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 10px;
+}
+
+.header-meta-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--clr-bg-alt);
+  padding: 5px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--clr-border);
+}
+
+.meta-text {
+  font-size: 0.75rem;
+  color: var(--clr-text-muted);
+}
+
+.meta-text strong {
+  color: var(--clr-primary);
+  font-weight: 700;
+}
+
+.meta-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--clr-border-strong);
+}
+
+/* ============================================================
+   BIO-DATA SECTION
+   ============================================================ */
+.bio-data-section {
+  margin: 12px 0;
+  padding: 12px 16px;
+  background: var(--clr-bg-alt);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--clr-border);
+}
+
+.bio-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 20px;
+}
+
+.bio-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.bio-label {
+  font-size: 0.6rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.bio-value {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: var(--clr-text);
+  line-height: 1.3;
+}
+
+.bio-value.name-highlight {
+  color: var(--clr-primary);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+/* ============================================================
+   GRADES TABLE
+   ============================================================ */
+.grades-container {
+  margin: 12px 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.grades-table-elegant {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.72rem;
+  min-width: 680px;
+}
+
+.grades-table-elegant thead tr {
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+}
+
+.grades-table-elegant thead th {
+  padding: 6px 5px;
+  font-weight: 700;
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  line-height: 1.3;
+}
+
+.th-sn {
+  width: 28px;
+}
+
+.th-subject {
+  text-align: left !important;
+  min-width: 130px;
+  padding-left: 8px !important;
+}
+
+.th-ca-header {
+  background: var(--clr-primary-light);
+  font-size: 0.55rem;
+  letter-spacing: 0.06em;
+}
+
+.th-sub-ca {
+  background: var(--clr-primary-light);
+  font-weight: 600;
+  font-size: 0.55rem;
+}
+
+.th-score {
+  width: 48px;
+}
+
+.th-grade {
+  width: 42px;
+}
+
+.th-remark {
+  min-width: 72px;
+  text-align: left !important;
+  padding-left: 6px !important;
+}
+
+.grades-table-elegant tbody tr {
+  transition: background 0.15s;
+}
+
+.grades-table-elegant tbody tr:nth-child(even) {
+  background: var(--clr-bg-alt);
+}
+
+.grades-table-elegant tbody tr:hover {
+  background: #edf2f7;
+}
+
+.grades-table-elegant td {
+  padding: 5px 5px;
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text);
+  line-height: 1.3;
+}
+
+.td-center {
+  text-align: center;
+}
+
+.td-right {
+  text-align: right;
+  padding-right: 8px !important;
+}
+
+.td-subject {
+  text-align: left;
+  padding-left: 8px;
+  font-weight: 600;
+  color: var(--clr-text);
+}
+
+.td-bold {
+  font-weight: 700;
+}
+
+.td-total {
+  color: var(--clr-primary);
+  font-weight: 800;
+  font-size: 0.75rem;
+}
+
+.td-remark {
+  text-align: left;
+  padding-left: 6px;
+  font-size: 0.65rem;
+  font-style: italic;
+  color: var(--clr-text-muted);
+}
+
+.td-empty {
+  text-align: center;
+  padding: 20px 10px !important;
+  color: var(--clr-text-muted);
+  font-style: italic;
+}
+
+/* Summary Rows */
+.summary-row {
+  background: var(--clr-bg-alt) !important;
+}
+
+.summary-row td {
+  border-color: var(--clr-border-strong);
+  padding: 6px 5px !important;
+}
+
+.summary-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--clr-text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ============================================================
+   GRADING KEY
+   ============================================================ */
+.grading-key-elegant {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px;
+  background: linear-gradient(135deg, #ebf8ff 0%, #f0fff4 100%);
+  border-radius: var(--radius-sm);
+  border-left: 3px solid var(--clr-accent);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.key-label {
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: var(--clr-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.key-text {
+  font-size: 0.65rem;
+  color: var(--clr-text-muted);
+  line-height: 1.4;
+}
+
+/* ============================================================
+   ATTENDANCE SECTION
+   ============================================================ */
+.attendance-section {
+  margin: 12px 0;
+}
+
+.attendance-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--clr-accent);
+  display: inline-block;
+}
+
+.attendance-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.attendance-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 6px;
+  background: var(--clr-bg-alt);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--clr-border);
+  text-align: center;
+}
+
+.attendance-label {
+  font-size: 0.56rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.3;
+}
+
+.attendance-value {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--clr-primary);
+  font-family: var(--font-mono);
+}
+
+.attendance-value.present {
+  color: var(--clr-success);
+}
+
+.attendance-value.absent {
+  color: var(--clr-danger);
+}
+
+/* ============================================================
+   PSYCHOMOTOR SECTION
+   ============================================================ */
+.psychomotor-section {
+  margin: 12px 0;
+}
+
+.psychomotor-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
+  border-bottom: 2px solid var(--clr-accent);
+  display: inline-block;
+}
+
+.psychomotor-key-note {
+  font-size: 0.58rem;
+  color: var(--clr-text-muted);
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.psychomotor-key-note strong {
+  color: var(--clr-text);
+}
+
+.psychomotor-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.68rem;
+}
+
+.psychomotor-table thead th {
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+  padding: 5px 4px;
+  font-size: 0.56rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.pm-th-skill {
+  text-align: left !important;
+  padding-left: 8px !important;
+}
+
+.pm-th-rating {
+  width: 50px;
+}
+
+.psychomotor-table tbody td {
+  padding: 4px 4px;
+  border: 1px solid var(--clr-border);
+  color: var(--clr-text);
+  vertical-align: middle;
+}
+
+.psychomotor-table tbody tr:nth-child(even) {
+  background: var(--clr-bg-alt);
+}
+
+.pm-td-center {
+  text-align: center;
+  color: var(--clr-text-muted);
+  font-weight: 600;
+  width: 26px;
+}
+
+.pm-td-skill {
+  padding-left: 8px;
+  font-weight: 500;
+}
+
+.pm-td-rating {
+  text-align: center;
+}
+
+.pm-rating-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 0.65rem;
+  background: var(--clr-primary);
+  color: var(--clr-bg);
+}
+
+/* ============================================================
+   COMMENTS & SIGNATURES
+   ============================================================ */
+.comments-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 14px 0;
+}
+
+.comment-box-elegant {
+  padding: 10px 12px;
+  border: 1.5px solid var(--clr-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--clr-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.comment-title {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--clr-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--clr-border);
+}
+
+.comment-text-area {
+  font-size: 0.72rem;
+  color: var(--clr-text);
+  line-height: 1.45;
+  min-height: 36px;
+  flex-grow: 1;
+}
+
+.comment-text-area strong {
+  color: var(--clr-primary);
+}
+
+.blank-line {
+  color: var(--clr-border-strong);
+  letter-spacing: 2px;
+  user-select: none;
+}
+
+.signature-section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  margin-top: 6px;
+}
+
+.sig-line {
+  width: 120px;
+  height: 1px;
+  background: var(--clr-text);
+}
+
+.sig-text {
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ============================================================
+   FOOTER
+   ============================================================ */
+.sheet-footer-elegant {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 2px double var(--clr-primary);
+}
+
+.footer-dates-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.footer-date-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.fd-label {
+  font-size: 0.58rem;
+  font-weight: 600;
+  color: var(--clr-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fd-value {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--clr-text);
+}
+
+.next-term-highlight {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 7px 14px;
+  background: var(--clr-primary);
+  border-radius: var(--radius-md);
+  color: var(--clr-bg);
+}
+
+.nt-label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.85;
+}
+
+.nt-date {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+/* ============================================================
+   RESPONSIVE — TABLET (≤ 768px)
+   ============================================================ */
+@media (max-width: 768px) {
+  :root {
+    --page-pad-x: 12mm;
+    --page-pad-y: 8mm;
+  }
+
+  .report-sheet-wrapper {
+    padding: 16px 10px 40px;
+    background: #edf2f7;
+  }
+
+  .a4-document {
+    border-radius: var(--radius-md);
+    padding: var(--page-pad-y) var(--page-pad-x);
+  }
+
+  .school-name {
+    font-size: 1.1rem;
+    letter-spacing: 0.04em;
+  }
+
+  .doc-title {
+    font-size: 0.7rem;
+  }
+
+  .header-logo {
+    width: 56px;
+    height: 56px;
+  }
+
+  .bio-grid {
+    gap: 6px 14px;
+  }
+
+  .bio-value {
+    font-size: 0.8rem;
+  }
+
+  .bio-value.name-highlight {
+    font-size: 0.85rem;
+  }
+
+  .comments-container {
+    gap: 10px;
+  }
+
+  .comment-box-elegant {
+    padding: 10px;
+  }
+
+  .sig-line {
+    width: 100px;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — PHONE (≤ 520px)
+   ============================================================ */
+@media (max-width: 520px) {
+  :root {
+    --page-pad-x: 8mm;
+    --page-pad-y: 7mm;
+  }
+
+  .report-sheet-wrapper {
+    padding: 10px 6px 32px;
+  }
+
+  .a4-document {
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-medium);
+    padding: var(--page-pad-y) var(--page-pad-x);
+  }
+
+  .screen-controls {
+    gap: 8px;
+  }
+
+  .ctrl-btn {
+    padding: 9px 16px;
+    font-size: 0.8rem;
+  }
+
+  /* Header */
+  .header-logo {
+    width: 48px;
+    height: 48px;
+    border-width: 2px;
+  }
+
+  .school-name {
+    font-size: 0.92rem;
+    letter-spacing: 0.03em;
+    line-height: 1.25;
+  }
+
+  .doc-title {
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+  }
+
+  .header-meta-box {
+    gap: 8px;
+    padding: 4px 12px;
+  }
+
+  .meta-text {
+    font-size: 0.68rem;
+  }
+
+  /* Bio */
+  .bio-data-section {
+    padding: 10px 12px;
+  }
+
+  .bio-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+  }
+
+  .bio-label {
+    font-size: 0.55rem;
+  }
+
+  .bio-value {
+    font-size: 0.74rem;
+  }
+
+  .bio-value.name-highlight {
+    font-size: 0.8rem;
+  }
+
+  /* Grades table */
+  .grades-container {
+    margin: 10px -1px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--clr-border);
+    overflow-x: auto;
+  }
+
+  .grades-table-elegant {
+    font-size: 0.66rem;
+    min-width: 620px;
+  }
+
+  .grades-table-elegant thead th {
+    padding: 5px 3px;
+    font-size: 0.54rem;
+  }
+
+  .grades-table-elegant td {
+    padding: 5px 3px;
+  }
+
+  .th-subject {
+    padding-left: 5px !important;
+    min-width: 100px;
+  }
+
+  .td-subject {
+    padding-left: 5px;
+    font-size: 0.62rem;
+  }
+
+  .td-total {
+    font-size: 0.68rem;
+  }
+
+  .summary-label {
+    font-size: 0.6rem;
+  }
+
+  /* Grading key */
+  .grading-key-elegant {
+    padding: 4px 8px;
+    gap: 5px;
+  }
+
+  .key-label {
+    font-size: 0.56rem;
+  }
+
+  .key-text {
+    font-size: 0.58rem;
+  }
+
+  /* Attendance */
+  .attendance-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+
+  .attendance-card {
+    padding: 6px 3px;
+  }
+
+  .attendance-label {
+    font-size: 0.5rem;
+  }
+
+  .attendance-value {
+    font-size: 1rem;
+  }
+
+  /* Psychomotor */
+  .psychomotor-table {
+    font-size: 0.6rem;
+  }
+
+  .psychomotor-table thead th {
+    padding: 4px 3px;
+    font-size: 0.5rem;
+  }
+
+  .psychomotor-table tbody td {
+    padding: 4px 3px;
+  }
+
+  .pm-td-skill {
+    padding-left: 5px;
+    font-size: 0.56rem;
+  }
+
+  .pm-rating-badge {
+    width: 20px;
+    height: 20px;
+    font-size: 0.58rem;
+  }
+
+  .psychomotor-key-note {
+    font-size: 0.5rem;
+  }
+
+  /* Comments */
+  .comments-container {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .comment-box-elegant {
+    padding: 8px 10px;
+  }
+
+  .comment-title {
+    font-size: 0.55rem;
+  }
+
+  .comment-text-area {
+    font-size: 0.68rem;
+    min-height: 30px;
+  }
+
+  .sig-line {
+    width: 90px;
+  }
+
+  .sig-text {
+    font-size: 0.52rem;
+  }
+
+  /* Footer */
+  .footer-dates-grid {
+    gap: 6px;
+  }
+
+  .fd-label {
+    font-size: 0.5rem;
+  }
+
+  .fd-value {
+    font-size: 0.72rem;
+  }
+
+  .next-term-highlight {
+    padding: 6px 10px;
+    flex-direction: column;
+    gap: 2px;
+    text-align: center;
+  }
+
+  .nt-label {
+    font-size: 0.55rem;
+  }
+
+  .nt-date {
+    font-size: 0.76rem;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE — VERY SMALL PHONES (≤ 360px)
+   ============================================================ */
+@media (max-width: 360px) {
+  .school-name {
+    font-size: 0.82rem;
+  }
+
+  .header-logo {
+    width: 42px;
+    height: 42px;
+  }
+
+  .bio-grid {
+    gap: 5px 8px;
+  }
+
+  .attendance-grid {
+    gap: 4px;
+  }
+
+  .attendance-card {
+    padding: 6px 2px;
+  }
+
+  .attendance-value {
+    font-size: 0.9rem;
+  }
+
+  .grades-table-elegant {
+    min-width: 560px;
+    font-size: 0.6rem;
+  }
+}
+
+/* ============================================================
+   PRINT STYLES — A4 OPTIMIZED
+   ============================================================ */
+@media print {
+  @page {
+    size: A4 portrait;
+    margin: 8mm 10mm;
+  }
+
+  html,
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    font-size: 10pt !important;
+  }
+
+  /* Remove wrapper chrome */
+  .report-sheet-wrapper {
+    background: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    min-height: auto !important;
+  }
+
+  .screen-controls {
+    display: none !important;
+  }
+
+  /* Full-width document, no padding — @page margin handles spacing */
+  .a4-document {
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  /* ---- HEADER — compact ---- */
+  .school-header-elegant {
+    padding-bottom: 8px;
+  }
+
+  .header-ornament {
+    height: 2px !important;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      #888 20%,
+      #222 50%,
+      #888 80%,
+      transparent 100%
+    ) !important;
+  }
+
+  .header-ornament.top {
+    margin-bottom: 6px;
+  }
+
+  .header-ornament.bottom {
+    margin-top: 6px;
+  }
+
+  .header-logo-wrap {
+    margin-bottom: 3px;
+  }
+
+  .header-logo {
+    width: 46px !important;
+    height: 46px !important;
+    border-width: 2px !important;
+    box-shadow: none !important;
+  }
+
+  .school-name {
+    color: #000 !important;
+    font-size: 14pt !important;
+    letter-spacing: 0.04em !important;
+    line-height: 1.2 !important;
+    margin-bottom: 1px !important;
+  }
+
+  .doc-title {
+    color: #333 !important;
+    font-size: 8pt !important;
+    letter-spacing: 0.12em !important;
+    margin-bottom: 5px !important;
+  }
+
+  .header-meta-box {
+    background: #f0f0f0 !important;
+    border-color: #bbb !important;
+    padding: 3px 14px !important;
+    border-radius: 10px !important;
+  }
+
+  .meta-text {
+    color: #444 !important;
+    font-size: 8pt !important;
+  }
+
+  .meta-text strong {
+    color: #000 !important;
+  }
+
+  .meta-divider {
+    height: 10px;
+  }
+
+  /* ---- BIO DATA — compact ---- */
+  .bio-data-section {
+    margin: 6px 0 !important;
+    padding: 6px 12px !important;
+    background: #f5f5f5 !important;
+    border-color: #bbb !important;
+    border-radius: 3px !important;
+  }
+
+  .bio-grid {
+    gap: 3px 18px !important;
+  }
+
+  .bio-label {
+    font-size: 6.5pt !important;
+    letter-spacing: 0.06em !important;
+  }
+
+  .bio-value {
+    font-size: 9pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .bio-value.name-highlight {
+    color: #000 !important;
+    font-size: 9.5pt !important;
+  }
+
+  /* ---- GRADES TABLE — tight rows ---- */
+  .grades-container {
+    overflow: visible !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 6px 0 !important;
+  }
+
+  .grades-table-elegant {
+    min-width: 0 !important;
+    width: 100% !important;
+    font-size: 7.5pt !important;
+    table-layout: fixed !important;
+  }
+
+  .grades-table-elegant thead tr {
+    background: #1a365d !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .grades-table-elegant thead th {
+    color: #fff !important;
+    padding: 4px 3px !important;
+    font-size: 6pt !important;
+    letter-spacing: 0.02em !important;
+    line-height: 1.2 !important;
+  }
+
+  .th-ca-header {
+    background: #2c5282 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .th-sub-ca {
+    background: #2c5282 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .th-sn {
+    width: 18px !important;
+  }
+
+  .th-subject {
+    width: auto !important;
+    min-width: 0 !important;
+  }
+
+  .th-score {
+    width: 36px !important;
+  }
+
+  .th-grade {
+    width: 30px !important;
+  }
+
+  .th-remark {
+    min-width: 0 !important;
+    width: auto !important;
+  }
+
+  .grades-table-elegant tbody tr:nth-child(even) {
+    background: #f5f5f5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .grades-table-elegant tbody tr:hover {
+    background: inherit !important;
+  }
+
+  .grades-table-elegant td {
+    border-color: #aaa !important;
+    color: #000 !important;
+    padding: 3px 3px !important;
+    line-height: 1.2 !important;
+  }
+
+  .td-subject {
+    font-size: 7pt !important;
+    padding-left: 4px !important;
+  }
+
+  .td-bold {
+    font-size: 7.5pt !important;
+  }
+
+  .td-total {
+    color: #000 !important;
+    font-size: 8pt !important;
+  }
+
+  .td-remark {
+    color: #333 !important;
+    font-size: 6.5pt !important;
+    padding-left: 3px !important;
+  }
+
+  .summary-row {
+    background: #e8e8e8 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .summary-row td {
+    border-color: #888 !important;
+    padding: 3px 3px !important;
+  }
+
+  .summary-label {
+    color: #000 !important;
+    font-size: 6.5pt !important;
+    padding-right: 4px !important;
+  }
+
+  .summary-row .td-total {
+    font-size: 8pt !important;
+  }
+
+  /* ---- GRADING KEY — slim ---- */
+  .grading-key-elegant {
+    margin-bottom: 6px !important;
+    padding: 3px 8px !important;
+    background: #f0f0f0 !important;
+    border-left-width: 2px !important;
+    border-left-color: #555 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .key-label {
+    color: #000 !important;
+    font-size: 6pt !important;
+  }
+
+  .key-text {
+    color: #333 !important;
+    font-size: 6pt !important;
+  }
+
+  /* ---- ATTENDANCE — compact cards ---- */
+  .attendance-section {
+    margin: 6px 0 !important;
+  }
+
+  .attendance-title {
+    color: #000 !important;
+    border-bottom-color: #333 !important;
+    font-size: 6.5pt !important;
+    margin-bottom: 4px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .attendance-grid {
+    gap: 4px !important;
+  }
+
+  .attendance-card {
+    background: #f5f5f5 !important;
+    border-color: #bbb !important;
+    padding: 4px 4px !important;
+    border-radius: 3px !important;
+  }
+
+  .attendance-label {
+    font-size: 5.5pt !important;
+    line-height: 1.2 !important;
+  }
+
+  .attendance-value {
+    color: #000 !important;
+    font-size: 12pt !important;
+    line-height: 1.1 !important;
+  }
+
+  .attendance-value.present {
+    color: #000 !important;
+  }
+
+  .attendance-value.absent {
+    color: #000 !important;
+  }
+
+  /* ---- PSYCHOMOTOR — very compact ---- */
+  .psychomotor-section {
+    margin: 6px 0 !important;
+  }
+
+  .psychomotor-title {
+    color: #000 !important;
+    border-bottom-color: #333 !important;
+    font-size: 6.5pt !important;
+    margin-bottom: 2px !important;
+    padding-bottom: 2px !important;
+  }
+
+  .psychomotor-key-note {
+    font-size: 5.5pt !important;
+    margin-bottom: 4px !important;
+    line-height: 1.3 !important;
+  }
+
+  .psychomotor-key-note strong {
+    color: #000 !important;
+  }
+
+  .psychomotor-table {
+    font-size: 6.5pt !important;
+    table-layout: fixed !important;
+  }
+
+  .psychomotor-table thead th {
+    background: #1a365d !important;
+    color: #fff !important;
+    padding: 3px 2px !important;
+    font-size: 5.5pt !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .psychomotor-table tbody td {
+    border-color: #aaa !important;
+    color: #000 !important;
+    padding: 2.5px 2px !important;
+    line-height: 1.2 !important;
+  }
+
+  .psychomotor-table tbody tr:nth-child(even) {
+    background: #f5f5f5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .pm-td-center {
+    font-size: 5.5pt !important;
+    width: 16px !important;
+  }
+
+  .pm-td-skill {
+    padding-left: 4px !important;
+    font-size: 6pt !important;
+  }
+
+  .pm-td-rating {
+    width: auto !important;
+  }
+
+  .pm-rating-badge {
+    width: 16px !important;
+    height: 16px !important;
+    font-size: 5.5pt !important;
+    background: #333 !important;
+    color: #fff !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* ---- COMMENTS — side by side, compact ---- */
+  .comments-container {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 8px !important;
+    margin: 8px 0 !important;
+  }
+
+  .comment-box-elegant {
+    border-color: #888 !important;
+    background: #fff !important;
+    padding: 6px 8px !important;
+    border-radius: 3px !important;
+    gap: 3px !important;
+  }
+
+  .comment-title {
+    color: #000 !important;
+    border-bottom-color: #ccc !important;
+    font-size: 5.5pt !important;
+    padding-bottom: 2px !important;
+    margin-bottom: 0 !important;
+  }
+
+  .comment-text-area {
+    color: #000 !important;
+    font-size: 7pt !important;
+    line-height: 1.35 !important;
+    min-height: 24px !important;
+  }
+
+  .comment-text-area strong {
+    color: #000 !important;
+  }
+
+  .blank-line {
+    color: #bbb !important;
+    font-size: 7pt !important;
+  }
+
+  .signature-section {
+    margin-top: 3px !important;
+    gap: 1px !important;
+  }
+
+  .sig-line {
+    background: #000 !important;
+    width: 80px !important;
+    height: 0.5pt !important;
+  }
+
+  .sig-text {
+    color: #000 !important;
+    font-size: 5.5pt !important;
+  }
+
+  /* ---- FOOTER — tight ---- */
+  .sheet-footer-elegant {
+    margin-top: 6px !important;
+    padding-top: 6px !important;
+    border-top-width: 1.5px !important;
+    border-top-style: double !important;
+    border-top-color: #000 !important;
+  }
+
+  .footer-dates-grid {
+    gap: 4px !important;
+    margin-bottom: 5px !important;
+  }
+
+  .fd-label {
+    font-size: 5.5pt !important;
+  }
+
+  .fd-value {
+    color: #000 !important;
+    font-size: 7.5pt !important;
+  }
+
+  .next-term-highlight {
+    background: #1a365d !important;
+    color: #fff !important;
+    padding: 4px 10px !important;
+    border-radius: 3px !important;
+    gap: 6px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .nt-label {
+    color: #fff !important;
+    opacity: 1 !important;
+    font-size: 6pt !important;
+  }
+
+  .nt-date {
+    color: #fff !important;
+    font-size: 8pt !important;
+  }
+
+  /* ---- PAGE BREAK CONTROL ---- */
+  .bio-data-section,
+  .comment-box-elegant {
+    break-inside: avoid;
+  }
+
+  .grades-table-elegant tr {
+    break-inside: avoid;
+  }
+
+  .attendance-section,
+  .psychomotor-section,
+  .grading-key-elegant {
+    break-inside: avoid;
+  }
+
+  .sheet-footer-elegant {
+    break-inside: avoid;
+  }
+
+  /* If content exceeds one page, allow a clean break */
+  .a4-document {
+    break-inside: auto;
+  }
+}

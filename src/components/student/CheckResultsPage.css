@@ -1,0 +1,275 @@
+.check-results-page {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.results-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.results-header h1 {
+    color: #1a365d;
+    font-size: 2rem;
+    margin-bottom: 10px;
+}
+
+.results-header p {
+    color: #718096;
+    font-size: 1.1rem;
+}
+
+.results-form {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    margin-bottom: 30px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #4299e1;
+}
+
+.error-message {
+    background: #fed7d7;
+    color: #c53030;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.submit-btn {
+    width: 100%;
+    padding: 14px;
+    background: #4299e1;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.submit-btn:hover {
+    background: #3182ce;
+}
+
+.submit-btn:disabled {
+    background: #a0aec0;
+    cursor: not-allowed;
+}
+
+/* Report Card Styles */
+.report-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+.report-header {
+    background: linear-gradient(135deg, #1a365d, #2c5282);
+    color: white;
+    padding: 25px;
+    text-align: center;
+}
+
+.report-header h2 {
+    margin: 0 0 15px 0;
+    font-size: 1.5rem;
+}
+
+.report-meta {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.report-meta p {
+    margin: 0;
+}
+
+.student-info {
+    padding: 20px 25px;
+    background: #f7fafc;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.info-row:last-child {
+    margin-bottom: 0;
+}
+
+.grades-table-container {
+    overflow-x: auto;
+}
+
+.grades-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.grades-table th,
+.grades-table td {
+    padding: 12px 10px;
+    text-align: center;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.grades-table th {
+    background: #edf2f7;
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.85rem;
+}
+
+.grades-table td {
+    font-size: 0.95rem;
+}
+
+.grades-table .ca-total {
+    font-weight: 600;
+    background: #ebf8ff;
+}
+
+.grades-table .total-score {
+    font-weight: 700;
+    background: #f0fff4;
+}
+
+.grade-A { color: #276749; font-weight: 700; }
+.grade-B { color: #2f855a; font-weight: 700; }
+.grade-C { color: #c05621; font-weight: 700; }
+.grade-D { color: #c53030; font-weight: 700; }
+.grade-E { color: #9b2c2c; font-weight: 700; }
+.grade-F { color: #742a2a; font-weight: 700; }
+
+.no-data {
+    color: #718096;
+    font-style: italic;
+}
+
+.report-summary {
+    padding: 20px 25px;
+    background: #f7fafc;
+}
+
+.summary-stats {
+    display: flex;
+    justify-content: space-around;
+    flex-wrap: wrap;
+    gap: 20px;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-label {
+    display: block;
+    color: #718096;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.stat-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #2d3748;
+}
+
+.stat-value.average {
+    color: #38a169;
+}
+
+.stat-value.position {
+    color: #4299e1;
+}
+
+.report-comments {
+    padding: 25px;
+    border-top: 1px solid #e2e8f0;
+}
+
+.comment-section {
+    margin-bottom: 20px;
+}
+
+.comment-section:last-child {
+    margin-bottom: 0;
+}
+
+.comment-section h4 {
+    color: #2d3748;
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.comment-section p {
+    color: #4a5568;
+    line-height: 1.6;
+    font-style: italic;
+}
+
+.report-footer {
+    padding: 20px 25px;
+    background: #edf2f7;
+    border-top: 1px solid #e2e8f0;
+}
+
+.term-dates {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.term-dates p {
+    margin: 0;
+    color: #4a5568;
+}
+
+@media (max-width: 768px) {
+    .info-row,
+    .summary-stats,
+    .term-dates {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .report-meta {
+        flex-direction: column;
+        gap: 10px;
+    }
+}

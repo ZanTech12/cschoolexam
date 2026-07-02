@@ -1,0 +1,802 @@
+/* ============================================
+   StudentReportCard.css - Nigerian School Format
+   ============================================ */
+
+/* ===== PRINT SETUP ===== */
+@media print {
+  @page {
+    size: A4;
+    margin: 8mm;
+  }
+  
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+    background: white !important;
+  }
+  
+  .screen-controls {
+    display: none !important;
+  }
+  
+  .report-sheet-wrapper {
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  
+  .a4-document {
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+  
+  .ng-section {
+    page-break-inside: avoid;
+  }
+}
+
+/* ===== LAYOUT ===== */
+.report-sheet-wrapper {
+  min-height: 100vh;
+  background: #f0f2f5;
+  padding: 20px;
+}
+
+.a4-document {
+  max-width: 210mm;
+  margin: 0 auto;
+  background: white;
+  padding: 15px 20px;
+  box-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-size: 10pt;
+  line-height: 1.4;
+  color: #1a1a1a;
+}
+
+/* ===== SCREEN CONTROLS ===== */
+.screen-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.screen-controls-right {
+  display: flex;
+  gap: 8px;
+}
+
+.ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.ctrl-btn.back {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.ctrl-btn.back:hover {
+  background: #e0e0e0;
+}
+
+.ctrl-btn.refresh {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.ctrl-btn.print {
+  background: #1a5276;
+  color: white;
+}
+
+.ctrl-btn.print:hover {
+  background: #154360;
+}
+
+/* ===== HEADER ===== */
+.ng-header {
+  text-align: center;
+  padding-bottom: 12px;
+  border-bottom: 3px double #1a5276;
+  margin-bottom: 12px;
+}
+
+.ng-header-top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin-bottom: 8px;
+}
+
+.ng-logo-wrap {
+  flex-shrink: 0;
+}
+
+.ng-logo {
+  width: 70px;
+  height: 70px;
+  object-fit: contain;
+}
+
+.ng-school-info {
+  text-align: center;
+}
+
+.ng-school-name {
+  margin: 0;
+  font-size: 16pt;
+  font-weight: 800;
+  color: #1a5276;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.ng-school-address {
+  font-size: 8pt;
+  color: #555;
+  margin-top: 4px;
+}
+
+.ng-school-address span {
+  margin: 0 4px;
+}
+
+.ng-doc-title-bar {
+  background: #1a5276;
+  color: white;
+  padding: 6px 0;
+  margin: 8px 0;
+}
+
+.ng-doc-title {
+  margin: 0;
+  font-size: 12pt;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.ng-term-session-bar {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  padding: 8px 0;
+  background: #f8f9fa;
+  border-radius: 4px;
+  margin-top: 8px;
+}
+
+.ng-ts-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ng-ts-label {
+  font-weight: 600;
+  color: #333;
+  font-size: 9pt;
+}
+
+.ng-ts-value {
+  font-weight: 700;
+  color: #1a5276;
+  font-size: 10pt;
+}
+
+.ng-ts-divider {
+  width: 2px;
+  height: 20px;
+  background: #1a5276;
+  border-radius: 1px;
+}
+
+/* ===== SECTIONS ===== */
+.ng-section {
+  margin-bottom: 14px;
+}
+
+.ng-section-title {
+  margin: 0 0 10px 0;
+  font-size: 10pt;
+  font-weight: 700;
+  color: #1a5276;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+/* ===== STUDENT INFO ===== */
+.ng-student-info {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.ng-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 20px;
+}
+
+.ng-info-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.ng-info-label {
+  font-size: 8.5pt;
+  color: #555;
+  font-weight: 500;
+}
+
+.ng-info-value {
+  font-size: 9.5pt;
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.ng-name {
+  text-transform: uppercase;
+  font-weight: 700;
+  color: #1a5276;
+  font-size: 10pt;
+}
+
+/* ===== ATTENDANCE ===== */
+.ng-attendance {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.ng-attendance-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.ng-att-item {
+  text-align: center;
+}
+
+.ng-att-label {
+  display: block;
+  font-size: 7.5pt;
+  color: #555;
+  margin-bottom: 2px;
+}
+
+.ng-att-value {
+  display: block;
+  font-size: 12pt;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.ng-att-present {
+  color: #27ae60;
+}
+
+.ng-att-absent {
+  color: #e74c3c;
+}
+
+.ng-att-good {
+  color: #27ae60;
+  background: #eafaf1;
+  padding: 0 8px;
+  border-radius: 4px;
+}
+
+.ng-att-poor {
+  color: #e74c3c;
+  background: #fdedec;
+  padding: 0 8px;
+  border-radius: 4px;
+}
+
+/* ===== GRADES TABLE ===== */
+.ng-grades {
+  margin-bottom: 8px;
+}
+
+.ng-table-wrapper {
+  overflow-x: auto;
+}
+
+.ng-grades-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 9pt;
+}
+
+.ng-grades-table thead {
+  background: #1a5276;
+  color: white;
+}
+
+.ng-grades-table th {
+  padding: 6px 8px;
+  font-size: 8pt;
+  font-weight: 600;
+  text-align: center;
+  border: 1px solid #154360;
+  letter-spacing: 0.3px;
+}
+
+.ng-th-subject {
+  text-align: left !important;
+  min-width: 120px;
+}
+
+.ng-grades-table td {
+  padding: 5px 8px;
+  border: 1px solid #e0e0e0;
+  text-align: center;
+}
+
+.ng-td-subject {
+  text-align: left !important;
+  font-weight: 500;
+}
+
+.ng-td-bold {
+  font-weight: 700;
+}
+
+.ng-td-total {
+  font-weight: 800;
+  color: #1a5276;
+  font-size: 10pt;
+}
+
+.ng-row-even {
+  background: #ffffff;
+}
+
+.ng-row-odd {
+  background: #fafbfc;
+}
+
+.ng-summary-row td {
+  background: #f0f4f8 !important;
+  font-weight: 700;
+  padding: 6px 8px;
+  border: 1px solid #d0d8e0;
+}
+
+.ng-summary-row td {
+  background: #f0f4f8 !important;
+  font-weight: 700;
+  padding: 5px 8px;       /* optionally reduce padding too */
+  border: 1px solid #d0d8e0;
+}
+/* Grade colors */
+.ng-grade {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 8pt;
+  text-align: center;
+}
+
+.ng-grade-a { background: #d4edda; color: #155724; }
+.ng-grade-b { background: #cce5ff; color: #004085; }
+.ng-grade-c { background: #fff3cd; color: #856404; }
+.ng-grade-d { background: #ffeaa7; color: #856404; }
+.ng-grade-e { background: #f8d7da; color: #721c24; }
+.ng-grade-f { background: #f5c6cb; color: #842029; }
+
+.ng-td-remark {
+  font-size: 7.5pt;
+  color: #555;
+}
+
+.ng-td-empty {
+  text-align: center !important;
+  font-style: italic;
+  color: #888;
+  padding: 20px !important;
+}
+
+/* Grading Key */
+.ng-grading-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 6px 10px;
+  background: #f8f9fa;
+  border: 1px dashed #ccc;
+  border-radius: 4px;
+  margin-top: 6px;
+}
+
+.ng-summary-row .ng-td-total {
+  font-size: 9pt;
+}
+
+.ng-grading-label {
+  font-size: 7.5pt;
+  font-weight: 700;
+  color: #333;
+}
+
+.ng-grading-text {
+  font-size: 7pt;
+  color: #555;
+}
+
+/* ===== PSYCHOMOTOR & AFFECTIVE ===== */
+.ng-psychomotor,
+.ng-affective {
+  background: #f8f9fa;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+
+.ng-psych-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 20px;
+}
+
+.ng-affective-grid {
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 20px;
+}
+
+.ng-psych-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  border-bottom: 1px dotted #ddd;
+}
+
+.ng-psych-num {
+  font-size: 8pt;
+  color: #888;
+  min-width: 18px;
+}
+
+.ng-psych-label {
+  flex: 1;
+  font-size: 9pt;
+  color: #333;
+}
+
+/* Rating Badges */
+.rating-badge {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 8pt;
+  text-align: center;
+}
+
+.rating-excellent { background: #d4edda; color: #155724; }
+.rating-very-good { background: #cce5ff; color: #004085; }
+.rating-good { background: #fff3cd; color: #856404; }
+.rating-fair { background: #ffeaa7; color: #856404; }
+.rating-poor { background: #f8d7da; color: #721c24; }
+
+.rating-dash {
+  color: #ccc;
+}
+
+.ng-rating-key {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px dashed #ccc;
+}
+
+.ng-rating-key-label {
+  font-size: 7pt;
+  font-weight: 700;
+  color: #333;
+}
+
+.ng-rating-key-text {
+  font-size: 6.5pt;
+  color: #555;
+}
+
+/* ===== COMMENTS ===== */
+.ng-comments-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.ng-comment-box {
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.ng-comment-header {
+  background: #1a5276;
+  padding: 5px 10px;
+}
+
+.ng-comment-title {
+  font-size: 9pt;
+  font-weight: 600;
+  color: white;
+}
+
+.ng-comment-body {
+  padding: 10px;
+  min-height: 60px;
+}
+
+.ng-comment-body p {
+  margin: 0;
+  font-size: 9pt;
+  line-height: 1.5;
+  text-align: justify;
+}
+
+.ng-blank-lines {
+  color: #ccc;
+  letter-spacing: 1px;
+}
+
+.ng-comment-loading {
+  color: #888;
+  font-style: italic;
+}
+
+.ng-signature {
+  padding: 0 10px 10px;
+  text-align: center;
+}
+
+.ng-sig-line {
+  width: 150px;
+  height: 1px;
+  background: #333;
+  margin: 0 auto 4px;
+}
+
+.ng-sig-label {
+  font-size: 8pt;
+  color: #555;
+}
+
+/* ===== FOOTER ===== */
+.ng-footer {
+  margin-top: 10px;
+  border-top: 2px solid #1a5276;
+  padding-top: 10px;
+}
+
+.ng-next-term {
+  margin-bottom: 10px;
+}
+
+.ng-next-term-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #e8f4fd;
+  border: 1px solid #b8daff;
+  border-radius: 4px;
+  padding: 8px 16px;
+}
+
+.ng-next-term-label {
+  font-size: 9pt;
+  font-weight: 700;
+  color: #1a5276;
+}
+
+.ng-next-term-date {
+  font-size: 11pt;
+  font-weight: 800;
+  color: #c0392b;
+}
+
+.ng-footer-dates {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.ng-footer-date {
+  font-size: 8pt;
+}
+
+.ng-fd-label {
+  color: #555;
+}
+
+.ng-fd-value {
+  font-weight: 600;
+  color: #333;
+}
+
+.ng-footer-bottom {
+  display: flex;
+  justify-content: center;
+  margin-top: 15px;
+}
+
+.ng-stamp-area {
+  text-align: center;
+}
+
+.ng-stamp-placeholder {
+  display: inline-block;
+  border: 2px dashed #999;
+  padding: 15px 30px;
+  color: #999;
+  font-size: 9pt;
+  font-weight: 700;
+  letter-spacing: 2px;
+  transform: rotate(-5deg);
+  margin: 10px 0;
+}
+
+/* ===== NO SUBJECTS BANNER ===== */
+.no-subjects-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  background: #fff3cd;
+  border: 1px solid #ffc107;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.no-subjects-banner svg {
+  flex-shrink: 0;
+  stroke: #856404;
+  margin-top: 2px;
+}
+
+.no-subjects-banner p {
+  margin: 0;
+  font-size: 9pt;
+  color: #856404;
+}
+
+.no-subjects-hint {
+  display: block;
+  font-size: 7.5pt;
+  color: #a67c00;
+  margin-top: 4px;
+}
+
+/* ===== ERROR PAGE ===== */
+.print-error-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40px;
+  text-align: center;
+}
+
+.error-icon-container {
+  margin-bottom: 20px;
+}
+
+.print-error-page h3 {
+  margin: 0 0 10px;
+  font-size: 1.3rem;
+}
+
+.error-message {
+  margin: 0 0 24px;
+  font-size: 0.95rem;
+  color: #666;
+  max-width: 400px;
+}
+
+.error-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.error-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+}
+
+.error-btn-secondary {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.error-btn-secondary:hover {
+  background: #e0e0e0;
+}
+
+.error-btn-primary {
+  background: #1a5276;
+  color: white;
+}
+
+.error-btn-primary:hover {
+  background: #154360;
+}
+
+/* ===== SKELETON ===== */
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 600px) {
+  .a4-document {
+    padding: 10px;
+  }
+  
+  .ng-info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ng-attendance-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .ng-psych-grid,
+  .ng-affective-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ng-comments-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .ng-school-name {
+    font-size: 13pt;
+  }
+}

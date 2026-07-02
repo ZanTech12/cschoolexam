@@ -1,0 +1,765 @@
+/* Page Header */
+.page-title {
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.page-subtitle {
+  font-size: 0.9rem;
+  color: #6b7280;
+}
+
+/* Card */
+.card {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 20px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+}
+
+/* Table */
+.table-container {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+thead {
+  background: #f9fafb;
+}
+
+th {
+  text-align: left;
+  padding: 12px;
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 600;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+td {
+  padding: 14px 12px;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+tbody tr {
+  transition: 0.2s ease;
+}
+
+tbody tr:hover {
+  background: #f8fafc;
+}
+
+/* Buttons */
+.btn {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-group {
+  display: flex;
+  gap: 8px;
+}
+
+/* Button Variants */
+.btn-primary {
+  background: linear-gradient(135deg, #4f46e5, #6366f1);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 18px rgba(99, 102, 241, 0.4);
+}
+
+.btn-info {
+  background: #0ea5e9;
+  color: #fff;
+}
+
+.btn-info:hover {
+  background: #0284c7;
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: #fff;
+}
+
+.btn-danger:hover {
+  background: #dc2626;
+}
+
+.btn-secondary {
+  background: #e5e7eb;
+}
+
+.btn-secondary:hover {
+  background: #d1d5db;
+}
+
+.btn-sm {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+.modal {
+  width: 100%;
+  max-width: 550px;
+  background: #fff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+  animation: scaleIn 0.3s ease;
+}
+
+/* Modal Header */
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.modal-header h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.modal-close {
+  font-size: 1.4rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #6b7280;
+}
+
+.modal-close:hover {
+  color: #111827;
+}
+
+/* Modal Body */
+.modal-body {
+  padding: 20px;
+}
+
+/* Modal Footer */
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* Form */
+.form-group {
+  margin-bottom: 14px;
+}
+
+.form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.8rem;
+  margin-bottom: 4px;
+  font-weight: 500;
+}
+
+.form-control {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 0.9rem;
+  transition: 0.2s ease;
+}
+
+.form-control:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.4);
+}
+
+/* Alert */
+.alert {
+  padding: 10px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  margin-bottom: 12px;
+}
+
+.alert-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .form-row {
+    flex-direction: column;
+  }
+
+  .modal {
+    margin: 10px;
+  }
+
+  th, td {
+    font-size: 0.75rem;
+  }
+}
+/* ==================== MODAL STYLES ==================== */
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: modalFadeIn 0.2s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
+              0 0 0 1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  max-width: 720px;
+  width: 100%;
+  min-height: 200px;
+  animation: modalSlideUp 0.3s ease-out;
+  overflow: hidden;
+}
+
+/* Modal Header - Fixed at top */
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: #f3f4f6;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1.4rem;
+  color: #6b7280;
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding: 0;
+}
+
+.modal-close:hover {
+  background: #e5e7eb;
+  color: #1f2937;
+}
+
+.modal-close:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
+/* Modal Body - Scrollable area (horizontal + vertical) */
+.modal-body {
+  flex: 1;
+  overflow: auto;
+  padding: 24px;
+  min-height: 0;
+}
+
+/* Custom Scrollbar Styles for Modal */
+.modal-body::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.modal-body::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.modal-body::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+  border: 2px solid #f3f4f6;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+.modal-body::-webkit-scrollbar-corner {
+  background: #f3f4f6;
+}
+
+/* Firefox scrollbar */
+.modal-body {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f3f4f6;
+}
+
+/* Modal Footer - Fixed at bottom */
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #ffffff;
+  flex-shrink: 0;
+}
+
+/* ==================== FORM GRID (enables horizontal scroll) ==================== */
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  min-width: 500px; /* Forces horizontal scroll when container is narrower */
+}
+
+.form-group-full {
+  grid-column: 1 / -1;
+}
+
+/* Error alert inside modal */
+.modal-error-alert {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-error-alert .alert-icon {
+  flex-shrink: 0;
+}
+
+/* ==================== BUTTON LOADING STATE ==================== */
+
+.btn-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==================== RESPONSIVE STYLES ==================== */
+
+@media screen and (max-width: 768px) {
+  .modal-overlay {
+    padding: 10px;
+    align-items: flex-end;
+  }
+
+  .modal {
+    max-height: 85vh;
+    border-radius: 16px 16px 0 0;
+    min-height: 300px;
+  }
+
+  .modal-header {
+    padding: 16px 20px;
+  }
+
+  .modal-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .modal-body {
+    padding: 20px;
+  }
+
+  .modal-footer {
+    padding: 16px 20px;
+  }
+
+  /* Horizontal scroll kicks in on smaller screens */
+  .form-grid {
+    min-width: 500px;
+    gap: 16px;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .modal-overlay {
+    padding: 0;
+  }
+
+  .modal {
+    max-height: 90vh;
+    border-radius: 0;
+    min-height: 250px;
+  }
+
+  .modal-header {
+    padding: 14px 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .modal-footer {
+    padding: 14px 16px;
+    flex-direction: column;
+  }
+
+  .modal-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .form-grid {
+    min-width: 420px;
+    gap: 14px;
+  }
+}
+
+/* ==================== DARK MODE SUPPORT ==================== */
+
+@media (prefers-color-scheme: dark) {
+  .modal-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+  }
+
+  .modal {
+    background: #1f2937;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.1);
+  }
+
+  .modal-header,
+  .modal-footer {
+    background: #1f2937;
+    border-color: #374151;
+  }
+
+  .modal-header h3 {
+    color: #f9fafb;
+  }
+
+  .modal-close {
+    background: #374151;
+    color: #9ca3af;
+  }
+
+  .modal-close:hover {
+    background: #4b5563;
+    color: #f9fafb;
+  }
+
+  .modal-body {
+    scrollbar-color: #4b5563 #1f2937;
+  }
+
+  .modal-body::-webkit-scrollbar-track {
+    background: #1f2937;
+  }
+
+  .modal-body::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-color: #1f2937;
+  }
+
+  .modal-body::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+  }
+
+  .modal-body::-webkit-scrollbar-corner {
+    background: #1f2937;
+  }
+
+  .form-control {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .form-control::placeholder {
+    color: #6b7280;
+  }
+
+  .form-label {
+    color: #d1d5db;
+  }
+
+  .alert-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fca5a5;
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+}
+/* ==================== CSV Upload Styles ==================== */
+.csv-modal {
+  max-width: 800px;
+  width: 95%;
+}
+
+.csv-instructions {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.csv-instructions h4 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.csv-instructions ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #555;
+}
+
+.csv-instructions li {
+  margin-bottom: 0.25rem;
+  font-size: 0.9rem;
+}
+
+.csv-instructions code {
+  background: #e9ecef;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: #d63384;
+}
+
+.csv-drop-zone {
+  border: 2px dashed #ccc;
+  border-radius: 8px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: #fafbfc;
+}
+
+.csv-drop-zone:hover,
+.csv-drop-zone.dragging {
+  border-color: #4a90d9;
+  background: #f0f7ff;
+}
+
+.csv-drop-zone.has-file {
+  border-color: #28a745;
+  background: #f0fff4;
+  cursor: default;
+}
+
+.csv-drop-icon {
+  font-size: 2.5rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.csv-drop-content p {
+  margin: 0.25rem 0;
+  color: #555;
+}
+
+.csv-drop-subtext {
+  font-size: 0.85rem;
+  color: #888 !important;
+}
+
+.csv-file-selected {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.csv-file-icon {
+  font-size: 1.5rem;
+}
+
+.csv-file-name {
+  font-weight: 500;
+  color: #333;
+}
+
+.csv-validation-errors {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.csv-errors-list {
+  max-height: 150px;
+  overflow-y: auto;
+  background: #fff5f5;
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.csv-error-item {
+  padding: 0.5rem;
+  border-bottom: 1px solid #fed7d7;
+  font-size: 0.85rem;
+}
+
+.csv-error-item:last-child {
+  border-bottom: none;
+}
+
+.csv-preview h4 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.csv-preview-table {
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+}
+
+.csv-preview-table table {
+  margin: 0;
+}
+
+.csv-preview-table th,
+.csv-preview-table td {
+  padding: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.csv-more-rows {
+  text-align: center;
+  padding: 0.5rem;
+  color: #666;
+  font-size: 0.85rem;
+  margin: 0;
+  background: #f8f9fa;
+}
+
+.csv-progress {
+  text-align: center;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a90d9, #357abd);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.csv-progress-text {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.csv-results .csv-errors-list {
+  margin-top: 0.5rem;
+}
