@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { studentAPI } from '../../api';
 import Loading from '../common/Loading';
 import { useNavigate } from 'react-router-dom';
+import "./MyResults.css"
 
 const MyResults = () => {
   const navigate = useNavigate();
