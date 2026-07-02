@@ -5,7 +5,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useLayout } from '../../context/LayoutContext';
 import Loading from '../common/Loading';
 
-// ==================== LOCAL STORAGE HELPERS ====================
+// ==================== LOCAL STORAGE HELPERS ==================
 const STORAGE_KEY = 'cbt_submitted_tests';
 const AUTOSAVE_KEY = 'cbt_autosave_';
 const getSubmittedTests = () => {
