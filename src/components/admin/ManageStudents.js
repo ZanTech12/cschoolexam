@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { studentsAPI, classesAPI } from '../../api';
 import Loading from '../common/Loading';
@@ -6,11 +6,21 @@ import Loading from '../common/Loading';
 const ManageStudents = () => {
   const queryClient = useQueryClient();
   const fileInputRef = useRef(null);
+  const imageInputRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+
   const [showModal, setShowModal] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [openActionMenu, setOpenActionMenu] = useState(null);
+  const [imageUploadStudentId, setImageUploadStudentId] = useState(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState('user');
+  const [cameraReady, setCameraReady] = useState(false);
+  const [cameraError, setCameraError] = useState('');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -86,6 +96,117 @@ const ManageStudents = () => {
     }
   });
 
+  const uploadImageMutation = useMutation({
+    mutationFn: ({ studentId, file }) => studentsAPI.uploadProfileImage(studentId, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      setSuccessMessage('Profile image uploaded successfully.');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    },
+    onError: (err) => setError(err.response?.data?.message || 'Failed to upload image'),
+  });
+
+  const removeImageMutation = useMutation({
+    mutationFn: (studentId) => studentsAPI.removeProfileImage(studentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] });
+      setSuccessMessage('Profile image removed.');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    },
+    onError: (err) => setError(err.response?.data?.message || 'Failed to remove image'),
+  });
+
+  // ========== CAMERA LOGIC (NEW) ==========
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+    setCameraReady(false);
+    setCameraError('');
+  }, []);
+
+  const startCamera = useCallback(async (facingMode) => {
+    stopCamera();
+    setCameraError('');
+    try {
+      const constraints = {
+        video: {
+          facingMode: facingMode || 'user',
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setCameraReady(true);
+      }
+    } catch (err) {
+      console.error('Camera error:', err);
+      if (err.name === 'NotAllowedError') {
+        setCameraError('Camera permission denied. Please allow camera access in your browser settings and try again.');
+      } else if (err.name === 'NotFoundError') {
+        setCameraError('No camera found on this device.');
+      } else if (err.name === 'NotReadableError') {
+        setCameraError('Camera is already in use by another application.');
+      } else {
+        setCameraError(`Could not access camera: ${err.message}`);
+      }
+    }
+  }, [stopCamera]);
+
+  const handleOpenCamera = (studentId, e) => {
+    if (e) e.stopPropagation();
+    setOpenActionMenu(null);
+    setImageUploadStudentId(studentId);
+    setCameraFacingMode('user');
+    setShowCameraModal(true);
+  };
+
+  const handleFlipCamera = () => {
+    setCameraFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+  };
+
+  useEffect(() => {
+    if (showCameraModal) {
+      // Small delay to ensure modal is rendered before attaching stream
+      const timer = setTimeout(() => startCamera(cameraFacingMode), 300);
+      return () => { clearTimeout(timer); stopCamera(); };
+    } else {
+      stopCamera();
+    }
+  }, [showCameraModal, cameraFacingMode, startCamera, stopCamera]);
+
+  const handleSnapPhoto = () => {
+    if (!videoRef.current || !canvasRef.current || !imageUploadStudentId) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    const size = Math.min(video.videoWidth, video.videoHeight);
+    const offsetX = (video.videoWidth - size) / 2;
+    const offsetY = (video.videoHeight - size) / 2;
+    canvas.width = 800;
+    canvas.height = 800;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, offsetX, offsetY, size, size, 0, 0, 800, 800);
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], `snap_${imageUploadStudentId}_${Date.now()}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
+        uploadImageMutation.mutate({ studentId: imageUploadStudentId, file });
+      }
+      handleCloseCameraModal();
+    }, 'image/jpeg', 0.92);
+  };
+
+  const handleCloseCameraModal = () => {
+    setShowCameraModal(false);
+    setImageUploadStudentId(null);
+  };
+  // ========== END CAMERA LOGIC ==========
+
   const filteredStudents = useMemo(() => {
     if (!students?.data) return [];
     if (!searchTerm.trim()) return students.data;
@@ -100,12 +221,8 @@ const ManageStudents = () => {
   }, [students?.data, searchTerm]);
 
   const getFeesStatusBadge = (student) => {
-    if (!student.owingFees) {
-      return { label: 'Clear', color: 'green', icon: '✓' };
-    }
-    if (student.owingFees && student.feesAccessGranted) {
-      return { label: 'Access Granted', color: 'amber', icon: '⚡' };
-    }
+    if (!student.owingFees) return { label: 'Clear', color: 'green', icon: '✓' };
+    if (student.owingFees && student.feesAccessGranted) return { label: 'Access Granted', color: 'amber', icon: '⚡' };
     return { label: 'Blocked', color: 'red', icon: '🚫' };
   };
 
@@ -121,6 +238,38 @@ const ManageStudents = () => {
     }
   };
 
+  const handleImageClick = (studentId, e) => {
+    if (e) e.stopPropagation();
+    setOpenActionMenu(null);
+    setImageUploadStudentId(studentId);
+    setTimeout(() => imageInputRef.current?.click(), 100);
+  };
+
+  const handleImageChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !imageUploadStudentId) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('File too large. Maximum 5MB.');
+      setTimeout(() => setError(''), 3000);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+      setImageUploadStudentId(null);
+      return;
+    }
+
+    uploadImageMutation.mutate({ studentId: imageUploadStudentId, file });
+    if (imageInputRef.current) imageInputRef.current.value = '';
+    setImageUploadStudentId(null);
+  };
+
+  const handleRemoveImage = (studentId, e) => {
+    if (e) e.stopPropagation();
+    setOpenActionMenu(null);
+    if (window.confirm("Remove this student's profile image?")) {
+      removeImageMutation.mutate(studentId);
+    }
+  };
+
   const exportStudentsCSV = () => {
     const dataToExport = searchTerm.trim() ? filteredStudents : (students?.data || []);
     if (dataToExport.length === 0) {
@@ -128,7 +277,7 @@ const ManageStudents = () => {
       setTimeout(() => setError(''), 3000);
       return;
     }
-    const headers = ['Admission Number', 'First Name', 'Last Name', 'Full Name', 'Gender', 'Class Name', 'Section', 'Tests Taken', 'Owing Fees', 'Fees Access Granted'];
+    const headers = ['Admission Number', 'First Name', 'Last Name', 'Full Name', 'Gender', 'Class Name', 'Section', 'Owing Fees', 'Fees Access Granted'];
     const escapeCSV = (value) => {
       const stringValue = String(value);
       if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n')) {
@@ -142,8 +291,7 @@ const ManageStudents = () => {
         student.admissionNumber || '', student.firstName || '', student.lastName || '',
         `${student.firstName || ''} ${student.lastName || ''}`.trim(),
         student.gender || '', cls?.name || 'Not Assigned', cls?.section || '',
-        student.testResults?.length || 0, student.owingFees ? 'Yes' : 'No',
-        student.feesAccessGranted ? 'Yes' : 'No'
+        student.owingFees ? 'Yes' : 'No', student.feesAccessGranted ? 'Yes' : 'No'
       ];
     });
     const csvContent = [headers.map(escapeCSV).join(','), ...rows.map(row => row.map(escapeCSV).join(','))].join('\n');
@@ -324,13 +472,30 @@ const ManageStudents = () => {
     return colors[Math.abs(hash) % colors.length];
   };
 
+  const StudentAvatar = ({ student, size = 36, fontSize = '0.78rem' }) => {
+    if (student.profileImage?.url) {
+      return (
+        <img
+          src={student.profileImage.url}
+          alt={`${student.firstName} ${student.lastName}`}
+          style={{
+            width: size, height: size, borderRadius: '50%', objectFit: 'cover',
+            border: '2px solid var(--border)', background: '#f1f5f9'
+          }}
+        />
+      );
+    }
+    return (
+      <div className="ms-avatar" style={{ background: getAvatarColor(`${student.firstName}${student.lastName}`), width: size, height: size, fontSize }}>
+        {getInitials(student.firstName, student.lastName)}
+      </div>
+    );
+  };
+
   return (
     <div className="ms-root">
       <style>{`
-        /* ===== BASE RESET & TOKENS ===== */
         .ms-root { --bg: #f1f5f9; --surface: #ffffff; --border: #e2e8f0; --text: #0f172a; --text-secondary: #475569; --text-muted: #94a3b8; --primary: #4f46e5; --primary-hover: #4338ca; --primary-light: #eef2ff; --danger: #ef4444; --danger-hover: #dc2626; --success: #10b981; --success-light: #ecfdf5; --warning: #f59e0b; --warning-light: #fffbeb; --radius: 12px; --radius-sm: 8px; --shadow-sm: 0 1px 2px rgba(0,0,0,0.05); --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06); --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1); --transition: 150ms cubic-bezier(0.4, 0, 0.2, 1); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: var(--text); -webkit-font-smoothing: antialiased; }
-
-        /* ===== PAGE HEADER ===== */
         .ms-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 20px 24px; position: sticky; top: 0; z-index: 30; }
         .ms-header-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
         .ms-header-title { font-size: 1.35rem; font-weight: 700; color: var(--text); margin: 0; letter-spacing: -0.02em; }
@@ -350,8 +515,6 @@ const ManageStudents = () => {
         .ms-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
         .ms-btn-icon { padding: 8px; min-width: 36px; justify-content: center; }
         .ms-btn-icon svg { width: 16px; height: 16px; }
-
-        /* ===== SEARCH BAR ===== */
         .ms-search-bar { padding: 12px 24px; background: var(--bg); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 12px; }
         .ms-search-wrap { flex: 1; max-width: 420px; position: relative; }
         .ms-search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); width: 16px; height: 16px; pointer-events: none; }
@@ -361,8 +524,6 @@ const ManageStudents = () => {
         .ms-search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: #e2e8f0; border: none; border-radius: 50%; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; }
         .ms-result-count { font-size: 0.8rem; color: var(--text-muted); font-weight: 500; white-space: nowrap; }
         .ms-result-count svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 4px; }
-
-        /* ===== ALERTS ===== */
         .ms-alert { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.84rem; font-weight: 500; display: flex; align-items: center; gap: 8px; margin: 12px 24px 0; animation: msSlideDown 0.25s ease; }
         .ms-alert-success { background: var(--success-light); color: #065f46; border: 1px solid #a7f3d0; }
         .ms-alert-danger { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
@@ -370,21 +531,17 @@ const ManageStudents = () => {
         .ms-alert-close { margin-left: auto; background: none; border: none; cursor: pointer; font-size: 1.2rem; line-height: 1; opacity: 0.6; color: inherit; padding: 0 2px; }
         .ms-alert-close:hover { opacity: 1; }
         @keyframes msSlideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* ===== DESKTOP TABLE ===== */
         .ms-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        .ms-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 800px; }
+        .ms-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 700px; }
         .ms-table thead { background: #f8fafc; position: sticky; top: 0; z-index: 5; }
         .ms-table th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 0.76rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); border-bottom: 1px solid var(--border); white-space: nowrap; }
         .ms-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
-        .ms-table tbody tr { transition: background var(--transition); }
+        .ms-table tbody tr { transition: background var(--transition); position: relative; }
         .ms-table tbody tr:hover { background: #f8fafc; }
         .ms-table tbody tr:last-child td { border-bottom: none; }
         .ms-empty { text-align: center; padding: 48px 24px; color: var(--text-muted); }
         .ms-empty-icon { font-size: 2.5rem; margin-bottom: 8px; display: block; }
         .ms-empty strong { color: var(--text-secondary); }
-
-        /* ===== BADGES ===== */
         .ms-badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; white-space: nowrap; }
         .ms-badge-green { background: #dcfce7; color: #166534; }
         .ms-badge-amber { background: #fef3c7; color: #92400e; }
@@ -396,8 +553,6 @@ const ManageStudents = () => {
         .ms-badge-indicator-green { background: #22c55e; }
         .ms-badge-indicator-red { background: #ef4444; }
         .ms-badge-indicator-amber { background: #f59e0b; }
-
-        /* ===== MOBILE CARDS ===== */
         .ms-cards { display: none; padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
         .ms-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; transition: box-shadow var(--transition); }
         .ms-card:active { box-shadow: var(--shadow); }
@@ -411,8 +566,6 @@ const ManageStudents = () => {
         .ms-card-field-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
         .ms-card-field-value { font-size: 0.85rem; color: var(--text); font-weight: 500; }
         .ms-card-actions { display: flex; gap: 6px; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
-
-        /* ===== FEES ACTION BUTTONS ===== */
         .ms-fees-btn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; border: 1px solid; font-size: 0.72rem; font-weight: 600; cursor: pointer; transition: all var(--transition); white-space: nowrap; background: var(--surface); }
         .ms-fees-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
         .ms-fees-btn:active { transform: scale(0.97); }
@@ -425,13 +578,11 @@ const ManageStudents = () => {
         .ms-fees-btn-owing:hover { background: #fee2e2; }
         .ms-fees-btn-clear { border-color: #6366f1; color: #3730a3; background: #eef2ff; }
         .ms-fees-btn-clear:hover { background: #e0e7ff; }
-
-        /* ===== TABLE ACTION MENU ===== */
         .ms-action-menu-wrap { position: relative; }
         .ms-action-trigger { width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all var(--transition); }
         .ms-action-trigger:hover { background: #f8fafc; border-color: #cbd5e1; }
         .ms-action-trigger svg { width: 16px; height: 16px; color: var(--text-muted); }
-        .ms-action-menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); min-width: 180px; z-index: 50; overflow: hidden; animation: msMenuIn 0.15s ease; }
+        .ms-action-menu { position: absolute; right: 0; top: calc(100% + 4px); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); box-shadow: var(--shadow-lg); min-width: 180px; z-index: 9999; overflow: hidden; animation: msMenuIn 0.15s ease; }
         @keyframes msMenuIn { from { opacity: 0; transform: translateY(-4px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
         .ms-action-menu-item { display: flex; align-items: center; gap: 8px; width: 100%; padding: 10px 14px; border: none; background: none; font-size: 0.82rem; font-weight: 500; color: var(--text-secondary); cursor: pointer; transition: background var(--transition); text-align: left; }
         .ms-action-menu-item:hover { background: #f8fafc; }
@@ -439,9 +590,6 @@ const ManageStudents = () => {
         .ms-action-menu-item.danger { color: var(--danger); }
         .ms-action-menu-item.danger:hover { background: #fef2f2; }
         .ms-action-menu-sep { height: 1px; background: var(--border); margin: 2px 0; }
-        .ms-action-menu-label { padding: 6px 14px 4px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); }
-
-        /* ===== MODAL ===== */
         .ms-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.5); backdrop-filter: blur(4px); z-index: 100; display: flex; align-items: flex-end; justify-content: center; animation: msFadeIn 0.2s ease; }
         @keyframes msFadeIn { from { opacity: 0; } to { opacity: 1; } }
         .ms-modal { background: var(--surface); border-radius: 20px 20px 0 0; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; -webkit-overflow-scrolling: touch; animation: msSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
@@ -453,8 +601,6 @@ const ManageStudents = () => {
         .ms-modal-close:hover { background: #e2e8f0; color: var(--text); }
         .ms-modal-body { padding: 20px; }
         .ms-modal-footer { display: flex; gap: 10px; padding: 0 20px 24px; justify-content: flex-end; flex-wrap: wrap; }
-
-        /* ===== FORM ===== */
         .ms-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
         .ms-form-group { display: flex; flex-direction: column; gap: 5px; }
         .ms-form-group.full { grid-column: 1 / -1; }
@@ -466,8 +612,6 @@ const ManageStudents = () => {
         .ms-form-select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
         .ms-form-select option { color: var(--text); background: var(--surface); }
         .ms-form-hint { font-size: 0.75rem; color: var(--text-muted); font-style: italic; }
-
-        /* ===== UPLOAD PROGRESS ===== */
         .ms-progress-bar { height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; }
         .ms-progress-fill { height: 100%; background: var(--primary); border-radius: 3px; transition: width 0.3s ease; }
         .ms-upload-log { max-height: 160px; overflow-y: auto; background: #f8fafc; padding: 12px; border-radius: var(--radius-sm); font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.76rem; line-height: 1.6; color: var(--text-secondary); }
@@ -476,7 +620,42 @@ const ManageStudents = () => {
         .ms-upload-preview th { padding: 8px 10px; text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); background: #f8fafc; position: sticky; top: 0; }
         .ms-upload-preview td { padding: 7px 10px; border-top: 1px solid var(--border); }
 
-        /* ===== RESPONSIVE ===== */
+        /* ===== CAMERA MODAL STYLES ===== */
+        .ms-camera-overlay { position: fixed; inset: 0; background: #000; z-index: 200; display: flex; flex-direction: column; animation: msFadeIn 0.2s ease; }
+        .ms-camera-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 5; flex-shrink: 0; }
+        .ms-camera-header-left { display: flex; align-items: center; gap: 10px; }
+        .ms-camera-title { font-size: 0.92rem; font-weight: 600; color: #fff; margin: 0; }
+        .ms-camera-student-name { font-size: 0.78rem; color: rgba(255,255,255,0.65); font-weight: 400; }
+        .ms-camera-close { width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); backdrop-filter: blur(4px); cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 1.3rem; transition: all var(--transition); }
+        .ms-camera-close:hover { background: rgba(255,255,255,0.25); }
+        .ms-camera-viewport { flex: 1; display: flex; align-items: center; justify-content: center; position: relative; overflow: hidden; background: #0a0a0a; }
+        .ms-camera-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+        .ms-camera-guide { position: absolute; width: min(65vw, 320px); height: min(65vw, 320px); border-radius: 50%; border: 3px solid rgba(255,255,255,0.45); box-shadow: 0 0 0 9999px rgba(0,0,0,0.45); pointer-events: none; transition: opacity 0.3s ease; }
+        .ms-camera-guide-hidden { opacity: 0; }
+        .ms-camera-guide-label { position: absolute; bottom: -32px; left: 50%; transform: translateX(-50%); font-size: 0.72rem; color: rgba(255,255,255,0.5); white-space: nowrap; font-weight: 500; }
+        .ms-camera-loading { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 12px; color: rgba(255,255,255,0.7); font-size: 0.85rem; }
+        .ms-camera-spinner { width: 32px; height: 32px; border: 3px solid rgba(255,255,255,0.2); border-top-color: #fff; border-radius: 50%; animation: msSpin 0.8s linear infinite; }
+        @keyframes msSpin { to { transform: rotate(360deg); } }
+        .ms-camera-error { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 24px; text-align: center; max-width: 320px; }
+        .ms-camera-error-icon { font-size: 2rem; }
+        .ms-camera-error-text { color: rgba(255,255,255,0.8); font-size: 0.85rem; line-height: 1.5; }
+        .ms-camera-footer { display: flex; align-items: center; justify-content: center; gap: 24px; padding: 20px 18px 28px; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); flex-shrink: 0; }
+        .ms-camera-snap-btn { width: 72px; height: 72px; border-radius: 50%; border: 4px solid #fff; background: transparent; cursor: pointer; position: relative; transition: all 0.15s ease; flex-shrink: 0; }
+        .ms-camera-snap-btn::after { content: ''; position: absolute; inset: 4px; border-radius: 50%; background: #fff; transition: all 0.15s ease; }
+        .ms-camera-snap-btn:hover { border-color: rgba(255,255,255,0.8); }
+        .ms-camera-snap-btn:hover::after { background: rgba(255,255,255,0.9); }
+        .ms-camera-snap-btn:active { transform: scale(0.92); }
+        .ms-camera-snap-btn:active::after { background: #e2e8f0; }
+        .ms-camera-snap-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none !important; }
+        .ms-camera-snap-btn:disabled::after { background: rgba(255,255,255,0.4); }
+        .ms-camera-side-btn { width: 48px; height: 48px; border-radius: 50%; border: none; background: rgba(255,255,255,0.15); backdrop-filter: blur(4px); cursor: pointer; display: flex; align-items: center; justify-content: center; color: #fff; transition: all var(--transition); flex-shrink: 0; }
+        .ms-camera-side-btn:hover { background: rgba(255,255,255,0.25); }
+        .ms-camera-side-btn:active { transform: scale(0.92); }
+        .ms-camera-side-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none !important; }
+        .ms-camera-side-btn svg { width: 22px; height: 22px; }
+        .ms-camera-flash { position: fixed; inset: 0; background: #fff; z-index: 300; pointer-events: none; animation: msFlash 0.25s ease-out forwards; }
+        @keyframes msFlash { 0% { opacity: 0.85; } 100% { opacity: 0; } }
+
         @media (min-width: 768px) {
           .ms-modal-overlay { align-items: center; }
           .ms-modal { border-radius: 20px; max-width: 560px; }
@@ -487,8 +666,9 @@ const ManageStudents = () => {
           .ms-search-bar { padding: 12px 32px; }
           .ms-alert { margin-left: 32px; margin-right: 32px; }
           .ms-form-row { gap: 16px; }
+          .ms-camera-guide { width: 300px; height: 300px; }
+          .ms-camera-snap-btn { width: 68px; height: 68px; }
         }
-
         @media (max-width: 767px) {
           .ms-header { padding: 16px; }
           .ms-header-title { font-size: 1.15rem; }
@@ -504,29 +684,36 @@ const ManageStudents = () => {
           .ms-card-actions .ms-btn { flex: 1; justify-content: center; font-size: 0.72rem; padding: 8px 8px; }
           .ms-form-row { grid-template-columns: 1fr; }
           .ms-modal { max-height: 95vh; border-radius: 16px 16px 0 0; }
+          .ms-camera-footer { padding: 16px 18px 24px; gap: 20px; }
+          .ms-camera-snap-btn { width: 66px; height: 66px; }
         }
-
         @media (max-width: 380px) {
           .ms-header-actions { flex-direction: column; }
           .ms-card-grid { grid-template-columns: 1fr; }
         }
-
-        /* ===== SCROLLBAR ===== */
         .ms-root ::-webkit-scrollbar { width: 6px; height: 6px; }
         .ms-root ::-webkit-scrollbar-track { background: transparent; }
         .ms-root ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .ms-root ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-
-        /* ===== CLICK OUTSIDE OVERLAY ===== */
         .ms-click-outside { position: fixed; inset: 0; z-index: 40; }
       `}</style>
 
-      {/* ===== PAGE HEADER ===== */}
+      <input
+        type="file"
+        ref={imageInputRef}
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        onChange={handleImageChange}
+        style={{ display: 'none' }}
+      />
+
+      {/* Hidden canvas for photo capture */}
+      <canvas ref={canvasRef} style={{ display: 'none' }} />
+
       <div className="ms-header">
         <div className="ms-header-top">
           <div>
             <h1 className="ms-header-title">Students</h1>
-            <p className="ms-header-sub">Manage student accounts &amp; fees access</p>
+            <p className="ms-header-sub">Manage student accounts, photos &amp; fees access</p>
           </div>
           <div className="ms-header-actions">
             <button className="ms-btn ms-btn-ghost" onClick={exportStudentsCSV} disabled={!students?.data?.length} title={searchTerm.trim() ? 'Export filtered results' : 'Export all students'}>
@@ -545,7 +732,6 @@ const ManageStudents = () => {
         </div>
       </div>
 
-      {/* ===== ALERTS ===== */}
       {error && (
         <div className="ms-alert ms-alert-danger">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:16,height:16,flexShrink:0}}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
@@ -561,7 +747,6 @@ const ManageStudents = () => {
         </div>
       )}
 
-      {/* ===== SEARCH BAR ===== */}
       <div className="ms-search-bar">
         <div className="ms-search-wrap">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -584,25 +769,25 @@ const ManageStudents = () => {
                 <th>Fees</th>
                 <th>Gender</th>
                 <th>Class</th>
-                <th>Tests</th>
                 <th style={{width: 50}}></th>
               </tr>
             </thead>
             <tbody>
               {filteredStudents.length === 0 ? (
-                <tr><td colSpan="6" className="ms-empty">
+                <tr><td colSpan="5" className="ms-empty">
                   <span className="ms-empty-icon">🎓</span>
                   {searchTerm.trim() ? <>No students found for "<strong>{searchTerm}</strong>"</> : 'No students yet. Add your first student to get started.'}
                 </td></tr>
               ) : filteredStudents.map((student) => {
                 const feesBadge = getFeesStatusBadge(student);
                 return (
-                  <tr key={student._id}>
+                  <tr key={student._id} style={{
+                    position: openActionMenu === student._id ? 'relative' : 'unset',
+                    zIndex: openActionMenu === student._id ? 100 : 'unset'
+                  }}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div className="ms-avatar" style={{ background: getAvatarColor(`${student.firstName}${student.lastName}`), width: 36, height: 36, fontSize: '0.78rem' }}>
-                          {getInitials(student.firstName, student.lastName)}
-                        </div>
+                        <StudentAvatar student={student} />
                         <div>
                           <div style={{ fontWeight: 600, fontSize: '0.9rem', lineHeight: 1.3 }}>{student.firstName} {student.lastName}</div>
                           <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontWeight: 500 }}>{student.admissionNumber}</div>
@@ -616,13 +801,13 @@ const ManageStudents = () => {
                           {feesBadge.label}
                         </span>
                         {student.owingFees && !student.feesAccessGranted && (
-                          <button className="ms-fees-btn ms-fees-btn-grant" onClick={(e) => handleToggleFeesAccess(student._id, e)} disabled={toggleFeesAccessMutation.isPending} title="Grant temporary access">⚡ Grant Access</button>
+                          <button className="ms-fees-btn ms-fees-btn-grant" onClick={(e) => handleToggleFeesAccess(student._id, e)} disabled={toggleFeesAccessMutation.isPending}>⚡ Grant Access</button>
                         )}
                         {student.owingFees && student.feesAccessGranted && (
-                          <button className="ms-fees-btn ms-fees-btn-revoke" onClick={(e) => handleToggleFeesAccess(student._id, e)} disabled={toggleFeesAccessMutation.isPending} title="Revoke access">↩ Revoke</button>
+                          <button className="ms-fees-btn ms-fees-btn-revoke" onClick={(e) => handleToggleFeesAccess(student._id, e)} disabled={toggleFeesAccessMutation.isPending}>↩ Revoke</button>
                         )}
                         {!student.owingFees && (
-                          <button className="ms-fees-btn ms-fees-btn-owing" onClick={(e) => handleToggleOwing(student._id, e)} disabled={toggleOwingMutation.isPending} title="Mark as owing">$ Mark Owing</button>
+                          <button className="ms-fees-btn ms-fees-btn-owing" onClick={(e) => handleToggleOwing(student._id, e)} disabled={toggleOwingMutation.isPending}>$ Mark Owing</button>
                         )}
                       </div>
                     </td>
@@ -632,8 +817,7 @@ const ManageStudents = () => {
                       </span>
                     </td>
                     <td style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{getClassName(student.classId)}</td>
-                    <td style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>{student.testResults?.length || 0}</td>
-                    <td>
+                    <td style={{ width: 50 }}>
                       <div className="ms-action-menu-wrap">
                         <button className="ms-action-trigger" onClick={(e) => toggleActionMenu(student._id, e)}>
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
@@ -642,15 +826,38 @@ const ManageStudents = () => {
                           <>
                             <div className="ms-click-outside" onClick={() => setOpenActionMenu(null)} />
                             <div className="ms-action-menu">
-                              <button className="ms-action-menu-item" onClick={() => { setOpenActionMenu(null); handleOpenEdit(student); }}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                Edit Student
-                              </button>
-                              <div className="ms-action-menu-sep" />
-                              <button className="ms-action-menu-item danger" onClick={() => { setOpenActionMenu(null); handleDelete(student._id); }}>
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                Delete Student
-                              </button>
+                              <div>
+                                <button className="ms-action-menu-item" onClick={() => { setOpenActionMenu(null); handleOpenEdit(student); }}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                  Edit Student
+                                </button>
+
+                                <button className="ms-action-menu-item" onClick={(e) => handleImageClick(student._id, e)} disabled={uploadImageMutation.isPending}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                  {student.profileImage?.url ? 'Change Photo' : 'Upload Photo'}
+                                </button>
+
+                                {/* NEW: Snap Photo option */}
+                                <button className="ms-action-menu-item" onClick={(e) => handleOpenCamera(student._id, e)} disabled={uploadImageMutation.isPending}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                  {student.profileImage?.url ? 'Retake Photo' : 'Snap Photo'}
+                                </button>
+
+                                <button className="ms-action-menu-item danger" onClick={() => { setOpenActionMenu(null); handleDelete(student._id); }}>
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                  Delete Student
+                                </button>
+                              </div>
+
+                              {student.profileImage?.url && (
+                                <>
+                                  <div className="ms-action-menu-sep" />
+                                  <button className="ms-action-menu-item" onClick={(e) => handleRemoveImage(student._id, e)} disabled={removeImageMutation.isPending}>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                    Remove Photo
+                                  </button>
+                                </>
+                              )}
                             </div>
                           </>
                         )}
@@ -676,9 +883,7 @@ const ManageStudents = () => {
           return (
             <div className="ms-card" key={student._id}>
               <div className="ms-card-top">
-                <div className="ms-avatar" style={{ background: getAvatarColor(`${student.firstName}${student.lastName}`) }}>
-                  {getInitials(student.firstName, student.lastName)}
-                </div>
+                <StudentAvatar student={student} size={42} fontSize="0.85rem" />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="ms-card-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{student.firstName} {student.lastName}</div>
                   <div className="ms-card-adm">{student.admissionNumber}</div>
@@ -700,10 +905,6 @@ const ManageStudents = () => {
                   <span className="ms-card-field-value">{getClassName(student.classId)}</span>
                 </div>
                 <div className="ms-card-field">
-                  <span className="ms-card-field-label">Tests Taken</span>
-                  <span className="ms-card-field-value">{student.testResults?.length || 0}</span>
-                </div>
-                <div className="ms-card-field">
                   <span className="ms-card-field-label">Fees</span>
                   <span className="ms-card-field-value" style={{ color: student.owingFees ? 'var(--danger)' : 'var(--success)' }}>
                     {student.owingFees ? '🔴 Owing' : '🟢 Clear'}
@@ -720,6 +921,16 @@ const ManageStudents = () => {
                 {!student.owingFees && (
                   <button className="ms-btn ms-btn-sm ms-fees-btn-owing" style={{ flex: 'none' }} onClick={(e) => handleToggleOwing(student._id, e)} disabled={toggleOwingMutation.isPending}>$ Owing</button>
                 )}
+
+                <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={(e) => handleImageClick(student._id, e)} disabled={uploadImageMutation.isPending}>
+                  {student.profileImage?.url ? '📷 Change' : '📷 Upload'}
+                </button>
+
+                {/* NEW: Snap button on mobile cards */}
+                <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={(e) => handleOpenCamera(student._id, e)} disabled={uploadImageMutation.isPending}>
+                  📸 Snap
+                </button>
+
                 <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={() => handleOpenEdit(student)}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:14,height:14}}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   Edit
@@ -740,37 +951,33 @@ const ManageStudents = () => {
           <div className="ms-modal" onClick={(e) => e.stopPropagation()}>
             <div className="ms-modal-handle" />
             <div className="ms-modal-header">
-              <h3 className="ms-modal-title">{editingStudent ? 'Edit Student' : 'Add New Student'}</h3>
+              <h2 className="ms-modal-title">{editingStudent ? 'Edit Student' : 'Add New Student'}</h2>
               <button className="ms-modal-close" onClick={handleCloseModal}>×</button>
             </div>
-            <div className="ms-modal-body">
-              {error && <div className="ms-alert ms-alert-danger" style={{margin:0}}>{error}</div>}
-              {successMessage && <div className="ms-alert ms-alert-success" style={{margin:0}}>{successMessage}</div>}
-              <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit}>
+              <div className="ms-modal-body">
+                {error && <div className="ms-alert ms-alert-danger" style={{margin:0,marginBottom:14}}>{error}</div>}
+                {successMessage && <div className="ms-alert ms-alert-success" style={{margin:0,marginBottom:14}}>{successMessage}</div>}
                 <div className="ms-form-row">
                   <div className="ms-form-group">
                     <label className="ms-form-label">First Name *</label>
-                    <input type="text" name="firstName" className="ms-form-input" value={formData.firstName} onChange={handleChange} required disabled={!!successMessage} placeholder="e.g. John" />
+                    <input className="ms-form-input" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="e.g. John" required />
                   </div>
                   <div className="ms-form-group">
                     <label className="ms-form-label">Last Name *</label>
-                    <input type="text" name="lastName" className="ms-form-input" value={formData.lastName} onChange={handleChange} required disabled={!!successMessage} placeholder="e.g. Doe" />
+                    <input className="ms-form-input" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="e.g. Doe" required />
                   </div>
                 </div>
                 <div className="ms-form-row">
                   <div className="ms-form-group">
                     <label className="ms-form-label">Admission Number</label>
-                    {editingStudent ? (
-                      <input type="text" className="ms-form-input" value={formData.admissionNumber} disabled />
-                    ) : (
-                      <input type="text" className="ms-form-input" value="Auto-generated" disabled />
-                    )}
-                    <span className="ms-form-hint">{editingStudent ? 'Cannot be changed' : 'Assigned automatically after creation'}</span>
+                    <input className="ms-form-input" name="admissionNumber" value={formData.admissionNumber} onChange={handleChange} placeholder="Auto-generated if empty" />
+                    <span className="ms-form-hint">Leave blank to auto-generate</span>
                   </div>
                   <div className="ms-form-group">
                     <label className="ms-form-label">Gender</label>
-                    <select name="gender" className="ms-form-input ms-form-select" value={formData.gender} onChange={handleChange} disabled={!!successMessage}>
-                      <option value="">Select Gender</option>
+                    <select className="ms-form-select" name="gender" value={formData.gender} onChange={handleChange}>
+                      <option value="">Select gender</option>
                       <option value="Male">Male</option>
                       <option value="Female">Female</option>
                       <option value="Other">Other</option>
@@ -780,123 +987,199 @@ const ManageStudents = () => {
                 <div className="ms-form-row">
                   <div className="ms-form-group full">
                     <label className="ms-form-label">Class</label>
-                    <select name="classId" className="ms-form-input ms-form-select" value={formData.classId} onChange={handleChange} disabled={!!successMessage}>
-                      <option value="">Select Class</option>
+                    <select className="ms-form-select" name="classId" value={formData.classId} onChange={handleChange}>
+                      <option value="">Select class (optional)</option>
                       {classes?.data?.map((cls) => (
-                        <option key={cls._id} value={cls._id}>{cls.name} - {cls.section} ({cls.level})</option>
+                        <option key={cls._id} value={cls._id}>{cls.name} - {cls.section}</option>
                       ))}
                     </select>
                   </div>
                 </div>
-              </form>
-            </div>
-            <div className="ms-modal-footer">
-              <button type="button" className="ms-btn ms-btn-ghost" onClick={handleCloseModal}>
-                {successMessage ? 'Close' : 'Cancel'}
-              </button>
-              {!successMessage && (
-                <button type="button" className="ms-btn ms-btn-primary" onClick={handleSubmit} disabled={createMutation.isPending || updateMutation.isPending}>
-                  {createMutation.isPending || updateMutation.isPending ? (
-                    <><span style={{display:'inline-block',width:14,height:14,border:'2px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'msSpin 0.6s linear infinite'}}></span> Saving...</>
-                  ) : 'Save Student'}
+              </div>
+              <div className="ms-modal-footer">
+                <button type="button" className="ms-btn ms-btn-ghost" onClick={handleCloseModal}>Cancel</button>
+                <button type="submit" className="ms-btn ms-btn-primary" disabled={createMutation.isPending || updateMutation.isPending}>
+                  {createMutation.isPending || updateMutation.isPending ? 'Saving...' : editingStudent ? 'Update Student' : 'Create Student'}
                 </button>
-              )}
-              {successMessage && (
-                <button type="button" className="ms-btn ms-btn-primary" onClick={handleOpenCreate}>+ Add Another</button>
-              )}
-            </div>
-            <style>{`@keyframes msSpin { to { transform: rotate(360deg); } }`}</style>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* ===== MODAL: UPLOAD CSV ===== */}
+      {/* ===== MODAL: CSV UPLOAD ===== */}
       {showUploadModal && (
-        <div className="ms-modal-overlay" onClick={() => !isUploading && setShowUploadModal(false)}>
-          <div className="ms-modal" style={{ maxWidth: '640px' }} onClick={(e) => e.stopPropagation()}>
+        <div className="ms-modal-overlay" onClick={() => setShowUploadModal(false)}>
+          <div className="ms-modal" onClick={(e) => e.stopPropagation()}>
             <div className="ms-modal-handle" />
             <div className="ms-modal-header">
-              <h3 className="ms-modal-title">Upload Students (CSV)</h3>
-              <button className="ms-modal-close" onClick={() => setShowUploadModal(false)} disabled={isUploading}>×</button>
+              <h2 className="ms-modal-title">Upload Students via CSV</h2>
+              <button className="ms-modal-close" onClick={() => setShowUploadModal(false)}>×</button>
             </div>
             <div className="ms-modal-body">
-              <div className="ms-alert ms-alert-info" style={{ margin: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-                  <strong style={{ fontSize: '0.84rem' }}>CSV Format Requirements</strong>
-                  <button type="button" className="ms-btn ms-btn-success ms-btn-sm" onClick={downloadSampleCSV} style={{ flexShrink: 0 }}>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:13,height:13}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Sample CSV
-                  </button>
-                </div>
-                <ul style={{ paddingLeft: 18, margin: 0, fontSize: '0.82rem', color: '#334155', lineHeight: 1.7 }}>
-                  <li>File must be <code style={{ background: '#e2e8f0', padding: '1px 5px', borderRadius: 4, fontSize: '0.78rem' }}>.csv</code> format</li>
-                  <li>Do <strong>NOT</strong> include an Admission Number column</li>
-                  <li>Required columns: <code style={{ background: '#e2e8f0', padding: '1px 5px', borderRadius: 4, fontSize: '0.78rem' }}>FirstName, LastName, Gender, ClassName, Section</code></li>
-                </ul>
+              <div style={{marginBottom:16}}>
+                <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={downloadSampleCSV} style={{marginBottom:12}}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:14,height:14}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Download Sample CSV
+                </button>
+                <input type="file" ref={fileInputRef} accept=".csv" onChange={handleFileChange} style={{display:'none'}} />
+                <button className="ms-btn ms-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:14,height:14}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  Choose CSV File
+                </button>
               </div>
 
-              <div className="ms-form-group" style={{ marginTop: 16 }}>
-                <label className="ms-form-label">Select CSV File</label>
-                <input ref={fileInputRef} type="file" accept=".csv" className="ms-form-input" onChange={handleFileChange} disabled={isUploading} style={{ padding: '8px 12px' }} />
-              </div>
-
-              {csvError && <div className="ms-alert ms-alert-danger" style={{ marginTop: 10, margin: '10px 0 0' }}>{csvError}</div>}
+              {csvError && <div className="ms-alert ms-alert-danger" style={{margin:'0 0 12px'}}>{csvError}</div>}
 
               {parsedStudents.length > 0 && (
                 <>
-                  <div style={{ marginTop: 16, fontSize: '0.88rem', fontWeight: 600, color: 'var(--text)' }}>
-                    Preview — {parsedStudents.length} student{parsedStudents.length !== 1 ? 's' : ''} found
+                  <div style={{fontSize:'0.82rem',fontWeight:600,color:'var(--text-secondary)',marginBottom:8}}>
+                    Preview: {parsedStudents.length} students found
                   </div>
-                  <div className="ms-upload-preview" style={{ marginTop: 8 }}>
+                  <div className="ms-upload-preview" style={{marginBottom:16}}>
                     <table>
-                      <thead><tr><th>Row</th><th>Name</th><th>Gender</th><th>Class</th></tr></thead>
+                      <thead>
+                        <tr>
+                          <th>#</th>
+                          <th>Name</th>
+                          <th>Gender</th>
+                          <th>Class</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
                       <tbody>
-                        {parsedStudents.map((s, i) => (
-                          <tr key={i}>
+                        {parsedStudents.map((s) => (
+                          <tr key={s._rowNumber}>
                             <td>{s._rowNumber}</td>
-                            <td style={{ fontWeight: 500 }}>{s.firstName} {s.lastName}</td>
+                            <td style={{fontWeight:500}}>{s.firstName} {s.lastName}</td>
                             <td>{s.gender || '—'}</td>
-                            <td style={{ color: s.classId ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                              {s.classId ? `${s._className} - ${s._section}` : 'NOT FOUND'}
+                            <td>{s._className ? `${s._className}-${s._section}` : '—'}</td>
+                            <td>
+                              <span className={`ms-badge ${s.classId ? 'ms-badge-green' : 'ms-badge-amber'}`}>
+                                {s.classId ? '✓ Ready' : '⚠ No class'}
+                              </span>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+
+                  {isUploading && (
+                    <div style={{marginBottom:12}}>
+                      <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.78rem',color:'var(--text-muted)',marginBottom:6}}>
+                        <span>Uploading...</span>
+                        <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                      </div>
+                      <div className="ms-progress-bar">
+                        <div className="ms-progress-fill" style={{width: `${(uploadProgress.current / uploadProgress.total) * 100}%`}} />
+                      </div>
+                    </div>
+                  )}
+
+                  {uploadLog.length > 0 && (
+                    <div className="ms-upload-log" style={{marginBottom:16}}>
+                      {uploadLog.map((log, i) => <div key={i}>{log}</div>)}
+                    </div>
+                  )}
+
+                  {!isUploading && (
+                    <button className="ms-btn ms-btn-success" onClick={handleBulkUpload} style={{width:'100%',justifyContent:'center'}}>
+                      Upload {parsedStudents.length} Students
+                    </button>
+                  )}
                 </>
               )}
-
-              {isUploading && (
-                <div style={{ marginTop: 16 }}>
-                  <div className="ms-progress-bar">
-                    <div className="ms-progress-fill" style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }} />
-                  </div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 6, fontWeight: 500 }}>
-                    Uploading {uploadProgress.current} of {uploadProgress.total}...
-                  </div>
-                </div>
-              )}
-
-              {uploadLog.length > 0 && (
-                <div className="ms-upload-log" style={{ marginTop: 12 }}>
-                  {uploadLog.map((log, i) => <div key={i}>{log}</div>)}
-                </div>
-              )}
-            </div>
-            <div className="ms-modal-footer">
-              <button type="button" className="ms-btn ms-btn-ghost" onClick={() => setShowUploadModal(false)} disabled={isUploading}>Close</button>
-              <button type="button" className="ms-btn ms-btn-success" onClick={handleBulkUpload} disabled={isUploading || parsedStudents.length === 0}>
-                {isUploading ? (
-                  <><span style={{display:'inline-block',width:14,height:14,border:'2px solid rgba(255,255,255,0.3)',borderTopColor:'#fff',borderRadius:'50%',animation:'msSpin 0.6s linear infinite'}}></span> Uploading...</>
-                ) : (
-                  `Upload ${parsedStudents.length} Student${parsedStudents.length !== 1 ? 's' : ''}`
-                )}
-              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* ===== FULLSCREEN CAMERA MODAL (NEW) ===== */}
+      {showCameraModal && (
+        <div className="ms-camera-overlay">
+          {/* Camera Header */}
+          <div className="ms-camera-header">
+            <div className="ms-camera-header-left">
+              <div>
+                <p className="ms-camera-title">Take Photo</p>
+                {imageUploadStudentId && (
+                  <p className="ms-camera-student-name">
+                    {students?.data?.find(s => s._id === imageUploadStudentId)
+                      ? `${students.data.find(s => s._id === imageUploadStudentId).firstName} ${students.data.find(s => s._id === imageUploadStudentId).lastName}`
+                      : 'Student'}
+                  </p>
+                )}
+              </div>
+            </div>
+            <button className="ms-camera-close" onClick={handleCloseCameraModal}>×</button>
+          </div>
+
+          {/* Camera Viewport */}
+          <div className="ms-camera-viewport">
+            <video
+              ref={videoRef}
+              className="ms-camera-video"
+              autoPlay
+              playsInline
+              muted
+            />
+
+            {/* Circular face guide overlay */}
+            <div className={`ms-camera-guide ${cameraReady ? '' : 'ms-camera-guide-hidden'}`}>
+              <span className="ms-camera-guide-label">Position face here</span>
+            </div>
+
+            {/* Loading state */}
+            {!cameraReady && !cameraError && (
+              <div className="ms-camera-loading">
+                <div className="ms-camera-spinner" />
+                <span>Starting camera...</span>
+              </div>
+            )}
+
+            {/* Error state */}
+            {cameraError && (
+              <div className="ms-camera-error">
+                <span className="ms-camera-error-icon">📷</span>
+                <p className="ms-camera-error-text">{cameraError}</p>
+                <button className="ms-btn ms-btn-ghost" onClick={() => startCamera(cameraFacingMode)} style={{color:'#fff',borderColor:'rgba(255,255,255,0.3)'}}>
+                  Try Again
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Camera Footer Controls */}
+          <div className="ms-camera-footer">
+            {/* Flip Camera Button */}
+            <button
+              className="ms-camera-side-btn"
+              onClick={handleFlipCamera}
+              disabled={!cameraReady}
+              title="Switch camera"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <polyline points="1 20 1 14 7 14" />
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+            </button>
+
+            {/* Snap Button */}
+            <button
+              className="ms-camera-snap-btn"
+              onClick={handleSnapPhoto}
+              disabled={!cameraReady || uploadImageMutation.isPending}
+              title="Take photo"
+            />
+
+            {/* Placeholder for symmetry — or could be used for something else */}
+            <div style={{width:48,height:48}} />
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

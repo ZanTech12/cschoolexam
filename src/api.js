@@ -283,6 +283,31 @@ export const studentsAPI = {
         const response = await api.delete(`/students/recycle-bin/${id}/permanent`);
         return response.data;
     },
+
+    // ==========================================
+    // PROFILE IMAGE MANAGEMENT (ADMIN)
+    // ==========================================
+
+        uploadProfileImage: async (studentId, file) => {
+        const formData = new FormData();
+        formData.append('profileImage', file);
+
+        const response = await api.post(`/admin/students/${studentId}/profile-image`, formData, {
+            // This forces Axios to ignore the global 'application/json' header
+            // and let it automatically generate the correct multipart boundary
+            transformRequest: [(data, headers) => {
+                delete headers['Content-Type'];
+                return data;
+            }]
+        });
+        
+        return response.data;
+    },
+
+    removeProfileImage: async (studentId) => {
+        const response = await api.delete(`/admin/students/${studentId}/profile-image`);
+        return response.data;
+    },
 };
 
 // ============================================
@@ -511,6 +536,32 @@ export const studentAPI = {
 
     getResultAccessStatus: async () => {
         const response = await api.get('/student/result-access-status');
+        return response.data;
+    },
+
+    // ==========================================
+    // PROFILE IMAGE (NEW)
+    // ==========================================
+
+    getProfile: async () => {
+        const response = await api.get('/student/profile');
+        return response.data;
+    },
+
+    uploadProfileImage: async (file) => {
+        const formData = new FormData();
+        formData.append('profileImage', file);
+
+        const response = await api.post('/student/profile-image', formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+            },
+        });
+        return response.data;
+    },
+
+    removeProfileImage: async () => {
+        const response = await api.delete('/student/profile-image');
         return response.data;
     },
 };

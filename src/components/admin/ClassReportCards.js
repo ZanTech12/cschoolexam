@@ -2,6 +2,7 @@ import React from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { reportCardsAPI } from '../../api';
+import schoolLogo from '../../pages/logo.png';
 import './ClassReportCards.css';
 
 const ClassReportCards = () => {
@@ -44,14 +45,95 @@ const ClassReportCards = () => {
 
   return (
     <div className="class-report-page">
+      <style>{`
+        .cr-header-top-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          gap: 16px;
+          margin-bottom: 12px;
+        }
+        .cr-logo-wrap {
+          flex-shrink: 0;
+        }
+        .cr-logo-wrap img {
+          width: 75px;
+          height: 75px;
+          object-fit: contain;
+        }
+        .cr-header-center-info {
+          flex: 1;
+          text-align: center;
+        }
+        .cr-header-center-info h2 {
+          margin: 0;
+          font-size: 16px;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+        .cr-header-center-info p {
+          margin: 4px 0 0 0;
+          font-size: 13px;
+          color: #555;
+        }
+        .cr-header-center-info .cr-subtitle {
+          font-size: 12px;
+          color: #777;
+        }
+        .cr-class-photo-wrap {
+          flex-shrink: 0;
+          width: 75px;
+          height: 75px;
+          border: 2px solid #333;
+          border-radius: 4px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background-color: #f5f5f5;
+        }
+        .cr-class-photo-wrap img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .cr-class-photo-placeholder {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%);
+          color: #555;
+          font-size: 28px;
+          user-select: none;
+        }
+      `}</style>
+
       <button className="back-btn" onClick={() => navigate('/admin/report-cards')}>&larr; Back to Classes</button>
       
       <div className="cr-header">
-        <h2>{reportData.class?.name} {reportData.class?.section} - Report Cards</h2>
-        <p>Term: {reportData.term?.name} | Session: {reportData.session?.name}</p>
-        {reportData.totalStudents > 0 && (
-          <p className="cr-subtitle">Total Students: {reportData.totalStudents} | Assessed: {reportData.assessedStudents}</p>
-        )}
+        <div className="cr-header-top-row">
+          <div className="cr-logo-wrap">
+            <img src={schoolLogo} alt="DATFORTE International School Logo" />
+          </div>
+          <div className="cr-header-center-info">
+            <h2>{reportData.class?.name} {reportData.class?.section} - Report Cards</h2>
+            <p>Term: {reportData.term?.name} | Session: {reportData.session?.name}</p>
+            {reportData.totalStudents > 0 && (
+              <p className="cr-subtitle">Total Students: {reportData.totalStudents} | Assessed: {reportData.assessedStudents}</p>
+            )}
+          </div>
+          <div className="cr-class-photo-wrap">
+            {reportData.class?.image ? (
+              <img src={reportData.class.image} alt={`${reportData.class?.name} ${reportData.class?.section}`} />
+            ) : (
+              <div className="cr-class-photo-placeholder">🏛</div>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="cr-table-container">

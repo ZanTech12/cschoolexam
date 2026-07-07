@@ -1,6 +1,59 @@
 import React, { useState } from 'react';
 import { reportCardsAPI, sessionsAPI, termsAPI } from '../../api';
+import schoolLogo from '../../pages/logo.png';
 import './CheckResultsPage.css';
+
+// ✅ Base URL for constructing image URLs
+const API_BASE_URL = 'https://testbackend-5xui.onrender.com';
+
+// ✅ Student Photo Component
+const StudentPhoto = ({ src, studentName }) => {
+    const [imgError, setImgError] = useState(false);
+    
+    if (!src || imgError) {
+        return (
+            <div className="cr-student-photo-placeholder">
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.4">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span>No Photo</span>
+            </div>
+        );
+    }
+
+    return (
+        <div className="cr-student-photo-container">
+            <img
+                src={src}
+                alt={`${studentName}'s Photo`}
+                className="cr-student-photo"
+                onError={() => setImgError(true)}
+            />
+        </div>
+    );
+};
+
+// ✅ Helper to build student photo URL
+const buildStudentPhotoUrl = (student) => {
+    if (!student) return null;
+    
+    const imageUrl = student.profileImage || student.profile_image || student.image || student.photo || student.profileImageUrl;
+    
+    if (imageUrl) {
+        if (imageUrl.startsWith('/')) return `${API_BASE_URL}${imageUrl}`;
+        if (imageUrl.startsWith('http')) return imageUrl;
+        return `${API_BASE_URL}/${imageUrl}`;
+    }
+    
+    // Fallback: construct URL from student ID
+    const studentId = student._id || student.id;
+    if (studentId) {
+        return `${API_BASE_URL}/uploads/students/${studentId}/profile-image`;
+    }
+    
+    return null;
+};
 
 const CheckResultsPage = () => {
     const [admissionNumber, setAdmissionNumber] = useState('');
@@ -10,6 +63,7 @@ const CheckResultsPage = () => {
     const [result, setResult] = useState(null);
     const [terms, setTerms] = useState([]);
     const [selectedTerm, setSelectedTerm] = useState('');
+    const [studentPhotoUrl, setStudentPhotoUrl] = useState(null);
 
     React.useEffect(() => {
         fetchTerms();
@@ -36,6 +90,7 @@ const CheckResultsPage = () => {
         e.preventDefault();
         setError('');
         setResult(null);
+        setStudentPhotoUrl(null);
 
         if (!admissionNumber.trim() || !firstName.trim()) {
             setError('Please enter both Admission Number and First Name');
@@ -52,6 +107,10 @@ const CheckResultsPage = () => {
 
             if (response.success) {
                 setResult(response.data);
+                
+                // ✅ Build student photo URL from response
+                const photoUrl = buildStudentPhotoUrl(response.data.student);
+                setStudentPhotoUrl(photoUrl);
             } else {
                 setError(response.message || 'Failed to fetch results');
             }
@@ -68,6 +127,11 @@ const CheckResultsPage = () => {
             month: 'long',
             day: 'numeric'
         });
+    };
+
+    const getStudentFullName = () => {
+        if (!result?.student) return 'Student';
+        return `${result.student.firstName} ${result.student.lastName}`;
     };
 
     return (
@@ -128,11 +192,35 @@ const CheckResultsPage = () => {
 
             {result && (
                 <div className="report-card">
+                    {/* ===== REPORT HEADER WITH LOGO & PHOTO ===== */}
                     <div className="report-header">
-                        <h2>STUDENT REPORT CARD</h2>
-                        <div className="report-meta">
-                            <p><strong>Term:</strong> {result.term.name}</p>
-                            <p><strong>Session:</strong> {result.session.name}</p>
+                        {/* School Logo - LEFT */}
+                        <div className="cr-logo-wrap">
+                            <img
+                                src={schoolLogo}
+                                alt="School Logo"
+                                className="cr-logo"
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                }}
+                            />
+                        </div>
+                        
+                        {/* Title & Meta - CENTER */}
+                        <div className="cr-header-center">
+                            <h2>STUDENT REPORT CARD</h2>
+                            <div className="report-meta">
+                                <p><strong>Term:</strong> {result.term.name}</p>
+                                <p><strong>Session:</strong> {result.session.name}</p>
+                            </div>
+                        </div>
+                        
+                        {/* Student Photo - RIGHT */}
+                        <div className="cr-photo-wrap">
+                            <StudentPhoto 
+                                src={studentPhotoUrl} 
+                                studentName={getStudentFullName()} 
+                            />
                         </div>
                     </div>
 

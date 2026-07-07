@@ -1,10 +1,87 @@
 import React, { useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { reportCardsAPI, termsAPI, principalCommentsAPI } from '../../api'; // <-- Added principalCommentsAPI
+import { reportCardsAPI, termsAPI, principalCommentsAPI, studentsAPI } from '../../api'; // ✅ Added studentsAPI
 import schoolLogo from '../../pages/logo.png';
 import principalSignature from './principal_signature.png';
 import './ReportCardsPrintView.css';
+
+// ✅ Base URL for constructing image URLs
+const API_BASE_URL = 'https://testbackend-5xui.onrender.com';
+
+// ✅ Helper to build student photo URL (Updated to match backend structure: profileImage.url)
+const buildStudentPhotoUrl = (student) => {
+  if (!student) return null;
+  
+  // 1. Check if profileImage is an object with a 'url' property (Exact backend format)
+  if (student.profileImage?.url) {
+    const imageUrl = student.profileImage.url;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    if (imageUrl.startsWith('/')) return `${API_BASE_URL}${imageUrl}`;
+    return `${API_BASE_URL}/${imageUrl}`;
+  }
+
+  // 2. Fallback: Check if profileImage is a direct string
+  if (typeof student.profileImage === 'string' && student.profileImage.trim() !== '') {
+    const imageUrl = student.profileImage;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    if (imageUrl.startsWith('/')) return `${API_BASE_URL}${imageUrl}`;
+    return `${API_BASE_URL}/${imageUrl}`;
+  }
+
+  // 3. Fallback: Check other possible direct string fields
+  const fallbackFields = ['profile_image', 'image', 'photo', 'profileImageUrl'];
+  for (const field of fallbackFields) {
+    const val = student[field];
+    if (typeof val === 'string' && val.trim() !== '') {
+      if (val.startsWith('http')) return val;
+      if (val.startsWith('/')) return `${API_BASE_URL}${val}`;
+      return `${API_BASE_URL}/${val}`;
+    }
+    // Check if the fallback field is also an object with a url
+    if (val?.url) {
+      const imageUrl = val.url;
+      if (imageUrl.startsWith('http')) return imageUrl;
+      if (imageUrl.startsWith('/')) return `${API_BASE_URL}${imageUrl}`;
+      return `${API_BASE_URL}/${imageUrl}`;
+    }
+  }
+
+  // 4. Final fallback: Construct URL from student ID
+  const studentId = student._id || student.id;
+  if (studentId) {
+    return `${API_BASE_URL}/uploads/students/${studentId}/profile-image`;
+  }
+  
+  return null;
+};
+
+// ✅ Student Photo Component for Print View
+const StudentPhotoPrint = ({ src, studentName }) => {
+  const [imgError, setImgError] = React.useState(false);
+
+  if (!src || imgError) {
+    return (
+      <div className="print-student-photo-placeholder">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.35">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+    );
+  }
+
+  return (
+    <div className="print-student-photo-box">
+      <img
+        src={src}
+        alt={`${studentName}'s Photo`}
+        className="print-student-photo-img"
+        onError={() => setImgError(true)}
+      />
+    </div>
+  );
+};
 
 const ReportCardsPrintView = () => {
   const [searchParams] = useSearchParams();
@@ -40,6 +117,31 @@ const ReportCardsPrintView = () => {
     enabled: !!termId && !!classIdsString,
     staleTime: 60000,
   });
+
+  // ============================================
+  // ✅ NEW: FETCH ALL STUDENTS TO GET PROFILE IMAGES
+  // ============================================
+  const { data: allStudentsResponse } = useQuery({
+    queryKey: ['all-students-for-photos'],
+    queryFn: studentsAPI.getAll,
+    staleTime: 300000, // Cache for 5 mins so it doesn't spam the API
+    retry: 1,
+  });
+
+  // ============================================
+  // ✅ NEW: CREATE A LOOKUP MAP FOR STUDENT PHOTOS
+  // ============================================
+  const studentPhotosMap = useMemo(() => {
+    const map = {};
+    if (allStudentsResponse?.data) {
+      allStudentsResponse.data.forEach(student => {
+        if (student._id && student.profileImage?.url) {
+          map[student._id.toString()] = student.profileImage;
+        }
+      });
+    }
+    return map;
+  }, [allStudentsResponse]);
 
   // ============================================
   // FETCH FULL TERM DETAILS FOR DATES
@@ -88,8 +190,6 @@ const ReportCardsPrintView = () => {
     if (!principalCommentsResponse) return map;
     
     let comments = [];
-    
-    // Handle different response formats
     if (Array.isArray(principalCommentsResponse)) {
       comments = principalCommentsResponse;
     } else if (principalCommentsResponse?.data && Array.isArray(principalCommentsResponse.data)) {
@@ -98,7 +198,6 @@ const ReportCardsPrintView = () => {
       comments = principalCommentsResponse.comments;
     }
     
-    // Build lookup map keyed by student ID
     comments.forEach(comment => {
       const studentId = 
         comment.student_id || 
@@ -122,17 +221,14 @@ const ReportCardsPrintView = () => {
   const termEndDate = termFullDetails?.endDate || printData?.term?.endDate || null;
   const nextTermBegins = termFullDetails?.nextTermBegins || printData?.term?.nextTermBegins || null;
 
-  // Calculate Term Duration
   const termDuration = useMemo(() => {
     if (!termStartDate || !termEndDate) return null;
-    
     const start = new Date(termStartDate);
     const end = new Date(termEndDate);
     const diffTime = Math.abs(end - start);
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     const diffWeeks = Math.floor(diffDays / 7);
     const remainingDays = diffDays % 7;
-    
     return {
       totalDays: diffDays,
       weeks: diffWeeks,
@@ -147,12 +243,9 @@ const ReportCardsPrintView = () => {
   // HELPER: Get Principal Comment for a Student
   // ============================================
   const getPrincipalComment = (studentId) => {
-    // Try from API lookup map first
     const normalizedId = studentId?.toString();
     const commentFromMap = principalCommentsMap[normalizedId];
-    
     if (commentFromMap) return commentFromMap;
-    
     return '';
   };
 
@@ -234,7 +327,7 @@ const ReportCardsPrintView = () => {
   };
 
   // ============================================
-  // COMPACT A4 STYLES
+  // COMPACT A4 STYLES (UPDATED WITH PHOTO LAYOUT)
   // ============================================
   const compactA4Styles = `
     .a4-document {
@@ -252,12 +345,19 @@ const ReportCardsPrintView = () => {
     .a4-document::before { inset: 0 !important; }
     .a4-document::after { inset: 7px !important; border-width: 1.5px !important; }
 
-    .a4-document .school-header-elegant { text-align: center; margin-bottom: 2mm !important; flex-shrink: 0 !important; }
-    .a4-document .header-ornament { height: 2px !important; margin: 0.5mm 0 !important; background: #111 !important; }
-    .a4-document .header-ornament.top { margin-bottom: 1mm !important; }
-    .a4-document .header-ornament.bottom { margin-top: 1mm !important; }
-    .a4-document .header-logo-wrap { margin-bottom: 0.5mm !important; }
-    .a4-document .header-logo { width: 28px !important; height: 28px !important; }
+    /* ===== HEADER - 3 COLUMN LAYOUT ===== */
+    .a4-document .school-header-elegant { margin-bottom: 2mm !important; flex-shrink: 0 !important; }
+    .a4-document .header-ornament { height: 2px !important; margin: 0 !important; background: #111 !important; }
+    .a4-document .header-content-row {
+      display: flex !important; align-items: flex-start !important;
+      justify-content: space-between !important; gap: 3mm !important;
+      padding: 1.5mm 0 !important;
+    }
+    .a4-document .header-logo-wrap { flex: 0 0 auto !important; margin: 0 !important; padding-top: 1mm !important; }
+    .a4-document .header-logo { width: 84px !important; height: 84px !important; }
+    .a4-document .header-school-info {
+      flex: 1 !important; text-align: center !important; min-width: 0 !important;
+    }
     .a4-document .school-name { font-size: 14pt !important; margin: 0 !important; padding: 0 !important; letter-spacing: 0.8px !important; line-height: 1.3 !important; font-weight: 800 !important; }
     .a4-document .school-address { font-size: 7pt !important; margin: 0.5mm 0 0 0 !important; padding: 0 !important; color: #333 !important; letter-spacing: 0.3px !important; line-height: 1.2 !important; }
     .a4-document .doc-title { font-size: 7.5pt !important; margin: 0 !important; padding: 0 !important; line-height: 1.2 !important; }
@@ -265,6 +365,25 @@ const ReportCardsPrintView = () => {
     .a4-document .meta-text { font-size: 6.5pt !important; }
     .a4-document .meta-divider { width: 1px !important; height: 8px !important; background: #333 !important; display: inline-block !important; }
     .a4-document .header-term-dates { font-size: 6pt !important; color: #555 !important; margin-top: 0.5mm !important; }
+
+    /* ===== STUDENT PHOTO - RIGHT SIDE ===== */
+    .a4-document .header-student-photo-wrap { flex: 0 0 auto !important; padding-top: 0.5mm !important; }
+    .a4-document .print-student-photo-box {
+      width: 22mm !important; height: 26mm !important;
+      border: 1.5px solid #222 !important; border-radius: 2px !important;
+      overflow: hidden !important; background: #f9f9f9 !important;
+    }
+    .a4-document .print-student-photo-img {
+      width: 100% !important; height: 100% !important;
+      object-fit: cover !important; object-position: center top !important;
+      display: block !important;
+    }
+    .a4-document .print-student-photo-placeholder {
+      width: 22mm !important; height: 26mm !important;
+      border: 1.5px dashed #999 !important; border-radius: 2px !important;
+      display: flex !important; align-items: center !important;
+      justify-content: center !important; background: #fafafa !important;
+    }
 
     .a4-document .bio-data-section { margin-bottom: 2mm !important; flex-shrink: 0 !important; }
     .a4-document .bio-grid { display: grid !important; grid-template-columns: 1fr 1fr 1fr 1fr !important; gap: 0 !important; border: 0.5px solid #555 !important; background: #555 !important; }
@@ -319,16 +438,16 @@ const ReportCardsPrintView = () => {
     .a4-document .pmc-td-rating { text-align: center !important; font-size: 7pt !important; }
     .a4-document .pmc-rating-letter { font-weight: 700 !important; }
 
-    .a4-document .comments-container { display: grid !important; grid-template-columns: 1fr 1fr !important; gap: 2mm !important; margin-bottom: 1mm !important; flex-shrink: 0 !important; }
-    .a4-document .comment-box-elegant { border: 0.5px solid #555 !important; padding: 1.5mm 2mm !important; display: flex !important; flex-direction: column !important; }
+        .a4-document .comments-container { display: flex !important; grid-template-columns: unset !important; gap: 2mm !important; margin-bottom: 1mm !important; flex-shrink: 0 !important; align-items: stretch !important; }
+    .a4-document .comment-box-elegant { border: 0.5px solid #555 !important; padding: 1.5mm 2mm !important; display: flex !important; flex-direction: column !important; flex: 1 1 0% !important; min-height: 22mm !important; }
     .a4-document .comment-title { font-size: 6.5pt !important; font-weight: 700 !important; text-align: center !important; margin-bottom: 0.5mm !important; text-transform: uppercase !important; letter-spacing: 0.3px !important; }
     .a4-document .comment-text-area { font-size: 6.5pt !important; flex: 1 !important; line-height: 1.3 !important; margin-bottom: 0.5mm !important; min-height: 8mm !important; max-height: none !important; overflow: visible !important; }
     .a4-document .comment-text-area strong { font-size: 6.5pt !important; }
     .a4-document .blank-line { font-size: 6.5pt !important; letter-spacing: 1px !important; }
-    .a4-document .signature-section { display: flex !important; flex-direction: column !important; align-items: center !important; }
+        .a4-document .signature-section { display: flex !important; flex-direction: column !important; align-items: center !important; min-height: 14mm !important; justify-content: flex-end !important; }
     .a4-document .sig-line { width: 35mm !important; border-top: 0.5px solid #333 !important; margin-bottom: 0.3mm !important; }
     .a4-document .sig-text { font-size: 5.5pt !important; text-transform: uppercase !important; letter-spacing: 0.3px !important; }
-    .a4-document .principal-sig-img { height: 8mm !important; width: auto !important; }
+    .a4-document .principal-sig-img { width: 40px !important; height: auto !important; object-fit: contain !important; }
 
     .a4-document .sheet-footer-elegant { margin-top: auto !important; flex-shrink: 0 !important; border-top: 0.5px solid #999 !important; padding-top: 1mm !important; }
     .a4-document .footer-dates-grid { display: flex !important; justify-content: space-between !important; flex-wrap: wrap !important; }
@@ -377,6 +496,36 @@ const ReportCardsPrintView = () => {
       .a4-document::after { inset: 7px !important; border-width: 1.5px !important; }
       .a4-document .school-name { font-size: 14pt !important; font-weight: 800 !important; letter-spacing: 0.8px !important; }
       .a4-document .school-address { font-size: 7pt !important; color: #333 !important; letter-spacing: 0.3px !important; }
+      .a4-document .header-content-row {
+        display: flex !important; align-items: flex-start !important;
+        justify-content: space-between !important; gap: 3mm !important;
+        padding: 1.5mm 0 !important;
+      }
+      .a4-document .header-logo-wrap { flex: 0 0 auto !important; margin: 0 !important; padding-top: 1mm !important; }
+      .a4-document .header-logo { width: 84px !important; height: 84px !important; }
+      .a4-document .header-school-info { flex: 1 !important; text-align: center !important; min-width: 0 !important; }
+      .a4-document .header-student-photo-wrap { flex: 0 0 auto !important; padding-top: 0.5mm !important; }
+      .a4-document .print-student-photo-box {
+        width: 22mm !important; height: 26mm !important;
+        border: 1.5px solid #222 !important; border-radius: 2px !important;
+        overflow: hidden !important; background: #f9f9f9 !important;
+      }
+      .a4-document .print-student-photo-img {
+        width: 100% !important; height: 100% !important;
+        object-fit: cover !important; object-position: center top !important;
+        display: block !important;
+      }
+      .a4-document .print-student-photo-placeholder {
+        width: 22mm !important; height: 26mm !important;
+        border: 1.5px dashed #999 !important; border-radius: 2px !important;
+        display: flex !important; align-items: center !important;
+        justify-content: center !important; background: #fafafa !important;
+      }
+            .a4-document .comments-container { display: flex !important; gap: 2mm !important; align-items: stretch !important; }
+      .a4-document .comment-box-elegant { flex: 1 1 0% !important; display: flex !important; flex-direction: column !important; min-height: 22mm !important; }
+      .a4-document .comment-text-area { flex: 1 !important; }
+      .a4-document .signature-section { min-height: 14mm !important; justify-content: flex-end !important; }
+      .a4-document .principal-sig-img { width: 40px !important; height: auto !important; object-fit: contain !important; }
     `;
 
     const printWindow = window.open('', '_blank', 'width=900,height=700');
@@ -461,41 +610,59 @@ const ReportCardsPrintView = () => {
               const timesPresent = student.attendance?.timesPresent || '';
               const timesAbsent = getAbsentDays(timesPresent, timesSchoolOpen);
               const totalScoreObtainable = student.subjects.length * 100;
-              
-              // Get principal comment from our lookup map
               const principalComment = getPrincipalComment(student.student._id);
+              
+              // ✅ MAGIC FIX: Inject the photo from our secondary API fetch if it's missing
+              const studentIdStr = student.student._id?.toString();
+              const studentWithPhoto = {
+                ...student.student,
+                profileImage: student.student.profileImage || studentPhotosMap[studentIdStr] || null
+              };
+
+              const studentPhotoUrl = buildStudentPhotoUrl(studentWithPhoto);
+              const studentFullName = `${student.student.firstName} ${student.student.lastName}`;
 
               return (
                 <div key={student.student._id} className="a4-document print-student-card">
-                  {/* ===== SCHOOL HEADER ===== */}
+                  {/* ===== SCHOOL HEADER (3-COLUMN: LOGO | INFO | PHOTO) ===== */}
                   <header className="school-header-elegant">
                     <div className="header-ornament top"></div>
-                    <div className="header-logo-wrap">
-                      <img src={schoolLogo} alt="DATFORTE International School Logo" className="header-logo" />
+                    
+                    <div className="header-content-row">
+                      {/* LEFT - School Logo */}
+                      <div className="header-logo-wrap">
+                        <img src={schoolLogo} alt="DATFORTE International School Logo" className="header-logo" />
+                      </div>
+
+                      {/* CENTER - School Info */}
+                      <div className="header-school-info">
+                        <h1 className="school-name">DATFORTE INTERNATIONAL SCHOOLS LIMITED(DISL)</h1>
+                        <p className="school-address">14, Ahmed Tijani St, Ahmadiya Bus-Stop, Lagos State, Nigeria.</p>
+                        <h2 className="doc-title">STUDENT ACADEMIC REPORT CARD</h2>
+                        <div className="header-meta-box">
+                          <span className="meta-text">Term <strong>{term.name}</strong></span>
+                          <span className="meta-divider"></span>
+                          <span className="meta-text">Session <strong>{session.name}</strong></span>
+                        </div>
+                        <div className="header-term-dates" style={{ 
+                          display: 'flex',
+                          justifyContent: 'center',
+                          gap: '10px',
+                          flexWrap: 'wrap'
+                        }}>
+                          <span>{formatDateShort(termStartDate)} — {formatDateShort(termEndDate)}</span>
+                          {termDuration && (
+                            <span style={{ color: '#777' }}>({termDuration.display})</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* RIGHT - Student Photo */}
+                      <div className="header-student-photo-wrap">
+                        <StudentPhotoPrint src={studentPhotoUrl} studentName={studentFullName} />
+                      </div>
                     </div>
-                    <h1 className="school-name">DATFORTE INTERNATIONAL SCHOOLS LIMITED(DISL)</h1>
-                    <p className="school-address">14, Ahmed Tijani St, Ahmadiya Bus-Stop, Lagos State, Nigeria.</p>
-                    <h2 className="doc-title">STUDENT ACADEMIC REPORT CARD</h2>
-                    <div className="header-meta-box">
-                      <span className="meta-text">Term <strong>{term.name}</strong></span>
-                      <span className="meta-divider"></span>
-                      <span className="meta-text">Session <strong>{session.name}</strong></span>
-                    </div>
-                    {/* Term Dates in Header */}
-                    <div className="header-term-dates" style={{ 
-                      fontSize: '0.75em', 
-                      color: '#555', 
-                      marginTop: '2px',
-                      display: 'flex',
-                      justifyContent: 'center',
-                      gap: '10px',
-                      flexWrap: 'wrap'
-                    }}>
-                      <span>{formatDateShort(termStartDate)} — {formatDateShort(termEndDate)}</span>
-                      {termDuration && (
-                        <span style={{ color: '#777' }}>({termDuration.display})</span>
-                      )}
-                    </div>
+
                     <div className="header-ornament bottom"></div>
                   </header>
 
@@ -505,7 +672,7 @@ const ReportCardsPrintView = () => {
                       <div className="bio-item">
                         <span className="bio-label">Name of Student</span>
                         <span className="bio-value name-highlight">
-                         {student.student.lastName} {student.student.firstName}
+                          {student.student.lastName} {student.student.firstName}
                         </span>
                       </div>
                       <div className="bio-item">

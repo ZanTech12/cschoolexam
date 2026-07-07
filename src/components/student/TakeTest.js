@@ -109,6 +109,31 @@ const SoundEngine = {
   }
 };
 
+// ==================== MATH TEXT FORMATTER ====================
+const formatMathText = (text) => {
+  if (!text) return '';
+  let formatted = String(text);
+  formatted = formatted.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  formatted = formatted.replace(/sqrt\(([^)]+)\)/gi, '√($1)');
+  formatted = formatted.replace(/\^(\d+)/g, '<sup>$1</sup>');
+  formatted = formatted.replace(/\^([a-zA-Z])(?![a-zA-Z])/g, '<sup>$1</sup>');
+  formatted = formatted.replace(/\^\(([^)]+)\)/g, '<sup>($1)</sup>');
+  formatted = formatted.replace(/\*/g, ' × ');
+  formatted = formatted.replace(/(\w)\s*\/\s*(\w)/g, '$1 ÷ $2');
+  const fractions = {
+    '1 ÷ 2': '½', '1 ÷ 3': '⅓', '1 ÷ 4': '¼', '2 ÷ 3': '⅔', '3 ÷ 4': '¾', 
+    '1 ÷ 5': '⅕', '2 ÷ 5': '⅖', '3 ÷ 5': '⅗', '4 ÷ 5': '⅘', '1 ÷ 6': '⅙', 
+    '5 ÷ 6': '⅚', '1 ÷ 8': '⅛', '3 ÷ 8': '⅜', '5 ÷ 8': '⅝', '7 ÷ 8': '⅞',
+  };
+  Object.entries(fractions).forEach(([key, value]) => {
+    formatted = formatted.replace(new RegExp(key, 'g'), value);
+  });
+  formatted = formatted.replace(/&lt;=/g, '≤').replace(/&gt;=/g, '≥').replace(/!=/g, '≠');
+  formatted = formatted.replace(/\bpi\b/gi, 'π').replace(/\btheta\b/gi, 'θ').replace(/\balpha\b/gi, 'α').replace(/\bbeta\b/gi, 'β').replace(/\bgamma\b/gi, 'γ').replace(/\bdelta\b/gi, 'δ').replace(/\bsigma\b/gi, 'σ').replace(/\bomega\b/gi, 'ω').replace(/\blambda\b/gi, 'λ').replace(/\bmu\b/gi, 'μ').replace(/\binfinity\b/gi, '∞');
+  formatted = formatted.replace(/  +/g, ' ').replace(/\s+×\s+/g, ' × ');
+  return formatted;
+};
+
 // ==================== SIMPLE CALCULATOR ====================
 const Calculator = ({ onClose }) => {
   const [display, setDisplay] = useState('0');
@@ -329,9 +354,10 @@ const ReviewPanel = ({ test, answers, flagged, timings, onClose, onGoToQuestion,
                     <div key={qi} style={reviewStyles.item} onClick={() => { onGoToQuestion(qi); onClose(); }}>
                       <div style={reviewStyles.itemLeft}>
                         <span style={reviewStyles.itemNum}>Q{qi + 1}</span>
-                        <span style={{ fontSize: '0.75rem', color: '#666', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {test.questions[qi].questionText?.substring(0, 60)}...
-                        </span>
+                        <span 
+                          style={{ fontSize: '0.75rem', color: '#666', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                          dangerouslySetInnerHTML={{ __html: formatMathText(test.questions[qi].questionText?.substring(0, 60) || '') + '...' }}
+                        />
                       </div>
                       <div style={reviewStyles.itemRight}>
                         {timings[qi] !== undefined && <span style={{ fontSize: '0.65rem', color: '#aaa' }}>⏱ {formatSecs(timings[qi])}</span>}
@@ -366,6 +392,80 @@ const reviewStyles = {
   itemLeft: { display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 1, minWidth: 0 },
   itemNum: { fontWeight: 800, fontSize: '0.75rem', color: '#006633', backgroundColor: '#e8f5e9', padding: '0.15rem 0.5rem', borderRadius: '4px', flexShrink: 0 },
   itemRight: { display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 },
+};
+
+// ==================== MAIN STYLES ====================
+const styles = {
+  cbtContainer: { backgroundColor: '#0a0a1a', color: '#fff', fontFamily: "'Segoe UI', 'Roboto', sans-serif", display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  topBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem', backgroundColor: '#001a0d', borderBottom: '2px solid #006633', flexShrink: 0, minHeight: '56px' },
+  topBarLeft: { display: 'flex', alignItems: 'center', gap: '0.8rem' },
+  topBarRight: { display: 'flex', alignItems: 'center', gap: '0.6rem' },
+  jambLogo: { display: 'flex', alignItems: 'center', gap: '0.4rem' },
+  jambLogoIcon: { fontSize: '1.4rem', color: '#006633', fontWeight: 900 },
+  jambLogoText: { lineHeight: 1.2 },
+  topBarDivider: { width: '1px', height: '32px', backgroundColor: 'rgba(255,255,255,0.15)' },
+  testInfoTop: {},
+  answeredBox: { textAlign: 'center', padding: '0.2rem 0.5rem', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' },
+  timerBox: { textAlign: 'center', padding: '0.3rem 0.8rem', borderRadius: '6px', border: '2px solid', minWidth: '100px' },
+  tabSwitchIndicator: { fontSize: '0.65rem', color: '#ff6b35', fontWeight: 700, backgroundColor: 'rgba(255,107,53,0.15)', padding: '0.15rem 0.5rem', borderRadius: '4px', border: '1px solid rgba(255,107,53,0.3)' },
+  fontSizeBtn: { background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: '0.15rem 0.35rem', borderRadius: '3px', fontSize: '0.7rem', lineHeight: 1 },
+  toolBtn: { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.3rem' },
+  toolBtnActive: { background: 'rgba(0,102,51,0.4)', border: '1px solid #006633', color: '#fff', cursor: 'pointer', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.3rem' },
+  finishBtn: { background: '#dc3545', border: 'none', color: '#fff', cursor: 'pointer', padding: '0.5rem 1.2rem', borderRadius: '6px', fontWeight: 800, fontSize: '0.8rem', letterSpacing: '1px' },
+  mainContent: { display: 'flex', flex: 1, overflow: 'hidden' },
+  questionNav: { width: '220px', backgroundColor: '#0d1b2a', borderRight: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', flexShrink: 0, overflow: 'hidden' },
+  navHeader: { padding: '0.8rem', borderBottom: '1px solid rgba(255,255,255,0.08)' },
+  navFilterBtns: { display: 'flex', gap: '3px', padding: '0.5rem 0.8rem', flexWrap: 'wrap' },
+  navFilterBtn: { padding: '0.25rem 0.5rem', border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'transparent', color: '#aaa', cursor: 'pointer', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 600 },
+  navFilterBtnActive: { padding: '0.25rem 0.5rem', border: '1px solid #006633', backgroundColor: 'rgba(0,102,51,0.2)', color: '#006633', cursor: 'pointer', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 },
+  navGrid: { display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '4px', padding: '0.6rem 0.8rem', overflowY: 'auto', flex: 1 },
+  navQBtn: { width: '100%', aspectRatio: '1', border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.05)', color: '#aaa', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s' },
+  navQBtnCurrent: { width: '100%', aspectRatio: '1', border: '2px solid #006633', backgroundColor: 'rgba(0,102,51,0.3)', color: '#fff', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  navQBtnAnswered: { width: '100%', aspectRatio: '1', border: '1px solid rgba(40,167,69,0.4)', backgroundColor: 'rgba(40,167,69,0.2)', color: '#28a745', cursor: 'pointer', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  navQBtnFlagged: { width: '100%', aspectRatio: '1', border: '1px solid rgba(230,126,34,0.4)', backgroundColor: 'rgba(230,126,34,0.15)', color: '#e67e22', cursor: 'pointer', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  navLegend: { padding: '0.6rem 0.8rem', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '0.3rem' },
+  legendItem: { display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.6rem', color: '#888' },
+  legendDot: { width: '10px', height: '10px', borderRadius: '2px', flexShrink: 0 },
+  questionArea: { flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' },
+  questionContent: { flex: 1, overflow: 'auto', padding: '1.5rem 2rem' },
+  questionHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' },
+  questionNumber: { fontWeight: 900, fontSize: '0.8rem', color: '#006633', backgroundColor: 'rgba(0,102,51,0.15)', padding: '0.3rem 0.8rem', borderRadius: '6px', letterSpacing: '1px' },
+  questionType: { fontSize: '0.7rem', color: '#888', fontWeight: 600, display: 'flex', alignItems: 'center' },
+  questionText: { fontSize: '1.05rem', lineHeight: 1.8, color: '#e8e8e8', marginBottom: '1.5rem', fontWeight: 500 },
+  passageBox: { backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', padding: '1rem 1.2rem', marginBottom: '1.5rem', maxHeight: '200px', overflowY: 'auto' },
+  passageLabel: { fontSize: '0.7rem', fontWeight: 800, color: '#006633', letterSpacing: '1px', marginBottom: '0.5rem' },
+  passageText: { fontSize: '0.9rem', lineHeight: 1.7, color: '#bbb' },
+  optionsContainer: { display: 'flex', flexDirection: 'column', gap: '0.6rem' },
+  optionBtn: { display: 'flex', alignItems: 'flex-start', gap: '0.8rem', padding: '0.9rem 1.2rem', border: '2px solid rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left', width: '100%', color: '#ddd' },
+  optionBtnHover: { display: 'flex', alignItems: 'flex-start', gap: '0.8rem', padding: '0.9rem 1.2rem', border: '2px solid rgba(0,102,51,0.3)', backgroundColor: 'rgba(0,102,51,0.08)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left', width: '100%', color: '#fff' },
+  optionBtnSelected: { display: 'flex', alignItems: 'flex-start', gap: '0.8rem', padding: '0.9rem 1.2rem', border: '2px solid #006633', backgroundColor: 'rgba(0,102,51,0.2)', borderRadius: '10px', cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left', width: '100%', color: '#fff' },
+  optionLetter: { width: '32px', height: '32px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', flexShrink: 0, transition: 'all 0.15s' },
+  optionLetterSelected: { width: '32px', height: '32px', borderRadius: '50%', border: '2px solid #006633', backgroundColor: '#006633', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.85rem', flexShrink: 0 },
+  optionText: { fontSize: '0.95rem', lineHeight: 1.6, paddingTop: '4px', flex: 1 },
+  questionFooter: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.8rem 1.5rem', borderTop: '1px solid rgba(255,255,255,0.08)', backgroundColor: 'rgba(0,0,0,0.2)', flexShrink: 0 },
+  navBtn: { display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1.2rem', border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.05)', color: '#ccc', cursor: 'pointer', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem' },
+  navBtnDisabled: { display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1.2rem', border: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'transparent', color: '#555', cursor: 'not-allowed', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem' },
+  flagBtn: { display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', border: '1px solid rgba(230,126,34,0.3)', backgroundColor: 'transparent', color: '#e67e22', cursor: 'pointer', borderRadius: '8px', fontWeight: 700, fontSize: '0.85rem' },
+  flagBtnActive: { display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem', border: '1px solid #e67e22', backgroundColor: 'rgba(230,126,34,0.15)', color: '#e67e22', cursor: 'pointer', borderRadius: '8px', fontWeight: 800, fontSize: '0.85rem' },
+  progressBar: { height: '3px', backgroundColor: 'rgba(255,255,255,0.05)', flexShrink: 0 },
+  progressFill: { height: '100%', backgroundColor: '#006633', transition: 'width 0.3s ease' },
+  overlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(3px)' },
+  confirmCard: { backgroundColor: '#fff', borderRadius: '12px', padding: '2rem', maxWidth: '420px', width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' },
+  warningCard: { backgroundColor: '#fff3cd', borderRadius: '12px', padding: '1.5rem 2rem', maxWidth: '450px', width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', border: '2px solid #ffeaa7' },
+  tabWarningCard: { backgroundColor: '#dc3545', borderRadius: '12px', padding: '1.5rem 2rem', maxWidth: '400px', width: '90%', textAlign: 'center', boxShadow: '0 20px 60px rgba(0,0,0,0.3)', color: '#fff' },
+  keyboardHint: { position: 'fixed', bottom: '80px', left: '50%', transform: 'translateX(-50%)', backgroundColor: 'rgba(0,0,0,0.85)', color: '#ccc', padding: '0.5rem 1rem', borderRadius: '8px', fontSize: '0.72rem', zIndex: 500, border: '1px solid rgba(255,255,255,0.1)', display: 'flex', gap: '1rem', alignItems: 'center' },
+  keyboardKey: { backgroundColor: 'rgba(255,255,255,0.15)', padding: '0.1rem 0.4rem', borderRadius: '3px', fontWeight: 700, fontSize: '0.7rem' },
+  scratchPad: { position: 'fixed', bottom: '60px', right: '20px', width: '320px', backgroundColor: '#fff', borderRadius: '12px', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', overflow: 'hidden', border: '1px solid #ddd', zIndex: 600 },
+  scratchPadHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem', backgroundColor: '#006633', color: '#fff' },
+  scratchPadTextarea: { width: '100%', height: '200px', border: 'none', padding: '0.8rem', fontSize: '0.85rem', resize: 'none', outline: 'none', fontFamily: "'Segoe UI', sans-serif" },
+  centerContainer: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', backgroundColor: '#0a0a1a', color: '#fff', padding: '2rem' },
+  errorBox: { textAlign: 'center', marginBottom: '1.5rem' },
+  errorIcon: { fontSize: '3rem', marginBottom: '1rem', color: '#dc3545' },
+  errorText: { fontSize: '1.1rem', color: '#ddd' },
+  emptyBox: { textAlign: 'center', marginBottom: '1.5rem' },
+  backBtn: { padding: '0.7rem 1.5rem', border: '1px solid #006633', backgroundColor: 'transparent', color: '#006633', cursor: 'pointer', borderRadius: '8px', fontWeight: 700, fontSize: '0.9rem' },
+  calculatorWrapper: { position: 'fixed', bottom: '60px', right: '20px', zIndex: 600 },
+  soundToggle: { background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.85rem' },
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -408,6 +508,7 @@ const TakeTest = () => {
   const [showPassage, setShowPassage] = useState(false);
   const [examStarted, setExamStarted] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState('');
+  const [hoveredOption, setHoveredOption] = useState(null);
 
   const { data: testData, isLoading, error } = useQuery({
     queryKey: ['test', testId],
@@ -417,6 +518,16 @@ const TakeTest = () => {
   });
 
   const test = testData?.data;
+
+  // ==================== INJECT MATH STYLES ====================
+  useEffect(() => {
+    if (document.getElementById('cbt-math-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'cbt-math-styles';
+    style.textContent = `sup { font-size: 0.7em; vertical-align: super; line-height: 0; color: inherit; } @keyframes cbtPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } } @keyframes cbtFadeOut { 0% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }`;
+    document.head.appendChild(style);
+    return () => { const s = document.getElementById('cbt-math-styles'); if (s) s.remove(); };
+  }, []);
 
   // ==================== SUBMISSION CHECK ====================
   const isBackendSubmitted =
@@ -859,212 +970,193 @@ const TakeTest = () => {
             </div>
             <div style={styles.topBarDivider} />
 
-            <button onClick={() => setShowCalculator((p) => !p)} title="Calculator (M)" style={{ ...styles.toolBtn, backgroundColor: showCalculator ? 'rgba(52,152,219,0.4)' : 'rgba(255,255,255,0.08)', borderColor: showCalculator ? 'rgba(52,152,219,0.6)' : 'rgba(255,255,255,0.15)' }}>🧮</button>
-            <button onClick={() => setShowScratchPad((p) => !p)} title="Scratch Pad" style={{ ...styles.toolBtn, backgroundColor: showScratchPad ? 'rgba(155,89,182,0.4)' : 'rgba(255,255,255,0.08)', borderColor: showScratchPad ? 'rgba(155,89,182,0.6)' : 'rgba(255,255,255,0.15)' }}>📝</button>
-            {hasPassage && <button onClick={() => setShowPassage((p) => !p)} title="Toggle Passage" style={{ ...styles.toolBtn, backgroundColor: showPassage ? 'rgba(230,126,34,0.4)' : 'rgba(255,255,255,0.08)', borderColor: showPassage ? 'rgba(230,126,34,0.6)' : 'rgba(255,255,255,0.15)' }}>📖</button>}
-            <button onClick={() => setSoundEnabled((p) => { SoundEngine.enabled = !p; return !p; })} title={soundEnabled ? 'Mute sounds' : 'Enable sounds'} style={{ ...styles.toolBtn, backgroundColor: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.15)', fontSize: '0.85rem' }}>{soundEnabled ? '🔊' : '🔇'}</button>
-
-            <div style={styles.topBarDivider} />
-            <button onClick={toggleFullscreen} title={isFullscreen ? 'Minimize (F)' : 'Full Screen (F)'} style={{ ...styles.fsToggleBtn, backgroundColor: isFullscreen ? 'rgba(255,255,255,0.1)' : 'rgba(40,167,69,0.3)', borderColor: isFullscreen ? 'rgba(255,255,255,0.3)' : 'rgba(40,167,69,0.6)' }}>
-              {isFullscreen ? (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 14 4 20 10 20" /><polyline points="20 10 20 4 14 4" /><line x1="14" y1="10" x2="21" y2="3" /><line x1="3" y1="21" x2="10" y2="14" /></svg>) : (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 3 21 3 21 9" /><polyline points="9 21 3 21 3 15" /><line x1="21" y1="3" x2="14" y2="10" /><line x1="3" y1="21" x2="10" y2="14" /></svg>)}
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.5px', marginLeft: '6px' }}>{isFullscreen ? 'MINIMIZE' : 'FULL SCREEN'}</span>
-            </button>
+            <button onClick={() => setShowCalculator((p) => !p)} title="Calculator (M)" style={{ ...styles.toolBtn, backgroundColor: showCalculator ? 'rgba(0,102,51,0.4)' : 'rgba(255,255,255,0.08)', border: showCalculator ? '1px solid #006633' : '1px solid rgba(255,255,255,0.1)' }}>🧮</button>
+            <button onClick={() => setShowScratchPad((p) => !p)} title="Scratch Pad" style={{ ...styles.toolBtn, backgroundColor: showScratchPad ? 'rgba(0,102,51,0.4)' : 'rgba(255,255,255,0.08)', border: showScratchPad ? '1px solid #006633' : '1px solid rgba(255,255,255,0.1)' }}>📝</button>
+            <button onClick={toggleFullscreen} title="Fullscreen (F)" style={styles.toolBtn}>{isFullscreen ? '⬜' : '⬛'}</button>
+            <button onClick={() => setSoundEnabled((p) => { SoundEngine.enabled = !p; return !p; })} title="Toggle Sound" style={styles.soundToggle}>{soundEnabled ? '🔊' : '🔇'}</button>
+            <button onClick={handleSubmit} style={styles.finishBtn}>🏁 FINISH</button>
           </div>
         </div>
 
         {/* ═══ PROGRESS BAR ═══ */}
-        <div style={{ ...styles.progressTrack, position: 'relative' }}>
-          <div style={{ ...styles.progressFill, width: `${progressPercent}%`, backgroundColor: progressPercent === 100 ? '#28a745' : '#006633' }} />
-          {flaggedQuestions.size > 0 && (
-            <div style={{ position: 'absolute', top: '-1px', right: '8px', fontSize: '0.55rem', color: '#e67e22', fontWeight: 800, letterSpacing: '0.5px', backgroundColor: '#fff8f0', padding: '0 4px', borderRadius: '0 0 4px 4px' }}>
-              🚩 {flaggedQuestions.size} flagged
-            </div>
-          )}
+        <div style={styles.progressBar}>
+          <div style={{ ...styles.progressFill, width: `${progressPercent}%` }} />
         </div>
 
         {/* ═══ MAIN CONTENT ═══ */}
-        <div style={{ ...styles.mainContentCentered, paddingRight: showScratchPad ? '310px' : '1.2rem' }}>
-          <div style={{ ...styles.questionWrapper, maxWidth: showPassage && hasPassage ? '55%' : '1400px', flex: 1, overflow: 'hidden' }}>
+        <div style={styles.mainContent}>
 
-            {/* ── QUESTION CARD ── */}
-            <div style={{ ...styles.questionCard, flex: 1, overflow: 'hidden' }}>
-              <div style={styles.questionHeader}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <div style={styles.questionNumber}><span style={styles.questionNumberText}>QUESTION {currentQuestion + 1}</span></div>
-                  <button onClick={handleToggleFlag} title={flaggedQuestions.has(currentQuestion) ? 'Remove flag (G)' : 'Flag for review (G)'} style={{
-                    padding: '0.3rem 0.6rem', border: `2px solid ${flaggedQuestions.has(currentQuestion) ? '#e67e22' : '#ddd'}`, borderRadius: '6px', cursor: 'pointer', backgroundColor: flaggedQuestions.has(currentQuestion) ? '#fff3e0' : '#fff', fontSize: '0.75rem', transition: 'all 0.15s', display: 'flex', alignItems: 'center', gap: '0.3rem'
-                  }}>
-                    🚩 <span style={{ fontSize: '0.6rem', fontWeight: 700, color: flaggedQuestions.has(currentQuestion) ? '#e67e22' : '#999' }}>{flaggedQuestions.has(currentQuestion) ? 'FLAGGED' : 'FLAG'}</span>
+          {/* ═══ QUESTION NAVIGATION ═══ */}
+          <div style={styles.questionNav}>
+            <div style={styles.navHeader}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 800, color: '#888', letterSpacing: '1px', marginBottom: '0.4rem' }}>QUESTIONS</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#666' }}>
+                <span>✅ {answeredCount}</span>
+                <span>❌ {test.questions.length - answeredCount}</span>
+                <span>🚩 {flaggedQuestions.size}</span>
+              </div>
+            </div>
+            <div style={styles.navFilterBtns}>
+              {['all', 'answered', 'unanswered', 'flagged'].map((f) => (
+                <button key={f} onClick={() => setQuestionFilter(f)} style={questionFilter === f ? styles.navFilterBtnActive : styles.navFilterBtn}>
+                  {f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div style={styles.navGrid}>
+              {filteredQs.map((qi) => {
+                const isCurrent = qi === currentQuestion;
+                const isAnswered = answers[qi] !== null;
+                const isFlagged = flaggedQuestions.has(qi);
+                let btnStyle = styles.navQBtn;
+                if (isCurrent) btnStyle = styles.navQBtnCurrent;
+                else if (isFlagged) btnStyle = styles.navQBtnFlagged;
+                else if (isAnswered) btnStyle = styles.navQBtnAnswered;
+                return (
+                  <button key={qi} onClick={() => setCurrentQuestion(qi)} style={btnStyle} title={isFlagged ? 'Flagged' : isAnswered ? 'Answered' : 'Unanswered'}>
+                    {isFlagged ? '🚩' : qi + 1}
                   </button>
-                </div>
-                <div style={styles.questionMeta}>
-                  <span style={{ ...styles.difficultyBadge, backgroundColor: currentQ.difficulty === 'easy' ? '#d4edda' : currentQ.difficulty === 'medium' ? '#fff3cd' : '#f8d7da', color: currentQ.difficulty === 'easy' ? '#155724' : currentQ.difficulty === 'medium' ? '#856404' : '#721c24' }}>{currentQ.difficulty?.toUpperCase() || 'NORMAL'}</span>
-                  <span style={styles.questionOf}>of {test.questions.length}</span>
-                </div>
-              </div>
-              <div style={{ ...styles.questionText, fontSize: `${1.4 * fs}rem`, lineHeight: `${1.9 * fs}`, overflowY: 'auto' }}>
-                {currentQ.questionText}
-                {currentQ.image && (
-                  <div style={{ marginTop: '0.8rem', textAlign: 'center' }}>
-                    <img src={currentQ.image} alt="Question diagram" style={{ maxWidth: '100%', maxHeight: '250px', borderRadius: '8px', border: '1px solid #e0e0e0' }} />
-                  </div>
-                )}
-              </div>
+                );
+              })}
             </div>
-
-            {/* ── OPTIONS CARD ── */}
-            <div style={styles.optionsCard}>
-              <div style={styles.optionsCardLabel}><span style={styles.optionsCardLabelText}>CHOOSE YOUR ANSWER</span></div>
-              <div style={styles.optionsContainer}>
-                {currentQ.options.map((option, index) => {
-                  const isSelected = answers[currentQuestion] === index;
-                  return (
-                    <div key={index} onClick={() => handleSelectOption(index)} style={{ ...styles.optionCard, borderColor: isSelected ? '#006633' : '#e0e0e0', backgroundColor: isSelected ? '#e8f5e9' : '#ffffff', borderLeftColor: isSelected ? '#006633' : '#e0e0e0', borderLeftWidth: isSelected ? '5px' : '2px' }} onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = '#f5f5f5'; e.currentTarget.style.borderColor = '#006633'; }} onMouseLeave={(e) => { if (!isSelected) e.currentTarget.style.backgroundColor = '#ffffff'; e.currentTarget.style.borderColor = isSelected ? '#006633' : '#e0e0e0'; }}>
-                      <div style={{ ...styles.optionLetter, backgroundColor: isSelected ? '#006633' : '#f0f2f5', color: isSelected ? '#ffffff' : '#555', borderColor: isSelected ? '#006633' : '#ddd' }}>{optionLetters[index]}</div>
-                      <div style={{ ...styles.optionText, color: isSelected ? '#004d25' : '#1a1a1a', fontWeight: isSelected ? 600 : 400, fontSize: `${1.05 * fs}rem`, lineHeight: `${1.55 * fs}` }}>{option}</div>
-                      {isSelected && <div style={styles.checkMark}>✓</div>}
-                    </div>
-                  );
-                })}
-              </div>
+            <div style={styles.navLegend}>
+              <div style={styles.legendItem}><div style={{ ...styles.legendDot, backgroundColor: 'rgba(40,167,69,0.4)', border: '1px solid rgba(40,167,69,0.6)' }} /> Answered</div>
+              <div style={styles.legendItem}><div style={{ ...styles.legendDot, backgroundColor: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.15)' }} /> Unanswered</div>
+              <div style={styles.legendItem}><div style={{ ...styles.legendDot, backgroundColor: 'rgba(0,102,51,0.3)', border: '2px solid #006633' }} /> Current</div>
+              <div style={styles.legendItem}><div style={{ ...styles.legendDot, backgroundColor: 'rgba(230,126,34,0.15)', border: '1px solid rgba(230,126,34,0.4)' }} /> Flagged</div>
             </div>
+          </div>
 
-            {/* ── Navigation Buttons ── */}
-            <div style={styles.navRow}>
-              <button onClick={handlePrev} disabled={currentQuestion === 0} style={{ ...styles.navBtn, ...styles.prevBtn, opacity: currentQuestion === 0 ? 0.35 : 1, cursor: currentQuestion === 0 ? 'not-allowed' : 'pointer' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6" /></svg> PREV
-              </button>
-              <div style={styles.navCenterInfo}>
-                <span style={{ fontFamily: "'Courier New', monospace", fontWeight: 700, fontSize: '0.85rem', color: '#006633' }}>{currentQuestion + 1} / {test.questions.length}</span>
-                {questionTimings[currentQuestion] !== undefined && (
-                  <span style={{ fontSize: '0.65rem', color: '#aaa', marginLeft: '0.4rem' }}>⏱ {questionTimings[currentQuestion]}s</span>
-                )}
+          {/* ═══ QUESTION AREA ═══ */}
+          <div style={styles.questionArea}>
+            <div style={styles.questionContent}>
+              {/* Question Header */}
+              <div style={styles.questionHeader}>
+                <div style={styles.questionNumber}>QUESTION {currentQuestion + 1} OF {test.questions.length}</div>
+                <div style={styles.questionType}>
+                  {currentQ.type === 'multiple-choice' ? 'Multiple Choice' : currentQ.type || 'Multiple Choice'}
+                  {hasPassage && (
+                    <button onClick={() => setShowPassage((p) => !p)} style={{ marginLeft: '0.8rem', background: 'rgba(0,102,51,0.2)', border: '1px solid #006633', color: '#006633', padding: '0.2rem 0.6rem', borderRadius: '4px', cursor: 'pointer', fontSize: '0.65rem', fontWeight: 700 }}>
+                      {showPassage ? 'Hide Passage' : '📖 Show Passage'}
+                    </button>
+                  )}
+                </div>
               </div>
-              {currentQuestion < test.questions.length - 1 ? (
-                <button onClick={handleNext} style={{ ...styles.navBtn, ...styles.nextBtn }}>NEXT <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg></button>
-              ) : (
-                <button onClick={handleSubmit} disabled={submitMutation.isPending} style={{ ...styles.navBtn, ...styles.nextBtn, backgroundColor: '#28a745' }}>{submitMutation.isPending ? 'LOADING...' : 'SUBMIT'} <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg></button>
+
+              {/* Passage */}
+              {hasPassage && showPassage && (
+                <div style={styles.passageBox}>
+                  <div style={styles.passageLabel}>📖 READING PASSAGE</div>
+                  <div 
+                    style={{ ...styles.passageText, fontSize: `${0.9 * fs}rem` }} 
+                    dangerouslySetInnerHTML={{ __html: formatMathText(passageText) }}
+                  />
+                </div>
               )}
-            </div>
 
-            {/* ── Question Navigator (Always Open) ── */}
-            <div style={styles.navigatorSection}>
-              <div style={styles.navigatorHeader}>
-                <span style={styles.navigatorTitle}>Questions</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <select value={questionFilter} onChange={(e) => setQuestionFilter(e.target.value)} style={{
-                    fontSize: '0.55rem', fontWeight: 600, padding: '0.1rem 0.25rem', borderRadius: '3px', border: '1px solid #ddd', color: '#555', backgroundColor: '#fff', cursor: 'pointer', outline: 'none'
-                  }}>
-                    <option value="all">All ({test.questions.length})</option>
-                    <option value="answered">Answered ({answeredCount})</option>
-                    <option value="unanswered">Unanswered ({test.questions.length - answeredCount})</option>
-                    <option value="flagged">Flagged ({flaggedQuestions.size})</option>
-                  </select>
-                  <div style={styles.navigatorLegend}>
-                    <div style={styles.legendItem}><div style={{ ...styles.legendDot, backgroundColor: '#006633' }} /></div>
-                    <div style={styles.legendItem}><div style={{ ...styles.legendDot, backgroundColor: '#28a745' }} /></div>
-                    <div style={styles.legendItem}><div style={{ ...styles.legendDot, backgroundColor: '#e67e22' }} /></div>
-                    <div style={styles.legendItem}><div style={{ ...styles.legendDot, backgroundColor: '#fff', border: '1px solid #ccc' }} /></div>
-                  </div>
-                  <span style={{ fontSize: '0.5rem', color: '#888', fontWeight: 600 }}>
-                    <span style={{ color: '#28a745' }}>{answeredCount}</span>✓ 
-                    <span style={{ color: '#dc3545', marginLeft: '0.2rem' }}>{test.questions.length - answeredCount}</span>○ 
-                    <span style={{ color: '#e67e22', marginLeft: '0.2rem' }}>{flaggedQuestions.size}</span>🚩
-                  </span>
-                </div>
-              </div>
-              
-              <div style={styles.questionGridCompact}>
-                {filteredQs.map((qi) => {
-                  const isA = answers[qi] !== null;
-                  const isC = qi === currentQuestion;
-                  const isF = flaggedQuestions.has(qi);
-                  let bg = '#fff', tc = '#888', bd = '1px solid #ddd';
-                  if (isC) { bg = '#006633'; tc = '#fff'; bd = '2px solid #004d25'; }
-                  else if (isF && isA) { bg = '#e67e22'; tc = '#fff'; bd = '1px solid #d35400'; }
-                  else if (isF) { bg = '#fff3e0'; tc = '#e67e22'; bd = '2px solid #e67e22'; }
-                  else if (isA) { bg = '#28a745'; tc = '#fff'; bd = '1px solid #1e7e34'; }
+              {/* Question Text */}
+              <div 
+                style={{ ...styles.questionText, fontSize: `${1.05 * fs}rem` }} 
+                dangerouslySetInnerHTML={{ __html: formatMathText(currentQ.questionText) }}
+              />
+
+              {/* Options */}
+              <div style={styles.optionsContainer}>
+                {(currentQ.options || []).map((option, oi) => {
+                  const isSelected = answers[currentQuestion] === oi;
+                  const isHovered = hoveredOption === oi;
+                  let btnStyle = styles.optionBtn;
+                  if (isSelected) btnStyle = styles.optionBtnSelected;
+                  else if (isHovered) btnStyle = styles.optionBtnHover;
+
                   return (
-                    <button key={qi} onClick={() => setCurrentQuestion(qi)} style={{ ...styles.gridBtnCompact, backgroundColor: bg, color: tc, border: bd, boxShadow: isC ? '0 0 0 2px rgba(0,102,51,0.3)' : 'none', transform: isC ? 'scale(1.15)' : 'scale(1)' }} title={`Q${qi + 1}${isA ? ' ✓' : ''}${isF ? ' 🚩' : ''}`}>{qi + 1}</button>
+                    <button
+                      key={oi}
+                      onClick={() => handleSelectOption(oi)}
+                      onMouseEnter={() => setHoveredOption(oi)}
+                      onMouseLeave={() => setHoveredOption(null)}
+                      style={btnStyle}
+                    >
+                      <div style={isSelected ? styles.optionLetterSelected : styles.optionLetter}>
+                        {optionLetters[oi]}
+                      </div>
+                      <div 
+                        style={{ ...styles.optionText, fontSize: `${0.95 * fs}rem` }} 
+                        dangerouslySetInnerHTML={{ __html: formatMathText(option.text || option) }}
+                      />
+                    </button>
                   );
                 })}
-                {filteredQs.length === 0 && (
-                  <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '0.3rem', color: '#aaa', fontSize: '0.65rem' }}>No questions match this filter</div>
-                )}
               </div>
             </div>
 
-            {/* ═══ FINISH SECTION ═══ */}
-            <div style={styles.finishSection}>
+            {/* Question Footer */}
+            <div style={styles.questionFooter}>
+              <button
+                onClick={handlePrev}
+                disabled={currentQuestion === 0}
+                style={currentQuestion === 0 ? styles.navBtnDisabled : styles.navBtn}
+              >
+                ← Previous
+              </button>
+
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button onClick={() => setShowReviewPanel(true)} style={{ flex: 1, padding: '0.5rem', backgroundColor: '#3498db', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.5px', boxShadow: '0 2px 8px rgba(52,152,219,0.3)', transition: 'all 0.2s' }}>
-                  📝 REVIEW [R]
+                <button
+                  onClick={handleToggleFlag}
+                  style={flaggedQuestions.has(currentQuestion) ? styles.flagBtnActive : styles.flagBtn}
+                >
+                  🚩 {flaggedQuestions.has(currentQuestion) ? 'Unflag' : 'Flag'}
                 </button>
-                <button onClick={handleSubmit} disabled={submitMutation.isPending} style={{ flex: 1, ...styles.finishBtnBottom, opacity: submitMutation.isPending ? 0.7 : 1 }}>
-                  {submitMutation.isPending ? '⏳ SUBMITTING...' : '🏁 FINISH [S]'}
-                </button>
+                <span style={{ fontSize: '0.75rem', color: '#666', display: 'flex', alignItems: 'center' }}>
+                  Q{currentQuestion + 1}/{test.questions.length}
+                </span>
               </div>
-            </div>
 
+              <button
+                onClick={handleNext}
+                disabled={currentQuestion === test.questions.length - 1}
+                style={currentQuestion === test.questions.length - 1 ? styles.navBtnDisabled : styles.navBtn}
+              >
+                Next →
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* ═══ PASSAGE PANEL ═══ */}
-        {showPassage && hasPassage && (
-          <div style={{ position: 'fixed', top: '63px', left: 0, width: '38%', height: 'calc(100vh - 63px)', backgroundColor: '#fff', borderRight: '3px solid #006633', overflowY: 'auto', padding: '1.2rem', boxShadow: '4px 0 20px rgba(0,0,0,0.1)', zIndex: 50 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem', paddingBottom: '0.6rem', borderBottom: '2px solid #006633' }}>
-              <span style={{ fontWeight: 800, fontSize: '0.8rem', color: '#006633', letterSpacing: '1px' }}>📖 READING PASSAGE</span>
-              <button onClick={() => setShowPassage(false)} style={{ background: '#f0f0f0', border: 'none', width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>✕</button>
-            </div>
-            <div style={{ fontSize: `${0.9 * fs}rem`, lineHeight: `${1.7 * fs}`, color: '#333', whiteSpace: 'pre-wrap' }}>{passageText}</div>
+        {/* ═══ CALCULATOR ═══ */}
+        {showCalculator && (
+          <div style={styles.calculatorWrapper}>
+            <Calculator onClose={() => setShowCalculator(false)} />
           </div>
         )}
 
         {/* ═══ SCRATCH PAD ═══ */}
         {showScratchPad && (
-          <div style={{ position: 'fixed', top: '63px', right: 0, width: '300px', height: 'calc(100vh - 63px)', backgroundColor: '#fffef5', borderLeft: '3px solid #9b59b6', display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 20px rgba(0,0,0,0.1)', zIndex: 50 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.6rem 0.8rem', borderBottom: '2px solid #9b59b6', backgroundColor: '#faf5ff' }}>
-              <span style={{ fontWeight: 800, fontSize: '0.75rem', color: '#9b59b6', letterSpacing: '1px' }}>📝 SCRATCH PAD</span>
-              <button onClick={() => setShowScratchPad(false)} style={{ background: '#f0f0f0', border: 'none', width: '26px', height: '26px', borderRadius: '50%', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 700 }}>✕</button>
+          <div style={styles.scratchPad}>
+            <div style={styles.scratchPadHeader}>
+              <span style={{ fontWeight: 800, fontSize: '0.75rem', letterSpacing: '1px' }}>📝 SCRATCH PAD</span>
+              <button onClick={() => setShowScratchPad(false)} style={calcStyles.closeBtn}>✕</button>
             </div>
             <textarea
               value={scratchPadContent}
               onChange={(e) => setScratchPadContent(e.target.value)}
-              placeholder="Type your workings here... (auto-saved)"
-              style={{ flex: 1, border: 'none', outline: 'none', resize: 'none', padding: '0.8rem', fontSize: '0.82rem', lineHeight: 1.6, fontFamily: "'Courier New', monospace", backgroundColor: 'transparent', color: '#333' }}
+              placeholder="Type your working here..."
+              style={styles.scratchPadTextarea}
             />
-            <div style={{ padding: '0.3rem 0.8rem', borderTop: '1px solid #e8e0f0', fontSize: '0.55rem', color: '#aaa', textAlign: 'center' }}>Auto-saved with your answers</div>
-          </div>
-        )}
-
-        {/* ═══ CALCULATOR ═══ */}
-        {showCalculator && (
-          <div style={{ position: 'fixed', bottom: '16px', right: showScratchPad ? '310px' : '16px', zIndex: 100, transition: 'right 0.3s ease' }}>
-            <Calculator onClose={() => setShowCalculator(false)} />
           </div>
         )}
 
         {/* ═══ KEYBOARD HINT ═══ */}
-        {keyboardHint && !showConfirmation && !showExitWarning && !showTabWarning && examStarted && (
-          <div style={styles.keyboardHint} onClick={() => setKeyboardHint(false)}>
-            <div style={styles.keyboardHintContent}>
-              <span style={{ fontWeight: 700, fontSize: '0.7rem', color: '#006633' }}>⌨ SHORTCUTS</span>
-              <div style={{ display: 'flex', gap: '0.6rem', fontSize: '0.62rem', color: '#666', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <span><kbd style={styles.kbd}>A-E</kbd> Select</span>
-                <span><kbd style={styles.kbd}>←→</kbd> Navigate</span>
-                <span><kbd style={styles.kbd}>G</kbd> Flag</span>
-                <span><kbd style={styles.kbd}>M</kbd> Calc</span>
-                <span><kbd style={styles.kbd}>R</kbd> Review</span>
-                <span><kbd style={styles.kbd}>F</kbd> Full</span>
-                <span><kbd style={styles.kbd}>S</kbd> Submit</span>
-              </div>
-              <span style={{ fontSize: '0.55rem', color: '#aaa', cursor: 'pointer' }}>Click to dismiss</span>
-            </div>
+        {keyboardHint && examStarted && !showInstructions && (
+          <div style={styles.keyboardHint}>
+            <span><span style={styles.keyboardKey}>A</span><span style={styles.keyboardKey}>B</span><span style={styles.keyboardKey}>C</span><span style={styles.keyboardKey}>D</span> Select</span>
+            <span><span style={styles.keyboardKey}>←</span><span style={styles.keyboardKey}>→</span> Navigate</span>
+            <span><span style={styles.keyboardKey}>G</span> Flag</span>
+            <span><span style={styles.keyboardKey}>M</span> Calculator</span>
+            <span><span style={styles.keyboardKey}>F</span> Fullscreen</span>
+            <span><span style={styles.keyboardKey}>S</span> Submit</span>
           </div>
         )}
-
-        {/* ═══ TAB WARNING ═══ */}
-        {showTabWarning && (<div style={styles.tabWarningBar}><span style={{ fontWeight: 800 }}>⚠ WINDOW SWITCH DETECTED</span><span style={{ marginLeft: '1rem', opacity: 0.9 }}>Leaving this window has been recorded. ({tabSwitchCount} switch{tabSwitchCount > 1 ? 'es' : ''})</span></div>)}
 
         {/* ═══ REVIEW PANEL ═══ */}
         {showReviewPanel && (
@@ -1076,198 +1168,63 @@ const TakeTest = () => {
             onClose={() => setShowReviewPanel(false)}
             onGoToQuestion={(qi) => setCurrentQuestion(qi)}
           >
-            <div style={{ padding: '1rem 2rem 1.5rem', borderTop: '1px solid #eee' }}>
-              <button onClick={finalSubmitFromReview} disabled={submitMutation.isPending} style={{ width: '100%', padding: '0.8rem', backgroundColor: '#28a745', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 800, fontSize: '1rem', letterSpacing: '1px' }}>
-                {submitMutation.isPending ? '⏳ SUBMITTING...' : '🏁 FINAL SUBMIT'}
-              </button>
+            <div style={{ padding: '1rem 1.5rem', borderTop: '1px solid #eee', display: 'flex', gap: '0.8rem', justifyContent: 'center' }}>
+              <button onClick={() => setShowReviewPanel(false)} style={{ ...instrStyles.cancelBtn, flex: 1 }}>Continue Exam</button>
+              <button onClick={finalSubmitFromReview} style={{ ...instrStyles.startBtn, flex: 1, backgroundColor: '#dc3545', boxShadow: '0 4px 15px rgba(220,53,69,0.3)' }}>🚀 Submit Test</button>
             </div>
           </ReviewPanel>
         )}
 
-        {/* ═══ SUBMIT MODAL ═══ */}
+        {/* ═══ SUBMIT CONFIRMATION ═══ */}
         {showConfirmation && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.confirmModal}>
-              <div style={styles.confirmHeader}><div style={{ fontSize: '2.5rem' }}>⚠️</div><h3 style={styles.confirmTitle}>CONFIRM SUBMISSION</h3><p style={styles.confirmSubtitle}>This action cannot be undone</p></div>
-              <div style={styles.confirmBody}>
-                <div style={styles.confirmStats}>
-                  <div style={styles.confirmStat}><span style={{ ...styles.confirmStatNum, color: '#28a745' }}>{answeredCount}</span><span style={styles.confirmStatLabel}>Answered</span></div>
-                  <div style={styles.confirmStatDivider} />
-                  <div style={styles.confirmStat}><span style={{ ...styles.confirmStatNum, color: '#dc3545' }}>{test.questions.length - answeredCount}</span><span style={styles.confirmStatLabel}>Unanswered</span></div>
-                  <div style={styles.confirmStatDivider} />
-                  <div style={styles.confirmStat}><span style={{ ...styles.confirmStatNum, color: '#e67e22' }}>{flaggedQuestions.size}</span><span style={styles.confirmStatLabel}>Flagged</span></div>
-                </div>
-                {tabSwitchCount > 0 && <div style={{ ...styles.confirmWarning, backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeaa7', marginBottom: '0.8rem' }}>⚠ {tabSwitchCount} window switch{tabSwitchCount > 1 ? 'es' : ''} recorded</div>}
-                {test.questions.length - answeredCount > 0 && <div style={styles.confirmWarning}>⚠ You have {test.questions.length - answeredCount} unanswered question(s)!</div>}
-                {flaggedQuestions.size > 0 && <div style={{ ...styles.confirmWarning, backgroundColor: '#fff3e0', color: '#e65100', border: '1px solid #ffe0b2', marginBottom: '0.8rem' }}>🚩 You have {flaggedQuestions.size} flagged question(s) for review</div>}
-                <div style={styles.confirmBtns}>
-                  <button onClick={() => setShowConfirmation(false)} style={styles.cancelBtn}>GO BACK & REVIEW</button>
-                  <button onClick={confirmSubmit} style={styles.confirmBtn}>YES, SUBMIT</button>
-                </div>
+          <div style={styles.overlay}>
+            <div style={styles.confirmCard}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: '#1a1a1a', marginBottom: '0.5rem' }}>Confirm Submission</div>
+              <div style={{ color: '#666', fontSize: '0.9rem', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                You have <strong style={{ color: '#dc3545' }}>{answers.filter(a => a === null).length} unanswered</strong> question(s) out of {test.questions.length} total.
+                <br />Are you sure you want to submit?
+              </div>
+              <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'center' }}>
+                <button onClick={() => setShowConfirmation(false)} style={instrStyles.cancelBtn}>Go Back</button>
+                <button onClick={confirmSubmit} style={{ ...instrStyles.startBtn, backgroundColor: '#dc3545', boxShadow: '0 4px 15px rgba(220,53,69,0.3)' }}>Yes, Submit</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* ═══ EXIT FS MODAL ═══ */}
+        {/* ═══ FULLSCREEN EXIT WARNING ═══ */}
         {showExitWarning && (
-          <div style={styles.modalOverlay}>
-            <div style={styles.confirmModal}>
-              <div style={styles.confirmHeader}><div style={{ fontSize: '2.5rem' }}>🖥️</div><h3 style={styles.confirmTitle}>EXIT FULL SCREEN?</h3><p style={styles.confirmSubtitle}>Your test is still in progress</p></div>
-              <div style={styles.confirmBody}>
-                <div style={{ ...styles.confirmWarning, backgroundColor: '#fff3cd', color: '#856404', border: '1px solid #ffeaa7' }}>Exiting full screen will NOT stop your timer. {isNativeFullscreen ? '' : 'Currently using JavaScript fullscreen mode.'}</div>
-                <div style={styles.confirmBtns}>
-                  <button onClick={() => setShowExitWarning(false)} style={styles.cancelBtn}>STAY FULL SCREEN</button>
-                  <button onClick={() => { setShowExitWarning(false); jsExitFullscreen(); }} style={{ ...styles.confirmBtn, backgroundColor: '#6c757d' }}>EXIT</button>
-                </div>
+          <div style={styles.overlay}>
+            <div style={styles.warningCard}>
+              <div style={{ fontSize: '2rem', marginBottom: '0.8rem' }}>⚠️</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#856404', marginBottom: '0.5rem' }}>Exit Fullscreen?</div>
+              <div style={{ color: '#856404', fontSize: '0.85rem', marginBottom: '1.2rem', lineHeight: 1.5 }}>
+                Exiting fullscreen may be recorded. Are you sure?
+              </div>
+              <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'center' }}>
+                <button onClick={() => { setShowExitWarning(false); }} style={{ padding: '0.6rem 1.5rem', border: '1px solid #856404', background: 'transparent', color: '#856404', cursor: 'pointer', borderRadius: '8px', fontWeight: 700 }}>Stay</button>
+                <button onClick={() => { setShowExitWarning(false); jsExitFullscreen(); }} style={{ padding: '0.6rem 1.5rem', border: 'none', background: '#856404', color: '#fff', cursor: 'pointer', borderRadius: '8px', fontWeight: 700 }}>Exit</button>
               </div>
             </div>
           </div>
         )}
 
-        <style>{`
-          @keyframes cbtPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.7;transform:scale(1.02)} }
-          @keyframes cbtSlideDown { from{transform:translateY(-100%);opacity:0} to{transform:translateY(0);opacity:1} }
-          @keyframes cbtFadeOut { 0%{opacity:1} 70%{opacity:1} 100%{opacity:0} }
-          *{box-sizing:border-box} body{margin:0;padding:0}
-          ::-webkit-scrollbar{width:5px} ::-webkit-scrollbar-track{background:#f1f1f1} ::-webkit-scrollbar-thumb{background:#bbb;border-radius:3px} ::-webkit-scrollbar-thumb:hover{background:#888}
-          select { -webkit-appearance: none; -moz-appearance: none; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 4px center; padding-right: 16px; }
-        `}</style>
+        {/* ═══ TAB SWITCH WARNING ═══ */}
+        {showTabWarning && (
+          <div style={{ position: 'fixed', top: '70px', right: '20px', zIndex: 2000, animation: 'cbtFadeOut 4s forwards' }}>
+            <div style={styles.tabWarningCard}>
+              <div style={{ fontSize: '1.5rem', marginBottom: '0.3rem' }}>🚨</div>
+              <div style={{ fontWeight: 800, fontSize: '0.9rem' }}>Tab Switch Detected!</div>
+              <div style={{ fontSize: '0.75rem', opacity: 0.9, marginTop: '0.2rem' }}>This has been recorded ({tabSwitchCount} time(s))</div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
+
   return null;
 };
 
-// ==================== STYLES ====================
-const styles = {
-  cbtContainer: { backgroundColor: '#f0f2f5', fontFamily: "'Segoe UI','Inter',-apple-system,sans-serif", display: 'flex', flexDirection: 'column', overflow: 'hidden' },
-  topBar: { background: 'linear-gradient(135deg,#004d25 0%,#003d1c 50%,#002e14 100%)', color: '#fff', padding: '0 1rem', height: '54px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.3)', zIndex: 100 },
-  topBarLeft: { display: 'flex', alignItems: 'center', gap: '0.7rem' },
-  jambLogo: { display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0.6rem', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' },
-  jambLogoIcon: { color: '#28a745', fontSize: '1.1rem', fontWeight: 900 },
-  jambLogoText: { lineHeight: 1.2 },
-  topBarDivider: { width: '1px', height: '24px', backgroundColor: 'rgba(255,255,255,0.15)', flexShrink: 0 },
-  testInfoTop: { lineHeight: 1.2 },
-  topBarRight: { display: 'flex', alignItems: 'center', gap: '0.5rem' },
-  answeredBox: { textAlign: 'center', padding: '0.2rem 0.5rem', backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)' },
-  timerBox: { padding: '0.2rem 0.8rem', borderRadius: '6px', textAlign: 'center', border: '2px solid', lineHeight: 1.2, minWidth: '110px' },
-  fontSizeBtn: { background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: '0.1rem 0.3rem', borderRadius: '3px', fontSize: '0.65rem', lineHeight: 1 },
-  toolBtn: { width: '30px', height: '30px', borderRadius: '6px', border: '1px solid', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.15s', background: 'transparent' },
-  fsToggleBtn: { display: 'flex', alignItems: 'center', padding: '0.35rem 0.6rem', border: '1px solid', borderRadius: '6px', cursor: 'pointer', color: '#fff', background: 'transparent', fontWeight: 700, fontSize: '0.6rem', letterSpacing: '0.5px', transition: 'all 0.2s' },
-  tabSwitchIndicator: { fontSize: '0.55rem', fontWeight: 800, padding: '0.15rem 0.4rem', borderRadius: '4px', backgroundColor: 'rgba(255,26,26,0.3)', border: '1px solid rgba(255,26,26,0.5)', color: '#ff6b6b', letterSpacing: '0.5px' },
-  progressTrack: { height: '3px', backgroundColor: '#e0e0e0', flexShrink: 0 },
-  progressFill: { height: '100%', borderRadius: '0 2px 2px 0', transition: 'width 0.4s ease' },
-  mainContentCentered: { flex: 1, overflow: 'hidden', padding: '0.5rem 1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'stretch', minHeight: 0 },
-  questionWrapper: { width: '100%', maxWidth: '1400px', display: 'flex', flexDirection: 'column', gap: 0 },
-  
-  questionCard: { 
-    backgroundColor: '#ffffff', 
-    borderRadius: '12px', 
-    border: '1px solid #d0d5dd', 
-    borderLeft: '5px solid #006633', 
-    boxShadow: '0 4px 16px rgba(0,0,0,0.06)', 
-    overflow: 'hidden', 
-    marginBottom: '8px',
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: 0,
-  },
-  questionHeader: { 
-    display: 'flex', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: '0.5rem 1.2rem', 
-    borderBottom: '1px solid #f0f0f0', 
-    flexWrap: 'wrap', 
-    gap: '0.4rem',
-    flexShrink: 0,
-  },
-  questionNumber: { display: 'inline-flex' },
-  questionNumberText: { 
-    backgroundColor: '#006633', 
-    color: '#fff', 
-    padding: '0.3rem 0.8rem', 
-    borderRadius: '5px', 
-    fontWeight: 800, 
-    fontSize: '0.7rem', 
-    letterSpacing: '1.5px' 
-  },
-  questionMeta: { display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' },
-  difficultyBadge: { 
-    padding: '0.15rem 0.5rem', 
-    borderRadius: '20px', 
-    fontWeight: 700, 
-    fontSize: '0.55rem', 
-    letterSpacing: '1px', 
-    textTransform: 'uppercase' 
-  },
-  questionOf: { fontSize: '0.75rem', color: '#999', fontWeight: 500 },
-  questionText: { 
-    fontSize: '1.4rem', 
-    fontWeight: 500, 
-    color: '#1a1a1a', 
-    lineHeight: 1.9, 
-    padding: '0.8rem 1.2rem',   
-    flex: 1,                           
-    display: 'flex',
-    flexDirection: 'column',
-    minHeight: 0,
-  },
-  
-  optionsCard: { backgroundColor: '#ffffff', borderRadius: '10px', border: '1px solid #d0d5dd', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', overflow: 'hidden', marginBottom: '6px', flexShrink: 0 },
-  optionsCardLabel: { padding: '0.08rem 1.2rem', borderBottom: '1px solid #f0f0f0' },
-  optionsCardLabelText: { fontSize: '0.5rem', fontWeight: 700, color: '#888', letterSpacing: '1.5px', textTransform: 'uppercase' },
-  optionsContainer: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', padding: '0.5rem 1.2rem' },
-  optionCard: { display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.4rem 0.6rem', border: '1px solid', borderRadius: '7px', cursor: 'pointer', transition: 'all 0.15s ease', position: 'relative', overflow: 'hidden' },
-  optionLetter: { width: '24px', height: '24px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '0.72rem', border: '1px solid', flexShrink: 0, transition: 'all 0.15s ease' },
-  optionText: { fontSize: '0.88rem', lineHeight: 1.45, flex: 1, minWidth: 0, whiteSpace: 'normal' },
-  checkMark: { color: '#006633', fontWeight: 900, fontSize: '0.9rem', flexShrink: 0 },
-
-  navRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 0, marginBottom: '5px', flexShrink: 0 },
-  navCenterInfo: { display: 'flex', alignItems: 'center', gap: '0.3rem' },
-  navBtn: { display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.35rem 0.8rem', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 700, fontSize: '0.68rem', letterSpacing: '0.5px', transition: 'all 0.2s' },
-  prevBtn: { backgroundColor: '#f5f5f5', color: '#333', border: '1px solid #ddd' },
-  nextBtn: { backgroundColor: '#006633', color: '#fff' },
-
-  navigatorSection: { backgroundColor: '#ffffff', borderRadius: '8px', border: '1px solid #d0d5dd', boxShadow: '0 1px 4px rgba(0,0,0,0.03)', padding: '0.15rem 0.5rem 0.2rem', marginBottom: '5px', flexShrink: 0 },
-  navigatorHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.1rem' },
-  navigatorTitle: { fontSize: '0.68rem', fontWeight: 700, color: '#666', letterSpacing: '1px', textTransform: 'uppercase' },
-  navigatorLegend: { display: 'flex', alignItems: 'center', gap: '0.12rem' },
-  legendItem: { display: 'flex', alignItems: 'center' },
-  legendDot: { width: '4px', height: '4px', borderRadius: '2px', flexShrink: 0 },
-  legendText: { fontSize: '0.6rem', color: '#888', fontWeight: 500 },
-  questionGridCompact: { display: 'grid', gridTemplateColumns: 'repeat(20, 1fr)', gap: '0px' },
-  gridBtnCompact: { width: '100%', aspectRatio: '1.2', borderRadius: '2px', border: '1px solid', cursor: 'pointer', fontWeight: 700, fontSize: '0.65rem', transition: 'all 0.12s ease', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Courier New', monospace", padding: 0, boxSizing: 'border-box' },
-  
-  finishSection: { padding: '0.1rem 0 0', borderTop: '1px solid #e0e0e0', marginTop: '4px', flexShrink: 0 },
-  finishBtnBottom: { padding: '0.5rem 0.5rem', backgroundColor: '#e67e22', color: '#ffffff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 800, fontSize: '0.78rem', letterSpacing: '0.3px', boxShadow: '0 2px 8px rgba(230,126,34,0.3)', transition: 'all 0.2s ease' },
-  keyboardHint: { position: 'fixed', bottom: '12px', left: '50%', transform: 'translateX(-50%)', zIndex: 200, cursor: 'pointer' },
-  keyboardHintContent: { backgroundColor: '#1a1a2e', color: '#fff', padding: '0.4rem 0.8rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.8rem', boxShadow: '0 4px 15px rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.1)', flexWrap: 'wrap', justifyContent: 'center' },
-  kbd: { backgroundColor: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '3px', padding: '1px 4px', fontFamily: "'Courier New',monospace", fontSize: '0.6rem', fontWeight: 700, marginRight: '1px' },
-  tabWarningBar: { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 10000, backgroundColor: '#dc3545', color: '#fff', padding: '0.7rem 1.5rem', display: 'flex', alignItems: 'center', fontSize: '0.82rem', boxShadow: '0 4px 15px rgba(220,53,69,0.4)', animation: 'cbtSlideDown 0.3s ease', fontWeight: 600 },
-  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' },
-  confirmModal: { backgroundColor: '#fff', width: '100%', maxWidth: '460px', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' },
-  confirmHeader: { padding: '2rem 2rem 1rem', textAlign: 'center' },
-  confirmTitle: { margin: '0.8rem 0 0.3rem', color: '#1a1a1a', fontSize: '1.2rem', fontWeight: 800, letterSpacing: '1px' },
-  confirmSubtitle: { margin: 0, color: '#888', fontSize: '0.85rem' },
-  confirmBody: { padding: '1rem 2rem 2rem', textAlign: 'center' },
-  confirmStats: { display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1.5rem', marginBottom: '1rem', padding: '1rem', backgroundColor: '#f8f9fa', borderRadius: '8px' },
-  confirmStat: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' },
-  confirmStatNum: { fontSize: '1.8rem', fontWeight: 900, fontFamily: "'Courier New',monospace" },
-  confirmStatLabel: { fontSize: '0.65rem', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 },
-  confirmStatDivider: { width: '1px', height: '40px', backgroundColor: '#e0e0e0' },
-  confirmWarning: { padding: '0.6rem 1rem', backgroundColor: '#f8d7da', color: '#721c24', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 600, marginBottom: '1.2rem', border: '1px solid #f5c6cb' },
-  confirmBtns: { display: 'flex', gap: '0.8rem', justifyContent: 'center' },
-  cancelBtn: { padding: '0.35rem 0.8rem', border: '1px solid #ddd', backgroundColor: '#fff', cursor: 'pointer', borderRadius: '5px', fontWeight: 700, fontSize: '0.68rem', color: '#555', transition: 'all 0.15s' },
-  confirmBtn: { padding: '0.35rem 0.8rem', border: 'none', backgroundColor: '#006633', color: '#fff', cursor: 'pointer', borderRadius: '5px', fontWeight: 700, fontSize: '0.68rem', transition: 'all 0.15s' },
-  centerContainer: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f0f2f5', padding: '2rem' },
-  errorBox: { background: '#f8d7da', color: '#721c24', padding: '1.5rem', border: '1px solid #f5c6cb', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem' },
-  errorIcon: { fontSize: '1.5rem', flexShrink: 0 },
-  errorText: { fontWeight: 500 },
-  emptyBox: { background: '#fff3cd', color: '#856404', padding: '2rem', border: '1px solid #ffeeba', borderRadius: '8px', textAlign: 'center', marginBottom: '1.5rem' },
-  backBtn: { padding: '0.35rem 0.9rem', background: 'linear-gradient(135deg,#006633,#004d25)', color: '#fff', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 700, fontSize: '0.7rem' },
-};
-
-export { getSubmittedTests, markTestAsSubmitted };
 export default TakeTest;

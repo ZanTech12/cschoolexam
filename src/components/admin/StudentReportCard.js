@@ -1,10 +1,60 @@
 import React, { useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { reportCardsAPI, classTeacherCommentsAPI, attendanceAPI } from '../../api';
+import { reportCardsAPI, classTeacherCommentsAPI, attendanceAPI, studentsAPI } from '../../api';
 import schoolLogo from '../../pages/logo.png';
 import principalSignature from './principal_signature.png';
 import './StudentReportCard.css';
+
+// ✅ Base URL for constructing image URLs
+const API_BASE_URL = 'https://testbackend-5xui.onrender.com';
+
+// ✅ Helper to build student photo URL (Updated to match backend structure: profileImage.url)
+const buildStudentPhotoUrl = (student) => {
+  if (!student) return null;
+  
+  // 1. Check if profileImage is an object with a 'url' property (Exact backend format)
+  if (student.profileImage?.url) {
+    const imageUrl = student.profileImage.url;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    if (imageUrl.startsWith('/')) return `${API_BASE_URL}${imageUrl}`;
+    return `${API_BASE_URL}/${imageUrl}`;
+  }
+
+  // 2. Fallback: Check if profileImage is a direct string
+  if (typeof student.profileImage === 'string' && student.profileImage.trim() !== '') {
+    const imageUrl = student.profileImage;
+    if (imageUrl.startsWith('http')) return imageUrl;
+    if (imageUrl.startsWith('/')) return `${API_BASE_URL}${imageUrl}`;
+    return `${API_BASE_URL}/${imageUrl}`;
+  }
+
+  // 3. Fallback: Check other possible direct string fields
+  const fallbackFields = ['profile_image', 'image', 'photo', 'profileImageUrl', 'passport'];
+  for (const field of fallbackFields) {
+    const val = student[field];
+    if (typeof val === 'string' && val.trim() !== '') {
+      if (val.startsWith('http')) return val;
+      if (val.startsWith('/')) return `${API_BASE_URL}${val}`;
+      return `${API_BASE_URL}/${val}`;
+    }
+    // Check if the fallback field is also an object with a url
+    if (val?.url) {
+      const imageUrl = val.url;
+      if (imageUrl.startsWith('http')) return imageUrl;
+      if (imageUrl.startsWith('/')) return `${API_BASE_URL}${imageUrl}`;
+      return `${API_BASE_URL}/${imageUrl}`;
+    }
+  }
+
+  // 4. Final fallback: Construct URL from student ID
+  const studentId = student._id || student.id;
+  if (studentId) {
+    return `${API_BASE_URL}/uploads/students/${studentId}/profile-image`;
+  }
+  
+  return null;
+};
 
 const StudentReportCard = () => {
   const [searchParams] = useSearchParams();
@@ -39,7 +89,32 @@ const StudentReportCard = () => {
     staleTime: 60000,
   });
 
+  // ============================================
+  // ✅ NEW: FETCH ALL STUDENTS TO GET PROFILE IMAGES
+  // ============================================
+  const { data: allStudentsResponse } = useQuery({
+    queryKey: ['all-students-for-photos'],
+    queryFn: studentsAPI.getAll,
+    staleTime: 300000,
+    retry: 1,
+  });
+
   const report = reportResponse?.data || null;
+
+  // ============================================
+  // ✅ NEW: CREATE A LOOKUP MAP FOR STUDENT PHOTOS
+  // ============================================
+  const studentPhotosMap = useMemo(() => {
+    const map = {};
+    if (allStudentsResponse?.data) {
+      allStudentsResponse.data.forEach(student => {
+        if (student._id && student.profileImage?.url) {
+          map[student._id.toString()] = student.profileImage;
+        }
+      });
+    }
+    return map;
+  }, [allStudentsResponse]);
 
   const classId = report?.student?.class?._id || report?.student?.class?.id || null;
   const termName = report?.term?.name || null;
@@ -121,6 +196,20 @@ const StudentReportCard = () => {
     ? new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) 
     : 'N/A';
 
+  // ============================================
+  // ✅ UPDATED: Construct the robust image URL
+  // ============================================
+  const studentIdStr = report?.student?._id?.toString();
+  const studentWithPhoto = {
+    ...report?.student,
+    profileImage: report?.student?.profileImage || studentPhotosMap[studentIdStr] || null
+  };
+  const studentImage = buildStudentPhotoUrl(studentWithPhoto);
+
+  const studentInitials = report?.student 
+    ? `${(report.student.firstName || '')[0] || ''}${(report.student.lastName || '')[0] || ''}`.toUpperCase()
+    : 'S';
+
   // Isolated robust print handler with strict A4 borders
   const handlePrint = () => {
     const printElement = document.querySelector('.a4-document');
@@ -139,7 +228,7 @@ const StudentReportCard = () => {
     const a4PrintStyles = `
       @page {
         size: A4 portrait;
-        margin: 0; /* Force 0 margin so our CSS border touches the physical edge of the paper */
+        margin: 0;
       }
       body {
         margin: 0;
@@ -151,7 +240,7 @@ const StudentReportCard = () => {
       .a4-document {
         width: 210mm;
         min-height: 297mm;
-        padding: 14mm 16mm !important; /* Inner spacing away from the border */
+        padding: 14mm 16mm !important;
         background-color: #ffffff !important;
         position: relative;
         box-sizing: border-box !important;
@@ -173,10 +262,10 @@ const StudentReportCard = () => {
         print-color-adjust: exact !important;
       }
       .a4-document::before {
-        inset: 0 !important; /* Outer frame */
+        inset: 0 !important;
       }
       .a4-document::after {
-        inset: 7px !important; /* Inner frame */
+        inset: 7px !important;
         border-width: 1.5px !important;
       }
       .school-name {
@@ -188,6 +277,51 @@ const StudentReportCard = () => {
         font-size: 7pt !important;
         color: #333 !important;
         letter-spacing: 0.3px !important;
+      }
+      .header-top-row {
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+      }
+      .header-logo-wrap {
+        flex-shrink: 0 !important;
+      }
+      .header-logo {
+        width: 225px !important;
+        height: 225px !important;
+        object-fit: contain !important;
+      }
+      .header-center-info {
+        flex: 1 !important;
+        text-align: center !important;
+      }
+      .student-photo-wrap {
+        flex-shrink: 0 !important;
+        width: 90px !important;
+        height: 90px !important;
+      }
+      .student-photo-wrap img {
+        width: 100% !important;
+        height: 100% !important;
+        object-fit: cover !important;
+      }
+      .comments-container {
+        display: flex !important;
+        gap: 20px !important;
+      }
+      .comment-box-elegant {
+        flex: 1 !important;
+        display: flex !important;
+        flex-direction: column !important;
+      }
+      .comment-text-area {
+        flex: 1 !important;
+      }
+      .principal-sig-img {
+        width: 40px !important;
+        height: auto !important;
+        object-fit: contain !important;
       }
     `;
 
@@ -273,10 +407,10 @@ const StudentReportCard = () => {
           border: 3px solid #111;
         }
         .a4-document::before {
-          inset: 0; /* Outer frame */
+          inset: 0;
         }
         .a4-document::after {
-          inset: 7px; /* Inner frame */
+          inset: 7px;
           border-width: 1.5px;
         }
         .school-name {
@@ -292,6 +426,73 @@ const StudentReportCard = () => {
           margin: 0.5mm 0 0 0;
           line-height: 1.2;
         }
+        .header-top-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          gap: 10px;
+        }
+        .header-logo-wrap {
+          flex-shrink: 0;
+        }
+        .header-logo {
+          width: 75px;
+          height: 75px;
+          object-fit: contain;
+        }
+        .header-center-info {
+          flex: 1;
+          text-align: center;
+        }
+        .student-photo-wrap {
+          flex-shrink: 0;
+          width: 90px;
+          height: 90px;
+          border: 2px solid #333;
+          border-radius: 4px;
+          overflow: hidden;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background-color: #f5f5f5;
+        }
+        .student-photo-wrap img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
+        }
+        .student-photo-placeholder {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(135deg, #e8e8e8 0%, #d0d0d0 100%);
+          color: #555;
+          font-size: 26px;
+          font-weight: 700;
+          letter-spacing: 1px;
+          user-select: none;
+        }
+        .comments-container {
+          display: flex;
+          gap: 20px;
+        }
+        .comment-box-elegant {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        .comment-text-area {
+          flex: 1;
+        }
+        .principal-sig-img {
+          width: 40px;
+          height: auto;
+          object-fit: contain;
+        }
       `}</style>
 
       <div className="screen-controls">
@@ -303,16 +504,29 @@ const StudentReportCard = () => {
         
         <header className="school-header-elegant">
           <div className="header-ornament top"></div>
-          <div className="header-logo-wrap">
-            <img src={schoolLogo} alt="DATFORTE International School Logo" className="header-logo" />
-          </div>
-          <h1 className="school-name">DATFORTE INTERNATIONAL SCHOOLS LIMITED</h1>
-          <p className="school-address">14, Ahmed Tijani St, Ahmadiya Bus-Stop, Lagos, Nigeria.</p>
-          <h2 className="doc-title">STUDENT ACADEMIC REPORT CARD</h2>
-          <div className="header-meta-box">
-            <span className="meta-text">Term <strong>{report.term.name}</strong></span>
-            <span className="meta-divider"></span>
-            <span className="meta-text">Session <strong>{report.session.name}</strong></span>
+          <div className="header-top-row">
+            <div className="header-logo-wrap">
+              <img src={schoolLogo} alt="DATFORTE International School Logo" className="header-logo" />
+            </div>
+            <div className="header-center-info">
+              <h1 className="school-name">DATFORTE INTERNATIONAL SCHOOLS LIMITED</h1>
+              <p className="school-address">14, Ahmed Tijani St, Ahmadiya Bus-Stop, Lagos, Nigeria.</p>
+              <h2 className="doc-title">STUDENT ACADEMIC REPORT CARD</h2>
+              <div className="header-meta-box">
+                <span className="meta-text">Term <strong>{report.term.name}</strong></span>
+                <span className="meta-divider"></span>
+                <span className="meta-text">Session <strong>{report.session.name}</strong></span>
+              </div>
+            </div>
+            <div className="student-photo-wrap">
+              {studentImage ? (
+                <img src={studentImage} alt={`${report.student.firstName} ${report.student.lastName}`} />
+              ) : (
+                <div className="student-photo-placeholder">
+                  {studentInitials}
+                </div>
+              )}
+            </div>
           </div>
           <div className="header-ornament bottom"></div>
         </header>
