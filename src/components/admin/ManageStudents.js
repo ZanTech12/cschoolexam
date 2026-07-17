@@ -35,6 +35,8 @@ const ManageStudents = () => {
   const [csvError, setCsvError] = useState('');
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [imageUploadProgress, setImageUploadProgress] = useState(0);
+  const [imageUploading, setImageUploading] = useState(false);
 
   const { data: students, isLoading: studentsLoading } = useQuery({
     queryKey: ['students'],
@@ -97,13 +99,19 @@ const ManageStudents = () => {
   });
 
   const uploadImageMutation = useMutation({
-    mutationFn: ({ studentId, file }) => studentsAPI.uploadProfileImage(studentId, file),
+    mutationFn: ({ studentId, file, onUploadProgress }) => studentsAPI.uploadProfileImage(studentId, file, { onUploadProgress }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
       setSuccessMessage('Profile image uploaded successfully.');
       setTimeout(() => setSuccessMessage(''), 3000);
+      setImageUploading(false);
+      setImageUploadProgress(0);
     },
-    onError: (err) => setError(err.response?.data?.message || 'Failed to upload image'),
+    onError: (err) => {
+      setError(err.response?.data?.message || 'Failed to upload image');
+      setImageUploading(false);
+      setImageUploadProgress(0);
+    },
   });
 
   const removeImageMutation = useMutation({
@@ -173,7 +181,6 @@ const ManageStudents = () => {
 
   useEffect(() => {
     if (showCameraModal) {
-      // Small delay to ensure modal is rendered before attaching stream
       const timer = setTimeout(() => startCamera(cameraFacingMode), 300);
       return () => { clearTimeout(timer); stopCamera(); };
     } else {
@@ -195,7 +202,16 @@ const ManageStudents = () => {
     canvas.toBlob((blob) => {
       if (blob) {
         const file = new File([blob], `snap_${imageUploadStudentId}_${Date.now()}.jpg`, { type: 'image/jpeg', lastModified: Date.now() });
-        uploadImageMutation.mutate({ studentId: imageUploadStudentId, file });
+        setImageUploadProgress(0);
+        setImageUploading(true);
+        uploadImageMutation.mutate({
+          studentId: imageUploadStudentId,
+          file,
+          onUploadProgress: (progressEvent) => {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            setImageUploadProgress(percent);
+          }
+        });
       }
       handleCloseCameraModal();
     }, 'image/jpeg', 0.92);
@@ -257,7 +273,16 @@ const ManageStudents = () => {
       return;
     }
 
-    uploadImageMutation.mutate({ studentId: imageUploadStudentId, file });
+    setImageUploadProgress(0);
+    setImageUploading(true);
+    uploadImageMutation.mutate({
+      studentId: imageUploadStudentId,
+      file,
+      onUploadProgress: (progressEvent) => {
+        const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+        setImageUploadProgress(percent);
+      }
+    });
     if (imageInputRef.current) imageInputRef.current.value = '';
     setImageUploadStudentId(null);
   };
@@ -620,6 +645,17 @@ const ManageStudents = () => {
         .ms-upload-preview th { padding: 8px 10px; text-align: left; font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--text-muted); background: #f8fafc; position: sticky; top: 0; }
         .ms-upload-preview td { padding: 7px 10px; border-top: 1px solid var(--border); }
 
+        /* ===== IMAGE UPLOAD PROGRESS STYLES ===== */
+        .ms-img-progress-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.45); backdrop-filter: blur(4px); z-index: 160; display: flex; align-items: center; justify-content: center; animation: msFadeIn 0.2s ease; }
+        .ms-img-progress-card { background: var(--surface); border-radius: var(--radius); padding: 28px 32px; box-shadow: var(--shadow-lg); min-width: 300px; max-width: 380px; text-align: center; animation: msSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .ms-img-progress-icon { font-size: 2rem; margin-bottom: 12px; display: block; }
+        .ms-img-progress-title { font-size: 0.95rem; font-weight: 700; color: var(--text); margin: 0 0 4px; }
+        .ms-img-progress-subtitle { font-size: 0.78rem; color: var(--text-muted); margin: 0 0 18px; }
+        .ms-img-progress-pct { font-size: 1.6rem; font-weight: 800; color: var(--primary); margin-bottom: 10px; letter-spacing: -0.03em; }
+        .ms-img-progress-bar { height: 10px; background: #e2e8f0; border-radius: 5px; overflow: hidden; margin-bottom: 6px; }
+        .ms-img-progress-fill { height: 100%; background: linear-gradient(90deg, #4f46e5, #818cf8); border-radius: 5px; transition: width 0.2s ease; }
+        .ms-img-progress-status { font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
+
         /* ===== CAMERA MODAL STYLES ===== */
         .ms-camera-overlay { position: fixed; inset: 0; background: #000; z-index: 200; display: flex; flex-direction: column; animation: msFadeIn 0.2s ease; }
         .ms-camera-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 5; flex-shrink: 0; }
@@ -656,6 +692,10 @@ const ManageStudents = () => {
         .ms-camera-flash { position: fixed; inset: 0; background: #fff; z-index: 300; pointer-events: none; animation: msFlash 0.25s ease-out forwards; }
         @keyframes msFlash { 0% { opacity: 0.85; } 100% { opacity: 0; } }
 
+        /* ===== MOBILE REMOVE PHOTO BTN ===== */
+        .ms-btn-remove-photo { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .ms-btn-remove-photo:hover { background: #fee2e2; border-color: #fca5a5; }
+
         @media (min-width: 768px) {
           .ms-modal-overlay { align-items: center; }
           .ms-modal { border-radius: 20px; max-width: 560px; }
@@ -686,6 +726,7 @@ const ManageStudents = () => {
           .ms-modal { max-height: 95vh; border-radius: 16px 16px 0 0; }
           .ms-camera-footer { padding: 16px 18px 24px; gap: 20px; }
           .ms-camera-snap-btn { width: 66px; height: 66px; }
+          .ms-img-progress-card { min-width: 260px; padding: 24px 20px; margin: 0 20px; }
         }
         @media (max-width: 380px) {
           .ms-header-actions { flex-direction: column; }
@@ -708,6 +749,24 @@ const ManageStudents = () => {
 
       {/* Hidden canvas for photo capture */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
+
+      {/* Image upload progress overlay */}
+      {imageUploading && (
+        <div className="ms-img-progress-overlay">
+          <div className="ms-img-progress-card">
+            <span className="ms-img-progress-icon">📤</span>
+            <p className="ms-img-progress-title">Uploading Photo</p>
+            <p className="ms-img-progress-subtitle">Please wait while the image uploads...</p>
+            <div className="ms-img-progress-pct">{imageUploadProgress}%</div>
+            <div className="ms-img-progress-bar">
+              <div className="ms-img-progress-fill" style={{ width: `${imageUploadProgress}%` }}></div>
+            </div>
+            <p className="ms-img-progress-status">
+              {imageUploadProgress < 100 ? 'Uploading...' : imageUploadProgress === 100 ? 'Processing...' : 'Preparing...'}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="ms-header">
         <div className="ms-header-top">
@@ -820,44 +879,38 @@ const ManageStudents = () => {
                     <td style={{ width: 50 }}>
                       <div className="ms-action-menu-wrap">
                         <button className="ms-action-trigger" onClick={(e) => toggleActionMenu(student._id, e)}>
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                         </button>
                         {openActionMenu === student._id && (
                           <>
                             <div className="ms-click-outside" onClick={() => setOpenActionMenu(null)} />
                             <div className="ms-action-menu">
-                              <div>
-                                <button className="ms-action-menu-item" onClick={() => { setOpenActionMenu(null); handleOpenEdit(student); }}>
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                                  Edit Student
-                                </button>
-
-                                <button className="ms-action-menu-item" onClick={(e) => handleImageClick(student._id, e)} disabled={uploadImageMutation.isPending}>
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                                  {student.profileImage?.url ? 'Change Photo' : 'Upload Photo'}
-                                </button>
-
-                                {/* NEW: Snap Photo option */}
-                                <button className="ms-action-menu-item" onClick={(e) => handleOpenCamera(student._id, e)} disabled={uploadImageMutation.isPending}>
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                                  {student.profileImage?.url ? 'Retake Photo' : 'Snap Photo'}
-                                </button>
-
-                                <button className="ms-action-menu-item danger" onClick={() => { setOpenActionMenu(null); handleDelete(student._id); }}>
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                                  Delete Student
-                                </button>
-                              </div>
-
+                              <button className="ms-action-menu-item" onClick={() => { setOpenActionMenu(null); handleOpenEdit(student); }}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                Edit Student
+                              </button>
+                              <button className="ms-action-menu-item" onClick={(e) => handleImageClick(student._id, e)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                Upload Photo
+                              </button>
+                              <button className="ms-action-menu-item" onClick={(e) => handleOpenCamera(student._id, e)}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                                Take Photo
+                              </button>
                               {student.profileImage?.url && (
                                 <>
                                   <div className="ms-action-menu-sep" />
-                                  <button className="ms-action-menu-item" onClick={(e) => handleRemoveImage(student._id, e)} disabled={removeImageMutation.isPending}>
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                                  <button className="ms-action-menu-item danger" onClick={(e) => handleRemoveImage(student._id, e)}>
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><line x1="21" y1="3" x2="3" y2="21"/></svg>
                                     Remove Photo
                                   </button>
                                 </>
                               )}
+                              <div className="ms-action-menu-sep" />
+                              <button className="ms-action-menu-item danger" onClick={() => { setOpenActionMenu(null); handleDelete(student._id); }}>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                Delete Student
+                              </button>
                             </div>
                           </>
                         )}
@@ -874,9 +927,9 @@ const ManageStudents = () => {
       {/* ===== MOBILE CARDS ===== */}
       <div className="ms-cards">
         {filteredStudents.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 16px', color: 'var(--text-muted)' }}>
-            <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: 8 }}>🎓</span>
-            {searchTerm.trim() ? <>No students found for "<strong>{searchTerm}</strong>"</> : 'No students yet. Add your first student.'}
+          <div className="ms-empty">
+            <span className="ms-empty-icon">🎓</span>
+            {searchTerm.trim() ? <>No students found for "<strong>{searchTerm}</strong>"</> : 'No students yet. Add your first student to get started.'}
           </div>
         ) : filteredStudents.map((student) => {
           const feesBadge = getFeesStatusBadge(student);
@@ -904,39 +957,39 @@ const ManageStudents = () => {
                   <span className="ms-card-field-label">Class</span>
                   <span className="ms-card-field-value">{getClassName(student.classId)}</span>
                 </div>
-                <div className="ms-card-field">
-                  <span className="ms-card-field-label">Fees</span>
-                  <span className="ms-card-field-value" style={{ color: student.owingFees ? 'var(--danger)' : 'var(--success)' }}>
-                    {student.owingFees ? '🔴 Owing' : '🟢 Clear'}
-                  </span>
-                </div>
               </div>
-              <div className="ms-card-actions">
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
                 {student.owingFees && !student.feesAccessGranted && (
-                  <button className="ms-btn ms-btn-sm ms-fees-btn-grant" style={{ flex: 'none' }} onClick={(e) => handleToggleFeesAccess(student._id, e)} disabled={toggleFeesAccessMutation.isPending}>⚡ Grant</button>
+                  <button className="ms-fees-btn ms-fees-btn-grant" onClick={(e) => handleToggleFeesAccess(student._id, e)} disabled={toggleFeesAccessMutation.isPending}>⚡ Grant Access</button>
                 )}
                 {student.owingFees && student.feesAccessGranted && (
-                  <button className="ms-btn ms-btn-sm ms-fees-btn-revoke" style={{ flex: 'none' }} onClick={(e) => handleToggleFeesAccess(student._id, e)} disabled={toggleFeesAccessMutation.isPending}>↩ Revoke</button>
+                  <button className="ms-fees-btn ms-fees-btn-revoke" onClick={(e) => handleToggleFeesAccess(student._id, e)} disabled={toggleFeesAccessMutation.isPending}>↩ Revoke</button>
                 )}
                 {!student.owingFees && (
-                  <button className="ms-btn ms-btn-sm ms-fees-btn-owing" style={{ flex: 'none' }} onClick={(e) => handleToggleOwing(student._id, e)} disabled={toggleOwingMutation.isPending}>$ Owing</button>
+                  <button className="ms-fees-btn ms-fees-btn-owing" onClick={(e) => handleToggleOwing(student._id, e)} disabled={toggleOwingMutation.isPending}>$ Mark Owing</button>
                 )}
-
-                <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={(e) => handleImageClick(student._id, e)} disabled={uploadImageMutation.isPending}>
-                  {student.profileImage?.url ? '📷 Change' : '📷 Upload'}
-                </button>
-
-                {/* NEW: Snap button on mobile cards */}
-                <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={(e) => handleOpenCamera(student._id, e)} disabled={uploadImageMutation.isPending}>
-                  📸 Snap
-                </button>
-
+              </div>
+              <div className="ms-card-actions">
                 <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={() => handleOpenEdit(student)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:14,height:14}}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:13,height:13}}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                   Edit
                 </button>
+                <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={(e) => handleImageClick(student._id, e)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:13,height:13}}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  Photo
+                </button>
+                <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={(e) => handleOpenCamera(student._id, e)}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:13,height:13}}><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  Camera
+                </button>
+                {student.profileImage?.url && (
+                  <button className="ms-btn ms-btn-remove-photo ms-btn-sm" onClick={(e) => handleRemoveImage(student._id, e)}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:13,height:13}}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><line x1="21" y1="3" x2="3" y2="21"/></svg>
+                    Remove Photo
+                  </button>
+                )}
                 <button className="ms-btn ms-btn-danger ms-btn-sm" onClick={() => handleDelete(student._id)}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:14,height:14}}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:13,height:13}}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                   Delete
                 </button>
               </div>
@@ -945,10 +998,10 @@ const ManageStudents = () => {
         })}
       </div>
 
-      {/* ===== MODAL: ADD/EDIT STUDENT ===== */}
+      {/* ===== CREATE / EDIT MODAL ===== */}
       {showModal && (
-        <div className="ms-modal-overlay" onClick={handleCloseModal}>
-          <div className="ms-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ms-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) handleCloseModal(); }}>
+          <div className="ms-modal">
             <div className="ms-modal-handle" />
             <div className="ms-modal-header">
               <h2 className="ms-modal-title">{editingStudent ? 'Edit Student' : 'Add New Student'}</h2>
@@ -956,23 +1009,23 @@ const ManageStudents = () => {
             </div>
             <form onSubmit={handleSubmit}>
               <div className="ms-modal-body">
-                {error && <div className="ms-alert ms-alert-danger" style={{margin:0,marginBottom:14}}>{error}</div>}
-                {successMessage && <div className="ms-alert ms-alert-success" style={{margin:0,marginBottom:14}}>{successMessage}</div>}
+                {error && <div className="ms-alert ms-alert-danger" style={{margin:'0 0 14px'}}>{error}</div>}
+                {successMessage && <div className="ms-alert ms-alert-success" style={{margin:'0 0 14px'}}>{successMessage}</div>}
                 <div className="ms-form-row">
                   <div className="ms-form-group">
                     <label className="ms-form-label">First Name *</label>
-                    <input className="ms-form-input" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="e.g. John" required />
+                    <input className="ms-form-input" name="firstName" value={formData.firstName} onChange={handleChange} placeholder="Enter first name" required />
                   </div>
                   <div className="ms-form-group">
                     <label className="ms-form-label">Last Name *</label>
-                    <input className="ms-form-input" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="e.g. Doe" required />
+                    <input className="ms-form-input" name="lastName" value={formData.lastName} onChange={handleChange} placeholder="Enter last name" required />
                   </div>
                 </div>
                 <div className="ms-form-row">
                   <div className="ms-form-group">
                     <label className="ms-form-label">Admission Number</label>
-                    <input className="ms-form-input" name="admissionNumber" value={formData.admissionNumber} onChange={handleChange} placeholder="Auto-generated if empty" />
-                    <span className="ms-form-hint">Leave blank to auto-generate</span>
+                    <input className="ms-form-input" name="admissionNumber" value={formData.admissionNumber} onChange={handleChange} placeholder="e.g. STU-2024-001" disabled={!!editingStudent} />
+                    {editingStudent && <span className="ms-form-hint">Admission number cannot be changed</span>}
                   </div>
                   <div className="ms-form-group">
                     <label className="ms-form-label">Gender</label>
@@ -1007,58 +1060,64 @@ const ManageStudents = () => {
         </div>
       )}
 
-      {/* ===== MODAL: CSV UPLOAD ===== */}
+      {/* ===== UPLOAD CSV MODAL ===== */}
       {showUploadModal && (
-        <div className="ms-modal-overlay" onClick={() => setShowUploadModal(false)}>
-          <div className="ms-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="ms-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowUploadModal(false); }}>
+          <div className="ms-modal">
             <div className="ms-modal-handle" />
             <div className="ms-modal-header">
-              <h2 className="ms-modal-title">Upload Students via CSV</h2>
+              <h2 className="ms-modal-title">Bulk Upload Students</h2>
               <button className="ms-modal-close" onClick={() => setShowUploadModal(false)}>×</button>
             </div>
             <div className="ms-modal-body">
-              <div style={{marginBottom:16}}>
-                <button className="ms-btn ms-btn-ghost ms-btn-sm" onClick={downloadSampleCSV} style={{marginBottom:12}}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:14,height:14}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Download Sample CSV
-                </button>
-                <input type="file" ref={fileInputRef} accept=".csv" onChange={handleFileChange} style={{display:'none'}} />
-                <button className="ms-btn ms-btn-primary" onClick={() => fileInputRef.current?.click()} disabled={isUploading}>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:14,height:14}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                  Choose CSV File
-                </button>
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
+                  Upload a CSV file with columns: <strong>FirstName, LastName, Gender, ClassName, Section</strong>. Class must already exist in the system.
+                </p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <label className="ms-btn ms-btn-primary" style={{ cursor: 'pointer' }}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:15,height:15}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Choose CSV File
+                    <input type="file" ref={fileInputRef} accept=".csv" onChange={handleFileChange} style={{ display: 'none' }} />
+                  </label>
+                  <button className="ms-btn ms-btn-ghost" onClick={downloadSampleCSV}>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:15,height:15}}><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    Download Sample
+                  </button>
+                </div>
               </div>
 
-              {csvError && <div className="ms-alert ms-alert-danger" style={{margin:'0 0 12px'}}>{csvError}</div>}
+              {csvError && (
+                <div className="ms-alert ms-alert-danger" style={{ margin: '0 0 14px' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{width:16,height:16,flexShrink:0}}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                  {csvError}
+                </div>
+              )}
 
               {parsedStudents.length > 0 && (
                 <>
-                  <div style={{fontSize:'0.82rem',fontWeight:600,color:'var(--text-secondary)',marginBottom:8}}>
-                    Preview: {parsedStudents.length} students found
+                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>
+                    Preview: {parsedStudents.length} student{parsedStudents.length !== 1 ? 's' : ''} found
                   </div>
-                  <div className="ms-upload-preview" style={{marginBottom:16}}>
+                  <div className="ms-upload-preview" style={{ marginBottom: 14 }}>
                     <table>
                       <thead>
                         <tr>
                           <th>#</th>
-                          <th>Name</th>
+                          <th>First Name</th>
+                          <th>Last Name</th>
                           <th>Gender</th>
                           <th>Class</th>
-                          <th>Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {parsedStudents.map((s) => (
                           <tr key={s._rowNumber}>
                             <td>{s._rowNumber}</td>
-                            <td style={{fontWeight:500}}>{s.firstName} {s.lastName}</td>
+                            <td>{s.firstName}</td>
+                            <td>{s.lastName}</td>
                             <td>{s.gender || '—'}</td>
-                            <td>{s._className ? `${s._className}-${s._section}` : '—'}</td>
-                            <td>
-                              <span className={`ms-badge ${s.classId ? 'ms-badge-green' : 'ms-badge-amber'}`}>
-                                {s.classId ? '✓ Ready' : '⚠ No class'}
-                              </span>
-                            </td>
+                            <td>{s._className ? `${s._className} - ${s._section}` : <span style={{color:'#ef4444'}}>Not found</span>}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -1066,27 +1125,31 @@ const ManageStudents = () => {
                   </div>
 
                   {isUploading && (
-                    <div style={{marginBottom:12}}>
-                      <div style={{display:'flex',justifyContent:'space-between',fontSize:'0.78rem',color:'var(--text-muted)',marginBottom:6}}>
-                        <span>Uploading...</span>
-                        <span>{uploadProgress.current} / {uploadProgress.total}</span>
+                    <div style={{ marginBottom: 14 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', fontWeight: 600, marginBottom: 6 }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>Uploading...</span>
+                        <span style={{ color: 'var(--primary)' }}>{uploadProgress.current} / {uploadProgress.total}</span>
                       </div>
                       <div className="ms-progress-bar">
-                        <div className="ms-progress-fill" style={{width: `${(uploadProgress.current / uploadProgress.total) * 100}%`}} />
+                        <div className="ms-progress-fill" style={{ width: `${uploadProgress.total > 0 ? (uploadProgress.current / uploadProgress.total) * 100 : 0}%` }}></div>
                       </div>
                     </div>
                   )}
 
                   {uploadLog.length > 0 && (
-                    <div className="ms-upload-log" style={{marginBottom:16}}>
+                    <div className="ms-upload-log" style={{ marginBottom: 14 }}>
                       {uploadLog.map((log, i) => <div key={i}>{log}</div>)}
                     </div>
                   )}
 
                   {!isUploading && (
-                    <button className="ms-btn ms-btn-success" onClick={handleBulkUpload} style={{width:'100%',justifyContent:'center'}}>
-                      Upload {parsedStudents.length} Students
-                    </button>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+                      <button className="ms-btn ms-btn-ghost" onClick={() => setShowUploadModal(false)}>Cancel</button>
+                      <button className="ms-btn ms-btn-success" onClick={handleBulkUpload}>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{width:15,height:15}}><polyline points="20 6 9 17 4 12"/></svg>
+                        Upload {parsedStudents.length} Student{parsedStudents.length !== 1 ? 's' : ''}
+                      </button>
+                    </div>
                   )}
                 </>
               )}
@@ -1095,91 +1158,51 @@ const ManageStudents = () => {
         </div>
       )}
 
-      {/* ===== FULLSCREEN CAMERA MODAL (NEW) ===== */}
+      {/* ===== CAMERA MODAL ===== */}
       {showCameraModal && (
         <div className="ms-camera-overlay">
-          {/* Camera Header */}
           <div className="ms-camera-header">
             <div className="ms-camera-header-left">
-              <div>
-                <p className="ms-camera-title">Take Photo</p>
-                {imageUploadStudentId && (
-                  <p className="ms-camera-student-name">
-                    {students?.data?.find(s => s._id === imageUploadStudentId)
-                      ? `${students.data.find(s => s._id === imageUploadStudentId).firstName} ${students.data.find(s => s._id === imageUploadStudentId).lastName}`
-                      : 'Student'}
-                  </p>
-                )}
-              </div>
+              <h3 className="ms-camera-title">Take Photo</h3>
+              <span className="ms-camera-student-name">
+                {students?.data?.find(s => s._id === imageUploadStudentId) ? 
+                  `${students.data.find(s => s._id === imageUploadStudentId).firstName} ${students.data.find(s => s._id === imageUploadStudentId).lastName}` : 
+                  'Student'
+                }
+              </span>
             </div>
             <button className="ms-camera-close" onClick={handleCloseCameraModal}>×</button>
           </div>
 
-          {/* Camera Viewport */}
           <div className="ms-camera-viewport">
-            <video
-              ref={videoRef}
-              className="ms-camera-video"
-              autoPlay
-              playsInline
-              muted
-            />
-
-            {/* Circular face guide overlay */}
+            <video ref={videoRef} className="ms-camera-video" autoPlay playsInline muted />
             <div className={`ms-camera-guide ${cameraReady ? '' : 'ms-camera-guide-hidden'}`}>
               <span className="ms-camera-guide-label">Position face here</span>
             </div>
-
-            {/* Loading state */}
             {!cameraReady && !cameraError && (
               <div className="ms-camera-loading">
                 <div className="ms-camera-spinner" />
                 <span>Starting camera...</span>
               </div>
             )}
-
-            {/* Error state */}
             {cameraError && (
               <div className="ms-camera-error">
                 <span className="ms-camera-error-icon">📷</span>
                 <p className="ms-camera-error-text">{cameraError}</p>
-                <button className="ms-btn ms-btn-ghost" onClick={() => startCamera(cameraFacingMode)} style={{color:'#fff',borderColor:'rgba(255,255,255,0.3)'}}>
-                  Try Again
-                </button>
+                <button className="ms-btn ms-btn-ghost" style={{ color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }} onClick={() => startCamera(cameraFacingMode)}>Retry</button>
               </div>
             )}
           </div>
 
-          {/* Camera Footer Controls */}
           <div className="ms-camera-footer">
-            {/* Flip Camera Button */}
-            <button
-              className="ms-camera-side-btn"
-              onClick={handleFlipCamera}
-              disabled={!cameraReady}
-              title="Switch camera"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23 4 23 10 17 10" />
-                <polyline points="1 20 1 14 7 14" />
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
-              </svg>
+            <button className="ms-camera-side-btn" onClick={handleFlipCamera} title="Flip camera">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
             </button>
-
-            {/* Snap Button */}
-            <button
-              className="ms-camera-snap-btn"
-              onClick={handleSnapPhoto}
-              disabled={!cameraReady || uploadImageMutation.isPending}
-              title="Take photo"
-            />
-
-            {/* Placeholder for symmetry — or could be used for something else */}
-            <div style={{width:48,height:48}} />
+            <button className="ms-camera-snap-btn" onClick={handleSnapPhoto} disabled={!cameraReady} title="Take photo" />
+            <div style={{ width: 48, height: 48 }}></div>
           </div>
         </div>
       )}
-
     </div>
   );
 };

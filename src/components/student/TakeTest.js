@@ -1227,4 +1227,4 @@ const TakeTest = () => {
   return null;
 };
 
-export default TakeTest
+export default TakeTest;
